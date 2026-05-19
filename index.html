@@ -5,13 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Biltong & Bytes — Premium Halaal Biltong · Stanger KZN</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,500;1,600&family=Syne:wght@400;500;600;700;800&family=Bebas+Neue&display=swap" rel="stylesheet">
+<!-- Yoco SDK - loading with integrity -->
+<script src="https://js.yoco.com/sdk/v1/yoco-sdk.js" defer></script>
 <style>
-/* ========== ALL STYLES (same as before - keeping it clean) ========== */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+/* ========== ALL STYLES ========== */
+* { margin: 0; padding: 0; box-sizing: border-box; }
 :root {
   --rust: #B23A1A;
   --amber: #E07A2C;
@@ -50,12 +48,7 @@ body {
   transition: all 0.2s;
   backdrop-filter: blur(3px);
 }
-.cursor-ring.expand {
-  width: 80px;
-  height: 80px;
-  border-color: var(--gold);
-  background: rgba(229, 184, 60, 0.08);
-}
+.cursor-ring.expand { width: 80px; height: 80px; border-color: var(--gold); background: rgba(229, 184, 60, 0.08); }
 #cinema-canvas {
   position: fixed;
   top: 0;
@@ -76,10 +69,7 @@ body {
   filter: brightness(0.2) saturate(0.8);
   animation: slowZoom 25s infinite alternate;
 }
-@keyframes slowZoom {
-  0% { transform: scale(1.05); }
-  100% { transform: scale(1.18); }
-}
+@keyframes slowZoom { 0% { transform: scale(1.05); } 100% { transform: scale(1.18); } }
 nav {
   position: fixed;
   top: 0;
@@ -92,547 +82,86 @@ nav {
   padding: 1.5rem 6%;
   transition: all 0.4s;
 }
-nav.scrolled {
-  padding: 0.8rem 6%;
-  background: rgba(10, 3, 1, 0.95);
-  backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(229, 184, 60, 0.2);
-}
-.nav-logo {
-  font-family: 'Bebas Neue';
-  font-size: 1.8rem;
-  letter-spacing: 0.2em;
-  color: var(--gold);
-  text-decoration: none;
-}
+nav.scrolled { padding: 0.8rem 6%; background: rgba(10, 3, 1, 0.95); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(229, 184, 60, 0.2); }
+.nav-logo { font-family: 'Bebas Neue'; font-size: 1.8rem; letter-spacing: 0.2em; color: var(--gold); text-decoration: none; }
 .nav-logo span { color: var(--amber); }
-.nav-links {
-  display: flex;
-  gap: 2.5rem;
-  list-style: none;
-}
-.nav-links a {
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.25em;
-  text-transform: uppercase;
-  color: rgba(254, 243, 223, 0.6);
-  text-decoration: none;
-  transition: 0.3s;
-}
+.nav-links { display: flex; gap: 2.5rem; list-style: none; }
+.nav-links a { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.25em; text-transform: uppercase; color: rgba(254, 243, 223, 0.6); text-decoration: none; transition: 0.3s; }
 .nav-links a:hover { color: var(--gold); }
-.mobile-menu-btn {
-  display: none;
-  background: none;
-  border: 1px solid rgba(229, 184, 60, 0.4);
-  color: var(--gold);
-  padding: 0.5rem 1rem;
-  cursor: pointer;
-  font-size: 1.2rem;
-}
-.mobile-nav {
-  position: fixed;
-  top: 0;
-  left: -100%;
-  width: 80%;
-  max-width: 300px;
-  height: 100%;
-  background: rgba(10, 3, 1, 0.98);
-  backdrop-filter: blur(20px);
-  z-index: 600;
-  transition: left 0.3s;
-  padding: 5rem 2rem;
-}
+.mobile-menu-btn { display: none; background: none; border: 1px solid rgba(229, 184, 60, 0.4); color: var(--gold); padding: 0.5rem 1rem; cursor: pointer; font-size: 1.2rem; }
+.mobile-nav { position: fixed; top: 0; left: -100%; width: 80%; max-width: 300px; height: 100%; background: rgba(10, 3, 1, 0.98); backdrop-filter: blur(20px); z-index: 600; transition: left 0.3s; padding: 5rem 2rem; }
 .mobile-nav.open { left: 0; }
 .mobile-nav ul { list-style: none; display: flex; flex-direction: column; gap: 2rem; }
 .mobile-nav a { color: var(--cream); text-decoration: none; font-size: 1.2rem; letter-spacing: 0.1em; }
-.close-menu {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  background: none;
-  border: none;
-  color: var(--gold);
-  font-size: 2rem;
-  cursor: pointer;
-}
-.nav-cart-btn {
-  background: none;
-  border: 1px solid rgba(229, 184, 60, 0.4);
-  color: var(--gold);
-  padding: 0.5rem 1.2rem;
-  font-family: 'Syne';
-  font-weight: 700;
-  font-size: 0.7rem;
-  letter-spacing: 0.15em;
-  cursor: pointer;
-  transition: 0.3s;
-  position: relative;
-}
-.nav-cart-btn:hover {
-  background: rgba(229, 184, 60, 0.1);
-  border-color: var(--gold);
-}
-.nav-badge {
-  position: absolute;
-  top: -8px;
-  right: -10px;
-  background: var(--rust);
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  font-size: 0.6rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.hero {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  text-align: center;
-}
-.hero-content {
-  z-index: 20;
-  max-width: 900px;
-  padding: 0 2rem;
-}
-.hero-eyebrow {
-  font-size: 0.65rem;
-  letter-spacing: 0.5em;
-  text-transform: uppercase;
-  color: var(--gold-light);
-  border: 1px solid rgba(229, 184, 60, 0.4);
-  display: inline-block;
-  padding: 0.6rem 1.5rem;
-  border-radius: 60px;
-  margin-bottom: 2rem;
-  backdrop-filter: blur(10px);
-  animation: fadeUp 1s ease forwards;
-  opacity: 0;
-  transform: translateY(40px);
-}
-.hero-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: clamp(4rem, 12vw, 10rem);
-  font-weight: 300;
-  line-height: 0.85;
-  animation: fadeUp 1.2s ease 0.2s forwards;
-  opacity: 0;
-  transform: translateY(50px);
-}
-.hero-title .gold {
-  background: linear-gradient(135deg, #F8E5B0, #E5B83C);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-.hero-sub {
-  font-size: 0.9rem;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  margin-top: 2rem;
-  animation: fadeUp 1s ease 0.5s forwards;
-  opacity: 0;
-  transform: translateY(30px);
-}
-.hero-cta {
-  margin-top: 2.5rem;
-  display: flex;
-  gap: 1.5rem;
-  justify-content: center;
-  flex-wrap: wrap;
-  animation: fadeUp 1s ease 0.7s forwards;
-  opacity: 0;
-  transform: translateY(30px);
-}
-@keyframes fadeUp {
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-.btn {
-  padding: 0.9rem 2.5rem;
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.2em;
-  text-decoration: none;
-  text-transform: uppercase;
-  transition: 0.3s;
-  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
-  cursor: pointer;
-  display: inline-block;
-}
-.btn-primary {
-  background: var(--whatsapp);
-  color: white;
-}
-.btn-primary:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 10px 30px rgba(37, 211, 102, 0.4);
-}
-.btn-ghost {
-  border: 1px solid rgba(229, 184, 60, 0.6);
-  color: var(--gold);
-  background: transparent;
-}
-.btn-ghost:hover {
-  background: rgba(229, 184, 60, 0.1);
-  transform: translateY(-3px);
-}
-.photo-strip {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1.5fr;
-  height: 45vh;
-  position: relative;
-  z-index: 10;
-}
-.photo-strip-item {
-  overflow: hidden;
-  position: relative;
-}
-.photo-strip-item img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.8s;
-  filter: brightness(0.55);
-}
-.photo-strip-item:hover img {
-  transform: scale(1.08);
-  filter: brightness(0.75);
-}
-section {
-  padding: 6rem 6%;
-  position: relative;
-  z-index: 20;
-}
-.section-label {
-  font-size: 0.6rem;
-  letter-spacing: 0.4em;
-  text-transform: uppercase;
-  color: var(--amber);
-  margin-bottom: 1rem;
-}
-.section-title {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: clamp(2.5rem, 5vw, 4.5rem);
-  font-weight: 300;
-  line-height: 1.1;
-  margin-bottom: 3rem;
-}
-.section-title em {
-  font-style: italic;
-  color: var(--gold);
-  font-weight: 600;
-}
-.products-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 2rem;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-.product-card {
-  background: linear-gradient(145deg, rgba(20, 10, 4, 0.9), rgba(12, 5, 2, 0.95));
-  backdrop-filter: blur(4px);
-  padding: 2rem;
-  text-align: center;
-  border-radius: 16px;
-  border: 1px solid rgba(229, 184, 60, 0.15);
-  transition: all 0.4s cubic-bezier(0.2, 0.9, 0.4, 1.2);
-}
-.product-card:hover {
-  transform: translateY(-10px);
-  border-color: rgba(229, 184, 60, 0.4);
-}
-.p-photo {
-  width: 100%;
-  height: 200px;
-  object-fit: cover;
-  border-radius: 12px;
-  margin-bottom: 1.2rem;
-  filter: brightness(0.75);
-}
-.p-weight {
-  font-size: 2rem;
-  font-family: 'Cormorant Garamond';
-  font-weight: 700;
-  color: var(--gold);
-}
-.p-price {
-  font-size: 2.5rem;
-  font-family: 'Bebas Neue';
-  color: var(--gold-light);
-}
-.flavor-selector {
-  display: flex;
-  justify-content: center;
-  gap: 0.5rem;
-  margin: 1rem 0;
-}
-.flavor-btn {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(254, 243, 223, 0.7);
-  padding: 0.4rem 1rem;
-  font-size: 0.7rem;
-  border-radius: 40px;
-  cursor: pointer;
-  transition: 0.2s;
-}
-.flavor-btn.active {
-  background: var(--gold);
-  color: var(--charcoal);
-  border-color: var(--gold);
-}
-.qty-wrapper {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1.2rem;
-  margin: 1rem 0;
-}
-.qty-btn {
-  background: rgba(255, 255, 255, 0.08);
-  border: none;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  color: var(--cream);
-  font-size: 1.2rem;
-  cursor: pointer;
-}
-.qty-btn:hover {
-  background: var(--gold);
-  color: black;
-}
-.qty-display {
-  font-size: 1.5rem;
-  font-family: 'Bebas Neue';
-  min-width: 40px;
-  text-align: center;
-}
-.btn-add-cart {
-  width: 100%;
-  background: transparent;
-  border: 1px solid rgba(229, 184, 60, 0.5);
-  padding: 0.8rem;
-  font-weight: bold;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--gold);
-  cursor: pointer;
-  transition: 0.3s;
-  border-radius: 40px;
-}
-.btn-add-cart:hover {
-  background: var(--gold);
-  color: var(--charcoal);
-}
-.payment-modal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.95);
-  backdrop-filter: blur(20px);
-  z-index: 3000;
-  display: none;
-  align-items: center;
-  justify-content: center;
-}
-.payment-modal.open {
-  display: flex;
-}
-.payment-card {
-  background: linear-gradient(145deg, #1A0A04, #0E0500);
-  border: 1px solid var(--gold);
-  border-radius: 24px;
-  padding: 2rem;
-  max-width: 480px;
-  width: 90%;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-.payment-card h3 {
-  font-family: 'Cormorant Garamond';
-  font-size: 1.8rem;
-  color: var(--gold);
-  margin-bottom: 1rem;
-}
-.payment-input {
-  width: 100%;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(229, 184, 60, 0.3);
-  border-radius: 12px;
-  padding: 0.8rem;
-  color: var(--cream);
-  font-family: 'Syne';
-  margin-bottom: 1rem;
-}
-.payment-input:focus {
-  outline: none;
-  border-color: var(--gold);
-}
-#card-frame {
-  width: 100%;
-  min-height: 280px;
-  margin: 1rem 0;
-  border: 1px solid rgba(229, 184, 60, 0.3);
-  border-radius: 12px;
-  background: #1A0A04;
-}
-.loading-spinner {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  color: var(--gold);
-}
-.steps-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1.5rem;
-  max-width: 1100px;
-  margin: 0 auto;
-  text-align: center;
-}
-.step-icon {
-  width: 70px;
-  height: 70px;
-  background: rgba(229, 184, 60, 0.1);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2rem;
-  margin: 0 auto 1rem;
-  border: 1px solid rgba(229, 184, 60, 0.3);
-  transition: 0.3s;
-}
-.step:hover .step-icon {
-  background: var(--gold);
-  color: black;
-  transform: scale(1.1);
-}
-.cart-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.95);
-  backdrop-filter: blur(20px);
-  z-index: 2000;
-  display: none;
-  align-items: center;
-  justify-content: center;
-}
+.close-menu { position: absolute; top: 1rem; right: 1rem; background: none; border: none; color: var(--gold); font-size: 2rem; cursor: pointer; }
+.nav-cart-btn { background: none; border: 1px solid rgba(229, 184, 60, 0.4); color: var(--gold); padding: 0.5rem 1.2rem; font-family: 'Syne'; font-weight: 700; font-size: 0.7rem; letter-spacing: 0.15em; cursor: pointer; transition: 0.3s; position: relative; }
+.nav-cart-btn:hover { background: rgba(229, 184, 60, 0.1); border-color: var(--gold); }
+.nav-badge { position: absolute; top: -8px; right: -10px; background: var(--rust); width: 20px; height: 20px; border-radius: 50%; font-size: 0.6rem; display: flex; align-items: center; justify-content: center; }
+.hero { min-height: 100vh; display: flex; align-items: center; justify-content: center; position: relative; text-align: center; }
+.hero-content { z-index: 20; max-width: 900px; padding: 0 2rem; }
+.hero-eyebrow { font-size: 0.65rem; letter-spacing: 0.5em; text-transform: uppercase; color: var(--gold-light); border: 1px solid rgba(229, 184, 60, 0.4); display: inline-block; padding: 0.6rem 1.5rem; border-radius: 60px; margin-bottom: 2rem; backdrop-filter: blur(10px); animation: fadeUp 1s ease forwards; opacity: 0; transform: translateY(40px); }
+.hero-title { font-family: 'Cormorant Garamond', serif; font-size: clamp(4rem, 12vw, 10rem); font-weight: 300; line-height: 0.85; animation: fadeUp 1.2s ease 0.2s forwards; opacity: 0; transform: translateY(50px); }
+.hero-title .gold { background: linear-gradient(135deg, #F8E5B0, #E5B83C); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hero-sub { font-size: 0.9rem; letter-spacing: 0.15em; text-transform: uppercase; margin-top: 2rem; animation: fadeUp 1s ease 0.5s forwards; opacity: 0; transform: translateY(30px); }
+.hero-cta { margin-top: 2.5rem; display: flex; gap: 1.5rem; justify-content: center; flex-wrap: wrap; animation: fadeUp 1s ease 0.7s forwards; opacity: 0; transform: translateY(30px); }
+@keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+.btn { padding: 0.9rem 2.5rem; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.2em; text-decoration: none; text-transform: uppercase; transition: 0.3s; clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px)); cursor: pointer; display: inline-block; }
+.btn-primary { background: var(--whatsapp); color: white; }
+.btn-primary:hover { transform: translateY(-4px); box-shadow: 0 10px 30px rgba(37, 211, 102, 0.4); }
+.btn-ghost { border: 1px solid rgba(229, 184, 60, 0.6); color: var(--gold); background: transparent; }
+.btn-ghost:hover { background: rgba(229, 184, 60, 0.1); transform: translateY(-3px); }
+.photo-strip { display: grid; grid-template-columns: 2fr 1fr 1fr 1.5fr; height: 45vh; position: relative; z-index: 10; }
+.photo-strip-item { overflow: hidden; position: relative; }
+.photo-strip-item img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.8s; filter: brightness(0.55); }
+.photo-strip-item:hover img { transform: scale(1.08); filter: brightness(0.75); }
+section { padding: 6rem 6%; position: relative; z-index: 20; }
+.section-label { font-size: 0.6rem; letter-spacing: 0.4em; text-transform: uppercase; color: var(--amber); margin-bottom: 1rem; text-align: center; }
+.section-title { font-family: 'Cormorant Garamond', serif; font-size: clamp(2.5rem, 5vw, 4.5rem); font-weight: 300; line-height: 1.1; margin-bottom: 3rem; text-align: center; }
+.section-title em { font-style: italic; color: var(--gold); font-weight: 600; }
+.products-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; max-width: 1400px; margin: 0 auto; }
+.product-card { background: linear-gradient(145deg, rgba(20, 10, 4, 0.9), rgba(12, 5, 2, 0.95)); backdrop-filter: blur(4px); padding: 2rem; text-align: center; border-radius: 16px; border: 1px solid rgba(229, 184, 60, 0.15); transition: all 0.4s cubic-bezier(0.2, 0.9, 0.4, 1.2); }
+.product-card:hover { transform: translateY(-10px); border-color: rgba(229, 184, 60, 0.4); }
+.p-photo { width: 100%; height: 200px; object-fit: cover; border-radius: 12px; margin-bottom: 1.2rem; filter: brightness(0.75); }
+.p-weight { font-size: 2rem; font-family: 'Cormorant Garamond'; font-weight: 700; color: var(--gold); }
+.p-price { font-size: 2.5rem; font-family: 'Bebas Neue'; color: var(--gold-light); }
+.flavor-selector { display: flex; justify-content: center; gap: 0.5rem; margin: 1rem 0; }
+.flavor-btn { background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1); color: rgba(254, 243, 223, 0.7); padding: 0.4rem 1rem; font-size: 0.7rem; border-radius: 40px; cursor: pointer; transition: 0.2s; }
+.flavor-btn.active { background: var(--gold); color: var(--charcoal); border-color: var(--gold); }
+.qty-wrapper { display: flex; align-items: center; justify-content: center; gap: 1.2rem; margin: 1rem 0; }
+.qty-btn { background: rgba(255, 255, 255, 0.08); border: none; width: 36px; height: 36px; border-radius: 50%; color: var(--cream); font-size: 1.2rem; cursor: pointer; }
+.qty-btn:hover { background: var(--gold); color: black; }
+.qty-display { font-size: 1.5rem; font-family: 'Bebas Neue'; min-width: 40px; text-align: center; }
+.btn-add-cart { width: 100%; background: transparent; border: 1px solid rgba(229, 184, 60, 0.5); padding: 0.8rem; font-weight: bold; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); cursor: pointer; transition: 0.3s; border-radius: 40px; }
+.btn-add-cart:hover { background: var(--gold); color: var(--charcoal); }
+.payment-modal { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.95); backdrop-filter: blur(20px); z-index: 3000; display: none; align-items: center; justify-content: center; }
+.payment-modal.open { display: flex; }
+.payment-card { background: linear-gradient(145deg, #1A0A04, #0E0500); border: 1px solid var(--gold); border-radius: 24px; padding: 2rem; max-width: 480px; width: 90%; max-height: 90vh; overflow-y: auto; }
+.payment-card h3 { font-family: 'Cormorant Garamond'; font-size: 1.8rem; color: var(--gold); margin-bottom: 1rem; }
+.payment-input { width: 100%; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(229, 184, 60, 0.3); border-radius: 12px; padding: 0.8rem; color: var(--cream); font-family: 'Syne'; margin-bottom: 1rem; }
+.payment-input:focus { outline: none; border-color: var(--gold); }
+#card-frame { width: 100%; min-height: 280px; margin: 1rem 0; border: 1px solid rgba(229, 184, 60, 0.3); border-radius: 12px; background: #1A0A04; }
+.steps-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; max-width: 1100px; margin: 0 auto; text-align: center; }
+.step-icon { width: 70px; height: 70px; background: rgba(229, 184, 60, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; margin: 0 auto 1rem; border: 1px solid rgba(229, 184, 60, 0.3); transition: 0.3s; }
+.step:hover .step-icon { background: var(--gold); color: black; transform: scale(1.1); }
+.cart-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.95); backdrop-filter: blur(20px); z-index: 2000; display: none; align-items: center; justify-content: center; }
 .cart-overlay.open { display: flex; }
-.cart-panel {
-  background: #0E0500;
-  width: 90%;
-  max-width: 550px;
-  border: 1px solid var(--gold);
-  border-radius: 20px;
-  max-height: 85vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-.cart-items {
-  padding: 1.5rem;
-  overflow-y: auto;
-  flex-grow: 1;
-}
-.delivery-wrap {
-  padding: 1rem;
-  border-top: 1px solid rgba(255,255,255,0.1);
-}
-.delivery-toggle {
-  display: flex;
-  gap: 0.8rem;
-  margin-bottom: 0.8rem;
-}
-.delivery-opt {
-  flex: 1;
-  padding: 0.6rem;
-  background: rgba(255,255,255,0.05);
-  text-align: center;
-  cursor: pointer;
-  border-radius: 40px;
-  transition: 0.2s;
-}
-.delivery-opt.selected {
-  background: var(--gold);
-  color: black;
-  font-weight: bold;
-}
+.cart-panel { background: #0E0500; width: 90%; max-width: 550px; border: 1px solid var(--gold); border-radius: 20px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; }
+.cart-items { padding: 1.5rem; overflow-y: auto; flex-grow: 1; }
+.delivery-wrap { padding: 1rem; border-top: 1px solid rgba(255,255,255,0.1); }
+.delivery-toggle { display: flex; gap: 0.8rem; margin-bottom: 0.8rem; }
+.delivery-opt { flex: 1; padding: 0.6rem; background: rgba(255,255,255,0.05); text-align: center; cursor: pointer; border-radius: 40px; transition: 0.2s; }
+.delivery-opt.selected { background: var(--gold); color: black; font-weight: bold; }
 #addressField { display: none; }
 #addressField.show { display: block; }
-#deliveryAddress {
-  width: 100%;
-  background: #1E0A02;
-  color: white;
-  border: 1px solid var(--gold);
-  padding: 0.6rem;
-  margin-top: 0.5rem;
-  border-radius: 8px;
-}
-.toast {
-  position: fixed;
-  bottom: 2rem;
-  left: 50%;
-  transform: translateX(-50%) translateY(100px);
-  background: var(--gold);
-  color: black;
-  padding: 0.8rem 2rem;
-  font-weight: bold;
-  z-index: 3000;
-  transition: 0.3s;
-  border-radius: 40px;
-}
-.toast.show {
-  transform: translateX(-50%) translateY(0);
-}
-.cart-float {
-  position: fixed;
-  bottom: 2rem;
-  right: 2rem;
-  background: var(--whatsapp);
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 300;
-  animation: pulse 2.5s infinite;
-}
-@keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(37,211,102,0.4); }
-  70% { box-shadow: 0 0 0 12px rgba(37,211,102,0); }
-  100% { box-shadow: 0 0 0 0 rgba(37,211,102,0); }
-}
-.reveal {
-  opacity: 0;
-  transform: translateY(50px);
-  transition: all 0.8s cubic-bezier(0.2, 0.9, 0.4, 1.2);
-}
-.reveal.visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-@media (max-width: 900px) {
-  .nav-links { display: none; }
-  .mobile-menu-btn { display: block; }
-  .photo-strip { height: 30vh; }
-  .steps-grid { grid-template-columns: repeat(2, 1fr); }
-}
-@media (max-width: 600px) {
-  .steps-grid { grid-template-columns: 1fr; }
-  .payment-card { padding: 1.5rem; }
-}
+#deliveryAddress { width: 100%; background: #1E0A02; color: white; border: 1px solid var(--gold); padding: 0.6rem; margin-top: 0.5rem; border-radius: 8px; }
+.toast { position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--gold); color: black; padding: 0.8rem 2rem; font-weight: bold; z-index: 3000; transition: 0.3s; border-radius: 40px; }
+.toast.show { transform: translateX(-50%) translateY(0); }
+.cart-float { position: fixed; bottom: 2rem; right: 2rem; background: var(--whatsapp); width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 300; animation: pulse 2.5s infinite; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(37,211,102,0.4); } 70% { box-shadow: 0 0 0 12px rgba(37,211,102,0); } 100% { box-shadow: 0 0 0 0 rgba(37,211,102,0); } }
+.reveal { opacity: 0; transform: translateY(50px); transition: all 0.8s cubic-bezier(0.2, 0.9, 0.4, 1.2); }
+.reveal.visible { opacity: 1; transform: translateY(0); }
+@media (max-width: 900px) { .nav-links { display: none; } .mobile-menu-btn { display: block; } .photo-strip { height: 30vh; } .steps-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px) { .steps-grid { grid-template-columns: 1fr; } .payment-card { padding: 1.5rem; } }
 </style>
 </head>
 <body>
@@ -684,8 +213,8 @@ section {
 </div>
 
 <section id="products">
-  <div class="section-label" style="text-align: center;">THE MENU</div>
-  <h2 class="section-title" style="text-align: center;">Choose your <em>Biltong</em></h2>
+  <div class="section-label">THE MENU</div>
+  <h2 class="section-title">Choose your <em>Biltong</em></h2>
   <div class="products-grid" id="productsGrid"></div>
 </section>
 
@@ -708,8 +237,8 @@ section {
 </section>
 
 <section id="how-to-order">
-  <div class="section-label" style="text-align: center;">HOW IT WORKS</div>
-  <h2 class="section-title" style="text-align: center;">Simple <em>4-Step</em> Ordering</h2>
+  <div class="section-label">HOW IT WORKS</div>
+  <h2 class="section-title">Simple <em>4-Step</em> Ordering</h2>
   <div class="steps-grid">
     <div class="step"><div class="step-icon">1</div><h4>Pick your Biltong</h4><p style="opacity: 0.7;">Choose size & flavor</p></div>
     <div class="step"><div class="step-icon">2</div><h4>Add to Cart</h4><p style="opacity: 0.7;">Adjust quantity & mix</p></div>
@@ -741,11 +270,7 @@ section {
     <p style="opacity: 0.7; margin-bottom: 1rem;">Amount: <strong id="paymentAmount" style="color: var(--gold); font-size: 1.5rem;">R0</strong></p>
     <input type="text" id="customerName" class="payment-input" placeholder="Your Full Name" required>
     <input type="email" id="customerEmail" class="payment-input" placeholder="Your Email (for receipt)" required>
-    <div id="card-frame">
-      <div style="padding: 20px; text-align: center; color: var(--gold);">
-        <div class="loading-spinner">⏳ Loading secure payment form...</div>
-      </div>
-    </div>
+    <div id="card-frame"></div>
     <button class="btn-add-cart" id="payNowBtn" style="margin-top: 1rem;">💳 PAY NOW</button>
     <button class="btn-ghost" id="closePaymentBtn" style="margin-top: 0.5rem; width: 100%;">Cancel</button>
     <p style="font-size: 0.6rem; opacity: 0.6; margin-top: 1rem; text-align: center;">🔒 Secure payment via Yoco • Your card details are safe</p>
@@ -783,16 +308,15 @@ section {
 
 <div class="toast" id="toast">✨ Added to cart!</div>
 
-<!-- Yoco SDK - Loaded properly -->
-<script src="https://js.yoco.com/sdk/v1/yoco-sdk.js"></script>
 <script>
 // ============================================
-// ✅ LIVE YOCO PAYMENT KEY
+// ✅ LIVE YOCO PAYMENT - SIMPLIFIED VERSION
 // ============================================
 const YOCO_PUBLIC_KEY = "pk_live_9964eeacyWNq5Xw576a4";
 
 let yoco = null;
-let yocoInitialized = false;
+let cart = [];
+let deliveryMode = "collect";
 
 // Product data
 const products = [
@@ -803,52 +327,44 @@ const products = [
 ];
 const flavors = ["Traditional", "Chilli", "Honey Glazed"];
 
-let cart = [];
-let deliveryMode = "collect";
-
-// Initialize Yoco after SDK loads
-function initYocoSDK() {
+// Wait for Yoco SDK to be ready
+function waitForYoco() {
   return new Promise((resolve) => {
-    if (typeof YocoSDK !== 'undefined' && !yocoInitialized) {
-      try {
-        yoco = new YocoSDK({
-          publicKey: YOCO_PUBLIC_KEY
-        });
-        yocoInitialized = true;
-        console.log("✅ Yoco SDK initialized with LIVE key");
-        resolve(true);
-      } catch(e) {
-        console.error("Yoco init error:", e);
-        resolve(false);
-      }
-    } else if (yocoInitialized) {
-      resolve(true);
+    if (typeof YocoSDK !== 'undefined') {
+      resolve();
     } else {
-      // Wait for SDK
       let attempts = 0;
-      const checkInterval = setInterval(() => {
+      const interval = setInterval(() => {
         attempts++;
         if (typeof YocoSDK !== 'undefined') {
-          clearInterval(checkInterval);
-          try {
-            yoco = new YocoSDK({
-              publicKey: YOCO_PUBLIC_KEY
-            });
-            yocoInitialized = true;
-            console.log("✅ Yoco SDK initialized after wait");
-            resolve(true);
-          } catch(e) {
-            console.error("Yoco init error after wait:", e);
-            resolve(false);
-          }
-        } else if (attempts > 50) {
-          clearInterval(checkInterval);
+          clearInterval(interval);
+          resolve();
+        } else if (attempts > 100) {
+          clearInterval(interval);
           console.error("Yoco SDK failed to load");
-          resolve(false);
+          resolve();
         }
       }, 200);
     }
   });
+}
+
+// Initialize Yoco
+async function initYoco() {
+  await waitForYoco();
+  if (typeof YocoSDK !== 'undefined' && !yoco) {
+    try {
+      yoco = new YocoSDK({
+        publicKey: YOCO_PUBLIC_KEY
+      });
+      console.log("✅ Yoco SDK initialized with LIVE key");
+      return true;
+    } catch(e) {
+      console.error("Yoco init error:", e);
+      return false;
+    }
+  }
+  return false;
 }
 
 // Mount card frame
@@ -856,17 +372,15 @@ async function mountCardFrame() {
   const frameContainer = document.getElementById('card-frame');
   if (!frameContainer) return false;
   
-  // Show loading
-  frameContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--gold);"><div class="loading-spinner">⏳ Loading secure payment form...</div></div>';
+  frameContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--gold);">⏳ Loading secure payment form...</div>';
   
-  const initialized = await initYocoSDK();
+  const initialized = await initYoco();
   if (!initialized || !yoco) {
     frameContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #ff6b6b;">⚠️ Payment system unavailable. Please use WhatsApp order.</div>';
     return false;
   }
   
   try {
-    // Clear and mount
     frameContainer.innerHTML = '';
     yoco.mount({
       cardFrameContainer: 'card-frame',
@@ -876,11 +390,7 @@ async function mountCardFrame() {
             color: '#FEF3DF',
             fontSize: '16px',
             backgroundColor: '#1A0A04',
-            fontFamily: 'Syne, sans-serif',
-            placeholderColor: '#8B7355'
-          },
-          invalid: {
-            color: '#ff6b6b'
+            fontFamily: 'Syne, sans-serif'
           }
         }
       }
@@ -894,6 +404,7 @@ async function mountCardFrame() {
   }
 }
 
+// Render products
 function renderProducts() {
   const container = document.getElementById('productsGrid');
   container.innerHTML = products.map(prod => `
@@ -919,7 +430,6 @@ function renderProducts() {
     const qtySpan = card.querySelector('.qty-display');
     const addBtn = card.querySelector('.add-btn');
     const flavorBtns = card.querySelectorAll('.flavor-btn');
-    let activeFlavor = "Traditional";
     const prodName = addBtn.dataset.name;
     const prodPrice = parseInt(addBtn.dataset.price);
 
@@ -927,7 +437,6 @@ function renderProducts() {
       btn.addEventListener('click', () => {
         flavorBtns.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        activeFlavor = btn.dataset.flavor;
       });
     });
 
@@ -1040,8 +549,6 @@ async function openPaymentModal() {
   
   document.getElementById('paymentAmount').innerHTML = `R${total}`;
   document.getElementById('paymentModal').classList.add('open');
-  
-  // Mount card frame after modal opens
   await mountCardFrame();
 }
 
@@ -1049,33 +556,20 @@ async function processPayment() {
   const customerName = document.getElementById('customerName').value.trim();
   const customerEmail = document.getElementById('customerEmail').value.trim();
   
-  if (!customerName) {
-    showToast("Please enter your name");
-    return;
-  }
-  if (!customerEmail) {
-    showToast("Please enter your email for receipt");
-    return;
-  }
+  if (!customerName) { showToast("Please enter your name"); return; }
+  if (!customerEmail) { showToast("Please enter your email for receipt"); return; }
   
-  if (!yoco || !yocoInitialized) {
+  if (!yoco) {
     showToast("Payment system not ready. Please wait...");
-    await initYocoSDK();
-    if (!yoco) {
-      showToast("Payment unavailable. Please use WhatsApp order.");
-      return;
-    }
+    await initYoco();
+    if (!yoco) { showToast("Payment unavailable. Please use WhatsApp order."); return; }
   }
   
   showToast("Processing payment...");
   
   try {
     const result = await yoco.createToken();
-    
-    if (result.error) {
-      showToast("Card error: " + result.error.message);
-      return;
-    }
+    if (result.error) { showToast("Card error: " + result.error.message); return; }
     
     console.log("Token created:", result);
     showToast("✅ Payment successful!");
@@ -1104,8 +598,6 @@ async function processPayment() {
     updateCart();
     document.getElementById('paymentModal').classList.remove('open');
     document.getElementById('cartModal').classList.remove('open');
-    
-    // Clear form
     document.getElementById('customerName').value = '';
     document.getElementById('customerEmail').value = '';
     
@@ -1115,7 +607,7 @@ async function processPayment() {
   }
 }
 
-// Canvas Effects
+// Canvas smoke effect
 const canvas = document.getElementById('cinema-canvas');
 const ctx = canvas.getContext('2d');
 let w, h;
@@ -1173,7 +665,7 @@ function animateRing() {
 }
 animateRing();
 
-// Add cursor expand to interactive elements
+// Add cursor effects
 document.querySelectorAll('button, a, .flavor-btn, .qty-btn, .add-btn').forEach(el => {
   el.addEventListener('mouseenter', () => ring.classList.add('expand'));
   el.addEventListener('mouseleave', () => ring.classList.remove('expand'));
@@ -1186,9 +678,7 @@ window.addEventListener('scroll', () => {
 
 // Reveal animations
 const observer = new IntersectionObserver((entries) => {
-  entries.forEach(e => {
-    if (e.isIntersecting) e.target.classList.add('visible');
-  });
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
 }, { threshold: 0.1 });
 document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 
@@ -1202,7 +692,7 @@ document.querySelectorAll('.mobile-nav a').forEach(link => {
   link.addEventListener('click', () => mobileNav.classList.remove('open'));
 });
 
-// Cart event listeners
+// Event listeners
 document.getElementById('cartOpenBtn')?.addEventListener('click', () => document.getElementById('cartModal').classList.add('open'));
 document.getElementById('floatCartBtn')?.addEventListener('click', () => document.getElementById('cartModal').classList.add('open'));
 document.getElementById('closeCartBtn')?.addEventListener('click', () => document.getElementById('cartModal').classList.remove('open'));
@@ -1220,7 +710,7 @@ document.querySelectorAll('.delivery-opt').forEach(opt => {
   opt.addEventListener('click', () => setDelivery(opt.dataset.delivery));
 });
 
-// Parallax photo strip
+// Parallax
 window.addEventListener('scroll', () => {
   const strip = document.querySelector('.photo-strip');
   if (strip) strip.style.transform = `translateY(${window.scrollY * 0.05}px)`;
@@ -1230,12 +720,10 @@ window.addEventListener('scroll', () => {
 renderProducts();
 updateCart();
 setDelivery('collect');
+initYoco();
 
-// Pre-initialize Yoco in background
-initYocoSDK();
-
-console.log("✅ Biltong & Bytes ready with LIVE Yoco payment!");
-console.log("📍 Make sure your site is on HTTPS for payments to work");
+console.log("✅ Biltong & Bytes ready!");
+console.log("📍 Yoco public key:", YOCO_PUBLIC_KEY);
 </script>
 </body>
 </html>
