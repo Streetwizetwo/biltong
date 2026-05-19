@@ -1,12 +1,962 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Biltong & Bytes</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Biltong & Bytes — Artisan Halaal Biltong · Stanger KZN</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,500;1,600&family=Syne:wght@400;500;600;700;800&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --rust: #B23A1A;
+  --deep-rust: #3D0E00;
+  --amber: #E07A2C;
+  --gold: #E5B83C;
+  --gold-light: #F8E5B0;
+  --cream: #FEF3DF;
+  --charcoal: #0C0502;
+  --smoke: #160A03;
+  --whatsapp: #25D366;
+  --whatsapp-dark: #128C7E;
+  --halaal-green: #2E7D32;
+}
+
+body {
+  background: var(--charcoal);
+  color: var(--cream);
+  font-family: 'Syne', sans-serif;
+  overflow-x: hidden;
+  cursor: none;
+}
+
+/* Custom Cursor Luxe */
+.cursor-dot {
+  position: fixed;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gold);
+  pointer-events: none;
+  z-index: 10000;
+  mix-blend-mode: difference;
+  transition: transform 0.05s ease;
+}
+
+.cursor-ring {
+  position: fixed;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid rgba(229, 184, 60, 0.6);
+  pointer-events: none;
+  z-index: 9999;
+  transition: width 0.2s ease, height 0.2s ease, opacity 0.2s ease;
+  backdrop-filter: blur(2px);
+}
+
+.cursor-ring.expand {
+  width: 76px;
+  height: 76px;
+  border-color: var(--gold);
+  background: rgba(229, 184, 60, 0.05);
+}
+
+/* Canvas Cinematic Smoke */
+#cinema-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.6;
+}
+
+/* Grain Overlay */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.05'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+  z-index: 999;
+}
+
+/* Hero Background Cinematic Zoom */
+.hero-bg-cinematic {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background-image: url('https://biltongfix.com/cdn/shop/files/BB3C71EA-1B1C-4169-B5C0-194B75A869E5.jpg?crop=center&height=4149&v=1770634369&width=4149');
+  background-size: cover;
+  background-position: center 30%;
+  filter: brightness(0.2) saturate(0.9) contrast(1.1);
+  animation: slowZoom 24s ease-in-out infinite alternate;
+}
+
+@keyframes slowZoom {
+  0% { transform: scale(1.05); }
+  100% { transform: scale(1.18); }
+}
+
+/* Nav */
+nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 500;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.8rem 6%;
+  transition: all 0.4s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+  backdrop-filter: blur(0px);
+}
+
+nav.scrolled {
+  padding: 1rem 6%;
+  background: rgba(12, 5, 2, 0.9);
+  backdrop-filter: blur(18px);
+  border-bottom: 1px solid rgba(229, 184, 60, 0.2);
+}
+
+.nav-logo {
+  font-family: 'Bebas Neue';
+  font-size: 1.7rem;
+  letter-spacing: 0.18em;
+  color: var(--gold);
+  text-decoration: none;
+}
+
+.nav-logo span {
+  color: var(--amber);
+}
+
+.nav-links {
+  display: flex;
+  gap: 2.8rem;
+  list-style: none;
+}
+
+.nav-links a {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgba(254, 243, 223, 0.6);
+  text-decoration: none;
+  transition: color 0.3s;
+}
+
+.nav-links a:hover {
+  color: var(--gold);
+}
+
+.nav-cart-btn {
+  background: none;
+  border: 1px solid rgba(229, 184, 60, 0.4);
+  color: var(--gold);
+  padding: 0.5rem 1.2rem;
+  font-family: 'Syne';
+  font-weight: 700;
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  backdrop-filter: blur(5px);
+}
+
+.nav-cart-btn:hover {
+  background: rgba(229, 184, 60, 0.1);
+  border-color: var(--gold);
+}
+
+.nav-badge {
+  position: absolute;
+  top: -8px;
+  right: -10px;
+  background: var(--rust);
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 0.65rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+}
+
+/* Hero */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-content {
+  text-align: center;
+  z-index: 20;
+  max-width: 1000px;
+  padding: 0 2rem;
+  transform: translateZ(50px);
+}
+
+.hero-eyebrow {
+  font-size: 0.65rem;
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+  border: 1px solid rgba(229, 184, 60, 0.3);
+  display: inline-block;
+  padding: 0.7rem 1.6rem;
+  border-radius: 60px;
+  margin-bottom: 2rem;
+  backdrop-filter: blur(10px);
+  animation: floatUp 1s ease forwards;
+  opacity: 0;
+  transform: translateY(40px);
+}
+
+.hero-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(4.5rem, 12vw, 11rem);
+  font-weight: 300;
+  line-height: 0.85;
+  letter-spacing: -0.02em;
+  animation: floatUp 1.2s ease 0.2s forwards;
+  opacity: 0;
+  transform: translateY(40px);
+}
+
+.hero-title .amp {
+  font-style: italic;
+  color: var(--amber);
+}
+
+.hero-title .gold-glow {
+  background: linear-gradient(135deg, #F8E5B0, #E5B83C, #D48A2C);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 0 30px rgba(229, 184, 60, 0.4);
+}
+
+.hero-sub {
+  font-size: 1rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-top: 2rem;
+  opacity: 0.7;
+  animation: floatUp 1s ease 0.5s forwards;
+  opacity: 0;
+  transform: translateY(40px);
+}
+
+.hero-cta {
+  margin-top: 3rem;
+  display: flex;
+  gap: 1.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  animation: floatUp 1s ease 0.7s forwards;
+  opacity: 0;
+  transform: translateY(40px);
+}
+
+.btn {
+  padding: 1rem 2.5rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: all 0.35s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+}
+
+.btn-primary {
+  background: var(--whatsapp);
+  color: white;
+  box-shadow: 0 8px 30px rgba(37, 211, 102, 0.3);
+}
+
+.btn-primary:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 40px rgba(37, 211, 102, 0.5);
+}
+
+.btn-ghost {
+  border: 1px solid rgba(229, 184, 60, 0.5);
+  color: var(--gold);
+}
+
+.btn-ghost:hover {
+  background: rgba(229, 184, 60, 0.1);
+  transform: translateY(-3px);
+}
+
+@keyframes floatUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Photo Strip Cinematic */
+.photo-strip {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1.8fr;
+  height: 55vh;
+  position: relative;
+  z-index: 10;
+}
+
+.photo-strip-item {
+  overflow: hidden;
+  position: relative;
+}
+
+.photo-strip-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94), filter 0.6s;
+  filter: brightness(0.55) contrast(1.05);
+}
+
+.photo-strip-item:hover img {
+  transform: scale(1.1);
+  filter: brightness(0.8);
+}
+
+/* Sections */
+section {
+  padding: 7rem 6%;
+  position: relative;
+  z-index: 20;
+}
+
+.section-label {
+  font-size: 0.6rem;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: var(--amber);
+  display: inline-block;
+  margin-bottom: 1rem;
+}
+
+.section-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(2.8rem, 6vw, 5rem);
+  font-weight: 300;
+  line-height: 1.1;
+  margin-bottom: 3rem;
+}
+
+.section-title em {
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 600;
+}
+
+/* Products Grid */
+.products-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  gap: 2px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.product-card {
+  background: rgba(15, 7, 2, 0.85);
+  backdrop-filter: blur(4px);
+  padding: 3rem 2rem;
+  text-align: center;
+  transition: all 0.4s ease;
+  border: 1px solid rgba(229, 184, 60, 0.08);
+  position: relative;
+}
+
+.product-card:hover {
+  background: rgba(25, 12, 4, 0.95);
+  border-color: rgba(229, 184, 60, 0.3);
+  transform: translateY(-8px);
+  box-shadow: 0 30px 40px -20px rgba(0, 0, 0, 0.8);
+}
+
+.p-photo {
+  width: 100%;
+  height: 210px;
+  object-fit: cover;
+  margin-bottom: 1.5rem;
+  filter: brightness(0.75) contrast(1.1);
+  transition: all 0.5s;
+}
+
+.product-card:hover .p-photo {
+  filter: brightness(1) contrast(1.2);
+  transform: scale(1.02);
+}
+
+.p-weight {
+  font-size: 2.8rem;
+  font-family: 'Cormorant Garamond';
+  font-weight: 600;
+  color: var(--gold);
+}
+
+.p-name-label {
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin: 0.5rem 0;
+  opacity: 0.7;
+}
+
+.p-price {
+  font-size: 2.8rem;
+  font-family: 'Bebas Neue';
+  color: var(--gold-light);
+  margin: 0.5rem 0;
+}
+
+.flavor-selector {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 1.2rem 0;
+}
+
+.flavor-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(254, 243, 223, 0.7);
+  padding: 0.4rem 1rem;
+  font-size: 0.7rem;
+  font-family: 'Syne';
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: 0.2s;
+  border-radius: 40px;
+}
+
+.flavor-btn.active {
+  background: var(--gold);
+  color: var(--charcoal);
+  border-color: var(--gold);
+  font-weight: bold;
+  box-shadow: 0 0 12px rgba(229, 184, 60, 0.5);
+}
+
+.qty-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.2rem;
+  margin: 1.5rem 0;
+}
+
+.qty-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  color: var(--cream);
+  font-size: 1.2rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.qty-btn:hover {
+  background: var(--gold);
+  color: black;
+}
+
+.qty-display {
+  font-size: 1.6rem;
+  font-family: 'Bebas Neue';
+  min-width: 40px;
+  text-align: center;
+}
+
+.btn-add-cart {
+  width: 100%;
+  background: transparent;
+  border: 1px solid rgba(229, 184, 60, 0.5);
+  padding: 0.9rem;
+  font-weight: bold;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold);
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.btn-add-cart:hover {
+  background: var(--gold);
+  color: var(--charcoal);
+}
+
+/* Story 3D */
+.story-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5rem;
+  align-items: center;
+}
+
+.story-card-3d {
+  background: linear-gradient(145deg, rgba(22, 10, 3, 0.8), rgba(8, 3, 1, 0.9));
+  padding: 3rem;
+  border-radius: 8px;
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(229, 184, 60, 0.2);
+  transform-style: preserve-3d;
+  transition: transform 0.3s ease;
+}
+
+.story-img-wrap img {
+  width: 100%;
+  border-radius: 4px;
+  max-height: 280px;
+  object-fit: cover;
+  filter: brightness(0.8);
+}
+
+.halaal-badge {
+  background: rgba(46, 125, 50, 0.15);
+  border-left: 4px solid var(--halaal-green);
+  padding: 0.8rem 1rem;
+  font-size: 0.8rem;
+  margin: 1rem 0;
+  font-weight: 600;
+}
+
+/* Steps */
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  text-align: center;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.step-icon-circle {
+  width: 70px;
+  height: 70px;
+  background: rgba(229, 184, 60, 0.1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  margin: 0 auto 1rem;
+  border: 1px solid rgba(229, 184, 60, 0.3);
+  transition: 0.4s;
+}
+
+.step:hover .step-icon-circle {
+  background: var(--gold);
+  color: black;
+  transform: scale(1.1);
+}
+
+/* Cart */
+.cart-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(20px);
+  z-index: 2000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.cart-overlay.open {
+  display: flex;
+}
+
+.cart-panel {
+  background: #0E0500;
+  width: 90%;
+  max-width: 500px;
+  border: 1px solid var(--gold);
+  border-radius: 8px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.cart-items {
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex-grow: 1;
+}
+
+.delivery-wrap {
+  padding: 1rem;
+  border-top: 1px solid rgba(255,255,255,0.1);
+}
+
+.delivery-toggle {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+
+.delivery-opt {
+  flex: 1;
+  padding: 0.5rem;
+  background: rgba(255,255,255,0.05);
+  text-align: center;
+  cursor: pointer;
+}
+
+.delivery-opt.selected {
+  background: var(--gold);
+  color: black;
+  font-weight: bold;
+}
+
+.toast {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: var(--gold);
+  color: black;
+  padding: 0.8rem 1.8rem;
+  font-weight: bold;
+  z-index: 3000;
+  transition: 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border-radius: 40px;
+}
+
+.toast.show {
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .story-layout { grid-template-columns: 1fr; }
+  .steps-grid { grid-template-columns: 1fr 1fr; }
+  .photo-strip { height: 35vh; }
+  .nav-links { display: none; }
+}
+
+@media (max-width: 600px) {
+  .steps-grid { grid-template-columns: 1fr; }
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(60px);
+  transition: 1s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+</style>
+</head>
+<body>
+
+<div class="cursor-dot" id="cursorDot"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+<canvas id="cinema-canvas"></canvas>
+
+<nav id="navbar">
+  <a href="#" class="nav-logo">BILTONG<span>&amp;</span>BYTES</a>
+  <ul class="nav-links">
+    <li><a href="#products">BILTONG</a></li>
+    <li><a href="#story">STORY</a></li>
+    <li><a href="#services">SERVICES</a></li>
+    <li><a href="#contact">CONTACT</a></li>
+  </ul>
+  <button class="nav-cart-btn" id="cartOpenBtn">🛒 CART <span id="cartNavBadge" class="nav-badge">0</span></button>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg-cinematic"></div>
+  <div class="hero-content">
+    <div class="hero-eyebrow">✦ HAND-CURED · HALAAL CERTIFIED ✦</div>
+    <h1 class="hero-title">
+      Biltong <span class="amp">&amp;</span> <span class="gold-glow">Bytes</span>
+    </h1>
+    <p class="hero-sub">Premium Wet Biltong • Remote Tech Support • Stanger, KZN</p>
+    <div class="hero-cta">
+      <a href="#products" class="btn btn-primary">🥩 ORDER NOW</a>
+      <a href="#story" class="btn btn-ghost">DISCOVER</a>
+    </div>
+  </div>
+</section>
+
+<!-- PHOTO STRIP -->
+<div class="photo-strip">
+  <div class="photo-strip-item"><img src="https://media.istockphoto.com/id/452965315/photo/biltong.jpg?s=612x612&w=0&k=20&c=POTlYIb-yTiu4ZFkCiL2rDugtle335UrbMH18qgimgA=" alt="biltong"><div class="photo-strip-caption"></div></div>
+  <div class="photo-strip-item"><img src="https://i0.wp.com/www.biltongblog.com/wp-content/uploads/2016/12/P1150800.jpg" alt="hanging"><div class="photo-strip-caption"></div></div>
+  <div class="photo-strip-item"><img src="https://img.freepik.com/free-photo/sliced-stick-biltong-snack-rosemary-seasoning-wooden-surface_181624-12920.jpg" alt="sliced"><div class="photo-strip-caption"></div></div>
+  <div class="photo-strip-item"><img src="https://boerie.co/cdn/shop/files/Chilli_Biltong_03_1024x1024@2x.jpg?v=1746100500" alt="chilli"><div class="photo-strip-caption"></div></div>
+</div>
+
+<!-- PRODUCTS SECTION (FULLY FIXED INTERACTION) -->
+<section id="products">
+  <div class="section-label">THE CRAFT</div>
+  <h2 class="section-title">Select your <em>Biltong</em> pleasure</h2>
+  <div class="products-grid" id="productsGrid"></div>
+</section>
+
+<!-- STORY -->
+<section id="story">
+  <div class="story-layout">
+    <div class="reveal"><div class="section-label">OUR ROOTS</div><h2 class="section-title">Handmade <em>Halaal</em> with soul</h2>
+    <p style="line-height:1.7; opacity:0.8;">We are a Muslim family in Stanger, hand-cutting premium beef from Halaal certified butcheries. Our wet biltong is famous — spiced traditionally, always fresh.</p>
+    <div class="halaal-badge">✓ 100% Halaal Certified · Every batch</div></div>
+    <div class="reveal"><div class="story-card-3d"><div class="story-img-wrap"><img src="https://github.com/Streetwizetwo/biltong/blob/main/ChatGPT%20Image%20May%2019,%202026,%2009_45_16%20PM.png?raw=true" alt="fresh biltong"></div><h3 style="color:var(--gold); margin-top:1rem;">Wet, Tender & Aromatic</h3><p style="opacity:0.7;">Traditionally spiced • Chilli Kick • Honey Glazed</p></div></div>
+  </div>
+</section>
+
+<!-- SERVICES -->
+<section id="services"><div class="section-label">BYTE-SIZED HELP</div><h2 class="section-title">Remote Tech <em>Support</em></h2>
+<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:1px; background:rgba(255,255,255,0.03);">
+  <div style="padding:2rem;"><div style="font-size:2.5rem;">💻</div><h3>PC Repair</h3><p style="opacity:0.6;">Remote fix, virus removal</p></div>
+  <div style="padding:2rem;"><div style="font-size:2.5rem;">🌐</div><h3>Wi-Fi Setup</h3><p style="opacity:0.6;">Dead zones? Optimized network</p></div>
+  <div style="padding:2rem;"><div style="font-size:2.5rem;">🛡️</div><h3>Security</h3><p style="opacity:0.6;">Full system cleanup</p></div>
+  <div style="padding:2rem;"><div style="font-size:2.5rem;">🖨️</div><h3>Peripherals</h3><p style="opacity:0.6;">Printers, scanners solved</p></div>
+</div></section>
+
+<!-- HOW TO ORDER -->
+<section id="how-to-order"><div class="section-label">EASY PROCESS</div><h2 class="section-title">How to <em>Order</em></h2>
+<div class="steps-grid">
+  <div class="step"><div class="step-icon-circle">1</div><h4>Pick & flavor</h4><p style="opacity:0.6;">Choose pack & spice level</p></div>
+  <div class="step"><div class="step-icon-circle">2</div><h4>Add to cart</h4><p style="opacity:0.6;">Adjust quantity, mix flavors</p></div>
+  <div class="step"><div class="step-icon-circle">3</div><h4>WhatsApp order</h4><p style="opacity:0.6;">One-tap checkout with Khatija</p></div>
+  <div class="step"><div class="step-icon-circle">4</div><h4>Collect or delivery</h4><p style="opacity:0.6;">R30 delivery (Stanger only)</p></div>
+</div></section>
+
+<!-- CONTACT -->
+<section id="contact"><div class="contact-inner" style="text-align:center;"><div class="section-label">MEET KHATIJA</div><h2 class="section-title">Your biltong <em>artisan</em></h2>
+<div style="background:linear-gradient(145deg, #160A03, #0C0502); border:1px solid var(--gold); padding:3rem; border-radius:8px;"><div style="font-size:4rem;">👩🏻‍🍳</div><h3 style="font-size:2rem;">Khatija</h3><p>Biltong maker & tech wizard • Stanger</p><a href="https://wa.me/27636402722" class="btn btn-primary" style="margin-top:1.5rem; display:inline-block;">💬 CHAT ON WHATSAPP</a></div></div></section>
+
+<footer style="padding:2rem; text-align:center; opacity:0.6;">© 2025 Biltong & Bytes • Handmade with love in Stanger, KZN • Halaal Certified</footer>
+
+<div class="cart-float" id="floatCartBtn" style="position:fixed; bottom:2rem; right:2rem; background:var(--whatsapp); width:56px; height:56px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:300; box-shadow:0 0 20px rgba(37,211,102,0.5);"><span style="font-size:1.6rem;">🛒</span><span id="cartFloatBadge" style="position:absolute; top:-6px; right:-6px; background:var(--rust); border-radius:50%; width:22px; height:22px; font-size:0.7rem; display:flex; align-items:center; justify-content:center;">0</span></div>
+
+<div class="cart-overlay" id="cartModal"><div class="cart-panel"><div class="cart-head" style="padding:1rem; display:flex; justify-content:space-between;"><h3>YOUR BILTONG 🥩</h3><button id="closeCartBtn" style="background:none; border:none; color:white; font-size:1.8rem; cursor:pointer;">✕</button></div><div id="cartItemsList" class="cart-items"></div><div class="delivery-wrap"><div class="delivery-toggle"><button class="delivery-opt selected" data-delivery="collect">📦 COLLECT</button><button class="delivery-opt" data-delivery="deliver">🛵 DELIVER (R30)</button></div><div id="addressField" style="display:none;"><textarea id="deliveryAddress" placeholder="Your Stanger address..." rows="2" style="width:100%; background:#1E0A02; color:white; border:1px solid var(--gold); padding:0.5rem;"></textarea></div></div><div class="cart-foot" style="padding:1rem;"><div class="total-line" style="display:flex; justify-content:space-between; font-size:1.4rem;"><span>TOTAL:</span><span id="cartTotalDisplay" style="color:var(--gold);">R0</span></div><button id="whatsappCheckoutBtn" class="btn-add-cart" style="margin-top:1rem;">📱 SEND ORDER VIA WHATSAPP</button></div></div></div>
+<div class="toast" id="toastMsg">✨ Added to cart!</div>
+
+<script>
+// PRODUCT DATA
+const products = [
+  { id:0, name:"The Taster (50g)", weight:"50g", price:35, img:"https://t4.ftcdn.net/jpg/00/41/14/91/360_F_41149170_hkxBmCVDZgbokGTiw5MjRV0nMfOzLv3t.jpg" },
+  { id:1, name:"The Snack Pack (150g)", weight:"150g", price:100, img:"https://img.freepik.com/free-photo/sliced-stick-biltong-snack-rosemary-seasoning-wooden-surface_181624-12920.jpg" },
+  { id:2, name:"The Family Batch (500g)", weight:"500g", price:300, img:"https://www.biltongboyz.com/wp-content/uploads/2018/12/sliced-spicy-biltong.jpg", featured:true },
+  { id:3, name:"The Feast (1kg)", weight:"1kg", price:550, img:"https://boerie.co/cdn/shop/files/Chilli_Biltong_03_1024x1024@2x.jpg?v=1746100500" }
+];
+const flavors = ["Traditional", "Chilli", "Honey Glazed"];
+
+let cart = [];
+let deliveryMode = "collect";
+let currentAddress = "";
+
+// render product grid
+function renderProducts() {
+  const container = document.getElementById("productsGrid");
+  container.innerHTML = products.map(prod => `
+    <div class="product-card" data-product-id="${prod.id}">
+      <img class="p-photo" src="${prod.img}" alt="${prod.name}">
+      <div class="p-weight">${prod.weight}</div>
+      <div class="p-name-label">${prod.name}</div>
+      <div class="p-price">R${prod.price}</div>
+      <div class="flavor-selector" data-pid="${prod.id}">
+        ${flavors.map((f,idx) => `<button class="flavor-btn ${idx===0?'active':''}" data-flavor="${f}">${f}</button>`).join('')}
+      </div>
+      <div class="qty-wrapper">
+        <button class="qty-btn minus">−</button>
+        <span class="qty-display">1</span>
+        <button class="qty-btn plus">+</button>
+      </div>
+      <button class="btn-add-cart add-to-cart">➕ ADD TO CART</button>
+      <input type="hidden" class="p-name-field" value="${prod.name}">
+      <input type="hidden" class="p-price-field" value="${prod.price}">
+    </div>
+  `).join('');
+
+  // attach events after render
+  document.querySelectorAll('.product-card').forEach(card => {
+    const minusBtn = card.querySelector('.minus');
+    const plusBtn = card.querySelector('.plus');
+    const qtySpan = card.querySelector('.qty-display');
+    const addBtn = card.querySelector('.add-to-cart');
+    const flavorBtns = card.querySelectorAll('.flavor-btn');
+    const nameVal = card.querySelector('.p-name-field').value;
+    const priceVal = parseInt(card.querySelector('.p-price-field').value);
+
+    minusBtn?.addEventListener('click', () => { let q = parseInt(qtySpan.innerText); if(q>1) qtySpan.innerText = q-1; });
+    plusBtn?.addEventListener('click', () => { let q = parseInt(qtySpan.innerText); qtySpan.innerText = q+1; });
+    
+    let selectedFlavor = "Traditional";
+    flavorBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        flavorBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedFlavor = btn.getAttribute('data-flavor');
+        e.stopPropagation();
+      });
+    });
+
+    addBtn?.addEventListener('click', () => {
+      const qty = parseInt(qtySpan.innerText);
+      const flavor = card.querySelector('.flavor-btn.active')?.getAttribute('data-flavor') || "Traditional";
+      const existingIdx = cart.findIndex(i => i.name === nameVal && i.flavor === flavor);
+      if(existingIdx !== -1) cart[existingIdx].qty += qty;
+      else cart.push({ name: nameVal, flavor, price: priceVal, qty });
+      updateCartUI();
+      showToastMessage();
+    });
+  });
+}
+
+function updateCartUI() {
+  const totalItems = cart.reduce((acc,i)=>acc+i.qty,0);
+  document.getElementById('cartNavBadge').innerText = totalItems;
+  document.getElementById('cartFloatBadge').innerText = totalItems;
+  const container = document.getElementById('cartItemsList');
+  if(cart.length === 0) { container.innerHTML = '<div style="text-align:center; padding:2rem;">Your cart is empty 🥩</div>'; }
+  else {
+    container.innerHTML = cart.map((item, idx) => `
+      <div style="display:flex; justify-content:space-between; margin-bottom:1rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:0.8rem;">
+        <div><strong>${item.qty}x ${item.name}</strong><br><span style="font-size:0.8rem; color:var(--amber);">${item.flavor}</span></div>
+        <div>R${item.price * item.qty} <button class="remove-item" data-idx="${idx}" style="background:none; border:none; color:var(--rust); margin-left:10px; cursor:pointer;">🗑️</button></div>
+      </div>
+    `).join('');
+    document.querySelectorAll('.remove-item').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const idx = parseInt(btn.getAttribute('data-idx'));
+        cart.splice(idx,1);
+        updateCartUI();
+        computeTotal();
+      });
+    });
+  }
+  computeTotal();
+}
+
+function computeTotal() {
+  const sub = cart.reduce((s,i)=>s+(i.price*i.qty),0);
+  const fee = deliveryMode === "deliver" ? 30 : 0;
+  document.getElementById('cartTotalDisplay').innerText = `R${sub+fee}`;
+}
+
+function setDelivery(mode) {
+  deliveryMode = mode;
+  document.querySelectorAll('.delivery-opt').forEach(opt => {
+    if(opt.getAttribute('data-delivery') === mode) opt.classList.add('selected');
+    else opt.classList.remove('selected');
+  });
+  document.getElementById('addressField').style.display = mode === "deliver" ? "block" : "none";
+  computeTotal();
+}
+
+function showToastMessage() {
+  const toast = document.getElementById('toastMsg');
+  toast.classList.add('show');
+  setTimeout(()=> toast.classList.remove('show'), 1800);
+}
+
+function openCart() { document.getElementById('cartModal').classList.add('open'); }
+function closeCart() { document.getElementById('cartModal').classList.remove('open'); }
+
+function sendWhatsAppOrder() {
+  if(cart.length === 0) { alert("Cart empty!"); return; }
+  let msg = "🥩 *BILTONG ORDER* 🥩%0A%0A";
+  let sub = 0;
+  cart.forEach(item => {
+    let lineTotal = item.price * item.qty;
+    sub += lineTotal;
+    msg += `• ${item.qty}x ${item.name} (${item.flavor}) - R${lineTotal}%0A`;
+  });
+  msg += `%0A📦 Subtotal: R${sub}`;
+  if(deliveryMode === "deliver") {
+    let addr = document.getElementById('deliveryAddress')?.value.trim() || "";
+    if(!addr) { alert("Please enter your Stanger delivery address."); return; }
+    msg += `%0A🛵 Delivery fee: R30%0A*TOTAL: R${sub+30}*%0A📍 Address: ${encodeURIComponent(addr)}`;
+  } else {
+    msg += `%0A✅ *TOTAL: R${sub}*%0A📍 Collection in Stanger`;
+  }
+  msg += "%0A%0AThank you, Khatija! 🙌";
+  window.open(`https://wa.me/27636402722?text=${msg}`, '_blank');
+}
+
+// Cursor + Canvas
+const dot = document.getElementById('cursorDot'), ring = document.getElementById('cursorRing');
+let mouseX=0,mouseY=0,ringX=0,ringY=0;
+document.addEventListener('mousemove', (e)=>{ mouseX=e.clientX; mouseY=e.clientY; dot.style.transform=`translate(${mouseX-4}px, ${mouseY-4}px)`; });
+function animateRing(){ ringX += (mouseX - ringX) * 0.12; ringY += (mouseY - ringY) * 0.12; ring.style.transform=`translate(${ringX-21}px, ${ringY-21}px)`; requestAnimationFrame(animateRing); } animateRing();
+document.querySelectorAll('button, a, .flavor-btn, .qty-btn, .btn-add-cart').forEach(el => el.addEventListener('mouseenter',()=>ring.classList.add('expand')));
+document.querySelectorAll('button, a, .flavor-btn, .qty-btn, .btn-add-cart').forEach(el => el.addEventListener('mouseleave',()=>ring.classList.remove('expand')));
+
+const canvasEl = document.getElementById('cinema-canvas');
+const ctxCanvas = canvasEl.getContext('2d');
+let w,h;
+function resizeCanvas() { w = canvasEl.width = window.innerWidth; h = canvasEl.height = window.innerHeight; }
+resizeCanvas(); window.addEventListener('resize', resizeCanvas);
+
+let particles = [];
+for(let i=0;i<40;i++) particles.push({x:Math.random()*w, y:Math.random()*h, radius:30+Math.random()*70, alpha:Math.random()*0.03, vx:(Math.random()-0.5)*0.2, vy:-(Math.random()*0.4+0.1)});
+function animateSmoke() { ctxCanvas.clearRect(0,0,w,h);
+  particles.forEach(p => { p.x+=p.vx; p.y+=p.vy; if(p.y<-100) p.y=h+50; if(p.x< -100) p.x=w+50; if(p.x>w+100) p.x=-100;
+    ctxCanvas.globalAlpha = p.alpha * 0.5;
+    let grad = ctxCanvas.createRadialGradient(p.x,p.y,0, p.x,p.y,p.radius);
+    grad.addColorStop(0, `rgba(200,100,30,0.05)`); grad.addColorStop(1, `rgba(0,0,0,0)`);
+    ctxCanvas.fillStyle=grad; ctxCanvas.beginPath(); ctxCanvas.arc(p.x,p.y,p.radius,0,Math.PI*2); ctxCanvas.fill();
+  }); requestAnimationFrame(animateSmoke);
+} animateSmoke();
+
+// Nav scroll
+window.addEventListener('scroll',()=> document.getElementById('navbar').classList.toggle('scrolled', window.scrollY>50));
+
+// Intersection Observer
+const reveals = document.querySelectorAll('.reveal');
+const observer = new IntersectionObserver((entries)=>entries.forEach(e=>e.isIntersecting&&e.target.classList.add('visible')),{threshold:0.15});
+reveals.forEach(r=>observer.observe(r));
+
+// Event listeners after DOM
+document.getElementById('cartOpenBtn')?.addEventListener('click', openCart);
+document.getElementById('floatCartBtn')?.addEventListener('click', openCart);
+document.getElementById('closeCartBtn')?.addEventListener('click', closeCart);
+document.getElementById('whatsappCheckoutBtn')?.addEventListener('click', sendWhatsAppOrder);
+document.querySelectorAll('.delivery-opt').forEach(opt => {
+  opt.addEventListener('click', (e) => { setDelivery(opt.getAttribute('data-delivery')); });
+});
+
+renderProducts();
+updateCartUI();
+setDelivery("collect");
+</script>
+</body>
 </html>
