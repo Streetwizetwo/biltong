@@ -5,15 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Biltong & Bytes — Premium Halaal Biltong · Stanger KZN</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,500;1,600&family=Syne:wght@400;500;600;700;800&family=Bebas+Neue&display=swap" rel="stylesheet">
-<!-- Yoco SDK -->
-<script src="https://js.yoco.com/sdk/v1/yoco-sdk.js"></script>
 <style>
+/* ========== ALL STYLES (same as before - keeping it clean) ========== */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
-
 :root {
   --rust: #B23A1A;
   --amber: #E07A2C;
@@ -24,7 +22,6 @@
   --whatsapp: #25D366;
   --halaal-green: #2E7D32;
 }
-
 body {
   background: var(--charcoal);
   color: var(--cream);
@@ -32,7 +29,6 @@ body {
   overflow-x: hidden;
   cursor: none;
 }
-
 .cursor-dot {
   position: fixed;
   width: 6px;
@@ -43,7 +39,6 @@ body {
   z-index: 10000;
   mix-blend-mode: difference;
 }
-
 .cursor-ring {
   position: fixed;
   width: 48px;
@@ -55,14 +50,12 @@ body {
   transition: all 0.2s;
   backdrop-filter: blur(3px);
 }
-
 .cursor-ring.expand {
   width: 80px;
   height: 80px;
   border-color: var(--gold);
   background: rgba(229, 184, 60, 0.08);
 }
-
 #cinema-canvas {
   position: fixed;
   top: 0;
@@ -73,7 +66,6 @@ body {
   z-index: 1;
   opacity: 0.6;
 }
-
 .hero-bg {
   position: absolute;
   inset: 0;
@@ -84,12 +76,10 @@ body {
   filter: brightness(0.2) saturate(0.8);
   animation: slowZoom 25s infinite alternate;
 }
-
 @keyframes slowZoom {
   0% { transform: scale(1.05); }
   100% { transform: scale(1.18); }
 }
-
 nav {
   position: fixed;
   top: 0;
@@ -102,14 +92,12 @@ nav {
   padding: 1.5rem 6%;
   transition: all 0.4s;
 }
-
 nav.scrolled {
   padding: 0.8rem 6%;
   background: rgba(10, 3, 1, 0.95);
   backdrop-filter: blur(20px);
   border-bottom: 1px solid rgba(229, 184, 60, 0.2);
 }
-
 .nav-logo {
   font-family: 'Bebas Neue';
   font-size: 1.8rem;
@@ -117,15 +105,12 @@ nav.scrolled {
   color: var(--gold);
   text-decoration: none;
 }
-
 .nav-logo span { color: var(--amber); }
-
 .nav-links {
   display: flex;
   gap: 2.5rem;
   list-style: none;
 }
-
 .nav-links a {
   font-size: 0.7rem;
   font-weight: 600;
@@ -135,9 +120,7 @@ nav.scrolled {
   text-decoration: none;
   transition: 0.3s;
 }
-
 .nav-links a:hover { color: var(--gold); }
-
 .mobile-menu-btn {
   display: none;
   background: none;
@@ -147,7 +130,6 @@ nav.scrolled {
   cursor: pointer;
   font-size: 1.2rem;
 }
-
 .mobile-nav {
   position: fixed;
   top: 0;
@@ -161,23 +143,9 @@ nav.scrolled {
   transition: left 0.3s;
   padding: 5rem 2rem;
 }
-
 .mobile-nav.open { left: 0; }
-
-.mobile-nav ul {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-}
-
-.mobile-nav a {
-  color: var(--cream);
-  text-decoration: none;
-  font-size: 1.2rem;
-  letter-spacing: 0.1em;
-}
-
+.mobile-nav ul { list-style: none; display: flex; flex-direction: column; gap: 2rem; }
+.mobile-nav a { color: var(--cream); text-decoration: none; font-size: 1.2rem; letter-spacing: 0.1em; }
 .close-menu {
   position: absolute;
   top: 1rem;
@@ -188,7 +156,6 @@ nav.scrolled {
   font-size: 2rem;
   cursor: pointer;
 }
-
 .nav-cart-btn {
   background: none;
   border: 1px solid rgba(229, 184, 60, 0.4);
@@ -202,12 +169,10 @@ nav.scrolled {
   transition: 0.3s;
   position: relative;
 }
-
 .nav-cart-btn:hover {
   background: rgba(229, 184, 60, 0.1);
   border-color: var(--gold);
 }
-
 .nav-badge {
   position: absolute;
   top: -8px;
@@ -221,7 +186,6 @@ nav.scrolled {
   align-items: center;
   justify-content: center;
 }
-
 .hero {
   min-height: 100vh;
   display: flex;
@@ -230,13 +194,11 @@ nav.scrolled {
   position: relative;
   text-align: center;
 }
-
 .hero-content {
   z-index: 20;
   max-width: 900px;
   padding: 0 2rem;
 }
-
 .hero-eyebrow {
   font-size: 0.65rem;
   letter-spacing: 0.5em;
@@ -252,7 +214,6 @@ nav.scrolled {
   opacity: 0;
   transform: translateY(40px);
 }
-
 .hero-title {
   font-family: 'Cormorant Garamond', serif;
   font-size: clamp(4rem, 12vw, 10rem);
@@ -262,14 +223,12 @@ nav.scrolled {
   opacity: 0;
   transform: translateY(50px);
 }
-
 .hero-title .gold {
   background: linear-gradient(135deg, #F8E5B0, #E5B83C);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
-
 .hero-sub {
   font-size: 0.9rem;
   letter-spacing: 0.15em;
@@ -279,7 +238,6 @@ nav.scrolled {
   opacity: 0;
   transform: translateY(30px);
 }
-
 .hero-cta {
   margin-top: 2.5rem;
   display: flex;
@@ -290,14 +248,12 @@ nav.scrolled {
   opacity: 0;
   transform: translateY(30px);
 }
-
 @keyframes fadeUp {
   to {
     opacity: 1;
     transform: translateY(0);
   }
 }
-
 .btn {
   padding: 0.9rem 2.5rem;
   font-size: 0.7rem;
@@ -310,28 +266,23 @@ nav.scrolled {
   cursor: pointer;
   display: inline-block;
 }
-
 .btn-primary {
   background: var(--whatsapp);
   color: white;
 }
-
 .btn-primary:hover {
   transform: translateY(-4px);
   box-shadow: 0 10px 30px rgba(37, 211, 102, 0.4);
 }
-
 .btn-ghost {
   border: 1px solid rgba(229, 184, 60, 0.6);
   color: var(--gold);
   background: transparent;
 }
-
 .btn-ghost:hover {
   background: rgba(229, 184, 60, 0.1);
   transform: translateY(-3px);
 }
-
 .photo-strip {
   display: grid;
   grid-template-columns: 2fr 1fr 1fr 1.5fr;
@@ -339,12 +290,10 @@ nav.scrolled {
   position: relative;
   z-index: 10;
 }
-
 .photo-strip-item {
   overflow: hidden;
   position: relative;
 }
-
 .photo-strip-item img {
   width: 100%;
   height: 100%;
@@ -352,18 +301,15 @@ nav.scrolled {
   transition: transform 0.8s;
   filter: brightness(0.55);
 }
-
 .photo-strip-item:hover img {
   transform: scale(1.08);
   filter: brightness(0.75);
 }
-
 section {
   padding: 6rem 6%;
   position: relative;
   z-index: 20;
 }
-
 .section-label {
   font-size: 0.6rem;
   letter-spacing: 0.4em;
@@ -371,7 +317,6 @@ section {
   color: var(--amber);
   margin-bottom: 1rem;
 }
-
 .section-title {
   font-family: 'Cormorant Garamond', serif;
   font-size: clamp(2.5rem, 5vw, 4.5rem);
@@ -379,13 +324,11 @@ section {
   line-height: 1.1;
   margin-bottom: 3rem;
 }
-
 .section-title em {
   font-style: italic;
   color: var(--gold);
   font-weight: 600;
 }
-
 .products-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -393,7 +336,6 @@ section {
   max-width: 1400px;
   margin: 0 auto;
 }
-
 .product-card {
   background: linear-gradient(145deg, rgba(20, 10, 4, 0.9), rgba(12, 5, 2, 0.95));
   backdrop-filter: blur(4px);
@@ -403,12 +345,10 @@ section {
   border: 1px solid rgba(229, 184, 60, 0.15);
   transition: all 0.4s cubic-bezier(0.2, 0.9, 0.4, 1.2);
 }
-
 .product-card:hover {
   transform: translateY(-10px);
   border-color: rgba(229, 184, 60, 0.4);
 }
-
 .p-photo {
   width: 100%;
   height: 200px;
@@ -417,27 +357,23 @@ section {
   margin-bottom: 1.2rem;
   filter: brightness(0.75);
 }
-
 .p-weight {
   font-size: 2rem;
   font-family: 'Cormorant Garamond';
   font-weight: 700;
   color: var(--gold);
 }
-
 .p-price {
   font-size: 2.5rem;
   font-family: 'Bebas Neue';
   color: var(--gold-light);
 }
-
 .flavor-selector {
   display: flex;
   justify-content: center;
   gap: 0.5rem;
   margin: 1rem 0;
 }
-
 .flavor-btn {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -448,13 +384,11 @@ section {
   cursor: pointer;
   transition: 0.2s;
 }
-
 .flavor-btn.active {
   background: var(--gold);
   color: var(--charcoal);
   border-color: var(--gold);
 }
-
 .qty-wrapper {
   display: flex;
   align-items: center;
@@ -462,7 +396,6 @@ section {
   gap: 1.2rem;
   margin: 1rem 0;
 }
-
 .qty-btn {
   background: rgba(255, 255, 255, 0.08);
   border: none;
@@ -473,19 +406,16 @@ section {
   font-size: 1.2rem;
   cursor: pointer;
 }
-
 .qty-btn:hover {
   background: var(--gold);
   color: black;
 }
-
 .qty-display {
   font-size: 1.5rem;
   font-family: 'Bebas Neue';
   min-width: 40px;
   text-align: center;
 }
-
 .btn-add-cart {
   width: 100%;
   background: transparent;
@@ -499,12 +429,10 @@ section {
   transition: 0.3s;
   border-radius: 40px;
 }
-
 .btn-add-cart:hover {
   background: var(--gold);
   color: var(--charcoal);
 }
-
 .payment-modal {
   position: fixed;
   inset: 0;
@@ -515,11 +443,9 @@ section {
   align-items: center;
   justify-content: center;
 }
-
 .payment-modal.open {
   display: flex;
 }
-
 .payment-card {
   background: linear-gradient(145deg, #1A0A04, #0E0500);
   border: 1px solid var(--gold);
@@ -530,14 +456,12 @@ section {
   max-height: 90vh;
   overflow-y: auto;
 }
-
 .payment-card h3 {
   font-family: 'Cormorant Garamond';
   font-size: 1.8rem;
   color: var(--gold);
   margin-bottom: 1rem;
 }
-
 .payment-input {
   width: 100%;
   background: rgba(255, 255, 255, 0.08);
@@ -548,21 +472,25 @@ section {
   font-family: 'Syne';
   margin-bottom: 1rem;
 }
-
 .payment-input:focus {
   outline: none;
   border-color: var(--gold);
 }
-
 #card-frame {
   width: 100%;
-  min-height: 320px;
+  min-height: 280px;
   margin: 1rem 0;
   border: 1px solid rgba(229, 184, 60, 0.3);
   border-radius: 12px;
   background: #1A0A04;
 }
-
+.loading-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--gold);
+}
 .steps-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -571,7 +499,6 @@ section {
   margin: 0 auto;
   text-align: center;
 }
-
 .step-icon {
   width: 70px;
   height: 70px;
@@ -585,13 +512,11 @@ section {
   border: 1px solid rgba(229, 184, 60, 0.3);
   transition: 0.3s;
 }
-
 .step:hover .step-icon {
   background: var(--gold);
   color: black;
   transform: scale(1.1);
 }
-
 .cart-overlay {
   position: fixed;
   inset: 0;
@@ -602,9 +527,7 @@ section {
   align-items: center;
   justify-content: center;
 }
-
 .cart-overlay.open { display: flex; }
-
 .cart-panel {
   background: #0E0500;
   width: 90%;
@@ -616,24 +539,20 @@ section {
   flex-direction: column;
   overflow: hidden;
 }
-
 .cart-items {
   padding: 1.5rem;
   overflow-y: auto;
   flex-grow: 1;
 }
-
 .delivery-wrap {
   padding: 1rem;
   border-top: 1px solid rgba(255,255,255,0.1);
 }
-
 .delivery-toggle {
   display: flex;
   gap: 0.8rem;
   margin-bottom: 0.8rem;
 }
-
 .delivery-opt {
   flex: 1;
   padding: 0.6rem;
@@ -643,13 +562,11 @@ section {
   border-radius: 40px;
   transition: 0.2s;
 }
-
 .delivery-opt.selected {
   background: var(--gold);
   color: black;
   font-weight: bold;
 }
-
 #addressField { display: none; }
 #addressField.show { display: block; }
 #deliveryAddress {
@@ -661,7 +578,6 @@ section {
   margin-top: 0.5rem;
   border-radius: 8px;
 }
-
 .toast {
   position: fixed;
   bottom: 2rem;
@@ -675,11 +591,9 @@ section {
   transition: 0.3s;
   border-radius: 40px;
 }
-
 .toast.show {
   transform: translateX(-50%) translateY(0);
 }
-
 .cart-float {
   position: fixed;
   bottom: 2rem;
@@ -695,31 +609,26 @@ section {
   z-index: 300;
   animation: pulse 2.5s infinite;
 }
-
 @keyframes pulse {
   0% { box-shadow: 0 0 0 0 rgba(37,211,102,0.4); }
   70% { box-shadow: 0 0 0 12px rgba(37,211,102,0); }
   100% { box-shadow: 0 0 0 0 rgba(37,211,102,0); }
 }
-
 .reveal {
   opacity: 0;
   transform: translateY(50px);
   transition: all 0.8s cubic-bezier(0.2, 0.9, 0.4, 1.2);
 }
-
 .reveal.visible {
   opacity: 1;
   transform: translateY(0);
 }
-
 @media (max-width: 900px) {
   .nav-links { display: none; }
   .mobile-menu-btn { display: block; }
   .photo-strip { height: 30vh; }
   .steps-grid { grid-template-columns: repeat(2, 1fr); }
 }
-
 @media (max-width: 600px) {
   .steps-grid { grid-template-columns: 1fr; }
   .payment-card { padding: 1.5rem; }
@@ -832,10 +741,14 @@ section {
     <p style="opacity: 0.7; margin-bottom: 1rem;">Amount: <strong id="paymentAmount" style="color: var(--gold); font-size: 1.5rem;">R0</strong></p>
     <input type="text" id="customerName" class="payment-input" placeholder="Your Full Name" required>
     <input type="email" id="customerEmail" class="payment-input" placeholder="Your Email (for receipt)" required>
-    <div id="card-frame"></div>
+    <div id="card-frame">
+      <div style="padding: 20px; text-align: center; color: var(--gold);">
+        <div class="loading-spinner">⏳ Loading secure payment form...</div>
+      </div>
+    </div>
     <button class="btn-add-cart" id="payNowBtn" style="margin-top: 1rem;">💳 PAY NOW</button>
     <button class="btn-ghost" id="closePaymentBtn" style="margin-top: 0.5rem; width: 100%;">Cancel</button>
-    <p style="font-size: 0.6rem; opacity: 0.6; margin-top: 1rem; text-align: center;">🔒 Secure payment via Yoco</p>
+    <p style="font-size: 0.6rem; opacity: 0.6; margin-top: 1rem; text-align: center;">🔒 Secure payment via Yoco • Your card details are safe</p>
   </div>
 </div>
 
@@ -870,15 +783,18 @@ section {
 
 <div class="toast" id="toast">✨ Added to cart!</div>
 
+<!-- Yoco SDK - Loaded properly -->
+<script src="https://js.yoco.com/sdk/v1/yoco-sdk.js"></script>
 <script>
 // ============================================
-// ✅ LIVE YOCO PAYMENT KEY INSERTED
+// ✅ LIVE YOCO PAYMENT KEY
 // ============================================
 const YOCO_PUBLIC_KEY = "pk_live_9964eeacyWNq5Xw576a4";
-// ============================================
 
 let yoco = null;
+let yocoInitialized = false;
 
+// Product data
 const products = [
   { id: 0, name: "The Taster", weight: "50g", price: 35, img: "https://t4.ftcdn.net/jpg/00/41/14/91/360_F_41149170_hkxBmCVDZgbokGTiw5MjRV0nMfOzLv3t.jpg" },
   { id: 1, name: "Snack Pack", weight: "150g", price: 100, img: "https://img.freepik.com/free-photo/sliced-stick-biltong-snack-rosemary-seasoning-wooden-surface_181624-12920.jpg" },
@@ -889,6 +805,94 @@ const flavors = ["Traditional", "Chilli", "Honey Glazed"];
 
 let cart = [];
 let deliveryMode = "collect";
+
+// Initialize Yoco after SDK loads
+function initYocoSDK() {
+  return new Promise((resolve) => {
+    if (typeof YocoSDK !== 'undefined' && !yocoInitialized) {
+      try {
+        yoco = new YocoSDK({
+          publicKey: YOCO_PUBLIC_KEY
+        });
+        yocoInitialized = true;
+        console.log("✅ Yoco SDK initialized with LIVE key");
+        resolve(true);
+      } catch(e) {
+        console.error("Yoco init error:", e);
+        resolve(false);
+      }
+    } else if (yocoInitialized) {
+      resolve(true);
+    } else {
+      // Wait for SDK
+      let attempts = 0;
+      const checkInterval = setInterval(() => {
+        attempts++;
+        if (typeof YocoSDK !== 'undefined') {
+          clearInterval(checkInterval);
+          try {
+            yoco = new YocoSDK({
+              publicKey: YOCO_PUBLIC_KEY
+            });
+            yocoInitialized = true;
+            console.log("✅ Yoco SDK initialized after wait");
+            resolve(true);
+          } catch(e) {
+            console.error("Yoco init error after wait:", e);
+            resolve(false);
+          }
+        } else if (attempts > 50) {
+          clearInterval(checkInterval);
+          console.error("Yoco SDK failed to load");
+          resolve(false);
+        }
+      }, 200);
+    }
+  });
+}
+
+// Mount card frame
+async function mountCardFrame() {
+  const frameContainer = document.getElementById('card-frame');
+  if (!frameContainer) return false;
+  
+  // Show loading
+  frameContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--gold);"><div class="loading-spinner">⏳ Loading secure payment form...</div></div>';
+  
+  const initialized = await initYocoSDK();
+  if (!initialized || !yoco) {
+    frameContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #ff6b6b;">⚠️ Payment system unavailable. Please use WhatsApp order.</div>';
+    return false;
+  }
+  
+  try {
+    // Clear and mount
+    frameContainer.innerHTML = '';
+    yoco.mount({
+      cardFrameContainer: 'card-frame',
+      cardFrameConfig: {
+        style: {
+          base: {
+            color: '#FEF3DF',
+            fontSize: '16px',
+            backgroundColor: '#1A0A04',
+            fontFamily: 'Syne, sans-serif',
+            placeholderColor: '#8B7355'
+          },
+          invalid: {
+            color: '#ff6b6b'
+          }
+        }
+      }
+    });
+    console.log("✅ Card frame mounted");
+    return true;
+  } catch(e) {
+    console.error("Mount error:", e);
+    frameContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #ff6b6b;">⚠️ Error loading payment form. Please refresh and try again.</div>';
+    return false;
+  }
+}
 
 function renderProducts() {
   const container = document.getElementById('productsGrid');
@@ -1026,17 +1030,6 @@ function sendWhatsAppOrder() {
   document.getElementById('cartModal').classList.remove('open');
 }
 
-function initYoco() {
-  if (typeof YocoSDK !== 'undefined') {
-    yoco = new YocoSDK({
-      publicKey: YOCO_PUBLIC_KEY
-    });
-    console.log("✅ Yoco SDK initialized with LIVE key");
-    return true;
-  }
-  return false;
-}
-
 async function openPaymentModal() {
   const total = computeTotal();
   if (cart.length === 0) {
@@ -1045,35 +1038,11 @@ async function openPaymentModal() {
   }
   if (total <= 0) return;
   
-  if (!initYoco()) {
-    alert("Payment system loading. Please try again.");
-    return;
-  }
-  
   document.getElementById('paymentAmount').innerHTML = `R${total}`;
   document.getElementById('paymentModal').classList.add('open');
   
-  setTimeout(() => {
-    if (yoco) {
-      try {
-        yoco.mount({
-          cardFrameContainer: 'card-frame',
-          cardFrameConfig: {
-            style: {
-              base: {
-                color: '#FEF3DF',
-                fontSize: '16px',
-                backgroundColor: '#1A0A04',
-                fontFamily: 'Syne, sans-serif'
-              }
-            }
-          }
-        });
-      } catch(e) {
-        console.error("Mount error:", e);
-      }
-    }
-  }, 100);
+  // Mount card frame after modal opens
+  await mountCardFrame();
 }
 
 async function processPayment() {
@@ -1089,9 +1058,13 @@ async function processPayment() {
     return;
   }
   
-  if (!yoco) {
-    showToast("Payment system not ready");
-    return;
+  if (!yoco || !yocoInitialized) {
+    showToast("Payment system not ready. Please wait...");
+    await initYocoSDK();
+    if (!yoco) {
+      showToast("Payment unavailable. Please use WhatsApp order.");
+      return;
+    }
   }
   
   showToast("Processing payment...");
@@ -1131,6 +1104,10 @@ async function processPayment() {
     updateCart();
     document.getElementById('paymentModal').classList.remove('open');
     document.getElementById('cartModal').classList.remove('open');
+    
+    // Clear form
+    document.getElementById('customerName').value = '';
+    document.getElementById('customerEmail').value = '';
     
   } catch (error) {
     console.error("Payment error:", error);
@@ -1195,15 +1172,19 @@ function animateRing() {
   requestAnimationFrame(animateRing);
 }
 animateRing();
+
+// Add cursor expand to interactive elements
 document.querySelectorAll('button, a, .flavor-btn, .qty-btn, .add-btn').forEach(el => {
   el.addEventListener('mouseenter', () => ring.classList.add('expand'));
   el.addEventListener('mouseleave', () => ring.classList.remove('expand'));
 });
 
+// Scroll effects
 window.addEventListener('scroll', () => {
   document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 50);
 });
 
+// Reveal animations
 const observer = new IntersectionObserver((entries) => {
   entries.forEach(e => {
     if (e.isIntersecting) e.target.classList.add('visible');
@@ -1211,6 +1192,7 @@ const observer = new IntersectionObserver((entries) => {
 }, { threshold: 0.1 });
 document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 
+// Mobile menu
 const mobileBtn = document.getElementById('mobileMenuBtn');
 const mobileNav = document.getElementById('mobileNav');
 const closeMenu = document.getElementById('closeMenuBtn');
@@ -1220,6 +1202,7 @@ document.querySelectorAll('.mobile-nav a').forEach(link => {
   link.addEventListener('click', () => mobileNav.classList.remove('open'));
 });
 
+// Cart event listeners
 document.getElementById('cartOpenBtn')?.addEventListener('click', () => document.getElementById('cartModal').classList.add('open'));
 document.getElementById('floatCartBtn')?.addEventListener('click', () => document.getElementById('cartModal').classList.add('open'));
 document.getElementById('closeCartBtn')?.addEventListener('click', () => document.getElementById('cartModal').classList.remove('open'));
@@ -1237,17 +1220,22 @@ document.querySelectorAll('.delivery-opt').forEach(opt => {
   opt.addEventListener('click', () => setDelivery(opt.dataset.delivery));
 });
 
+// Parallax photo strip
 window.addEventListener('scroll', () => {
   const strip = document.querySelector('.photo-strip');
   if (strip) strip.style.transform = `translateY(${window.scrollY * 0.05}px)`;
 });
 
+// Initialize everything
 renderProducts();
 updateCart();
 setDelivery('collect');
-initYoco();
+
+// Pre-initialize Yoco in background
+initYocoSDK();
 
 console.log("✅ Biltong & Bytes ready with LIVE Yoco payment!");
+console.log("📍 Make sure your site is on HTTPS for payments to work");
 </script>
 </body>
 </html>
