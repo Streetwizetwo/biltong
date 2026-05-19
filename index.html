@@ -2,27 +2,29 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Biltong & Bytes — Premium Halaal Biltong · Stanger KZN</title>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,600&family=Syne:wght@400;600;700;800&family=Bebas+Neue&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Biltong & Bytes — Artisan Halaal Biltong · Stanger KZN</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,500;1,600&family=Syne:wght@400;500;600;700;800&family=Bebas+Neue&display=swap" rel="stylesheet">
 <style>
-:root {
-  --rust: #8B2500;
-  --deep-rust: #3D0E00;
-  --amber: #C9690A;
-  --gold: #D4AF37;
-  --gold-light: #F3E5AB;
-  --gold-dim: rgba(212,175,55,0.15);
-  --cream: #F5ECD7;
-  --charcoal: #080200;
-  --smoke: #100600;
-  --whatsapp: #25D366;
-  --whatsapp-dark: #128C7E;
-  --halaal-green: #006400;
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
-*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
-html{scroll-behavior:smooth;}
+:root {
+  --rust: #B23A1A;
+  --deep-rust: #3D0E00;
+  --amber: #E07A2C;
+  --gold: #E5B83C;
+  --gold-light: #F8E5B0;
+  --cream: #FEF3DF;
+  --charcoal: #0C0502;
+  --smoke: #160A03;
+  --whatsapp: #25D366;
+  --whatsapp-dark: #128C7E;
+  --halaal-green: #2E7D32;
+}
 
 body {
   background: var(--charcoal);
@@ -32,1457 +34,929 @@ body {
   cursor: none;
 }
 
-/* ═══ CUSTOM CURSOR ═══ */
-.cursor {
-  position: fixed; width: 12px; height: 12px; border-radius: 50%;
-  background: var(--gold); pointer-events: none; z-index: 9999;
-  transition: transform 0.1s ease, opacity 0.3s ease;
-  mix-blend-mode: difference;
-}
-.cursor-ring {
-  position: fixed; width: 40px; height: 40px; border-radius: 50%;
-  border: 1px solid rgba(212,175,55,0.5); pointer-events: none; z-index: 9998;
-  transition: transform 0.15s ease, width 0.3s ease, height 0.3s ease, opacity 0.3s ease;
-}
-.cursor-ring.expand { width: 70px; height: 70px; border-color: var(--gold); }
-
-/* ═══ CANVAS ═══ */
-#smoke-canvas {
-  position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0.55;
-}
-
-/* ═══ HERO IMAGE ═══ */
-.hero-bg-img {
-  position: absolute; inset: 0; z-index: -2;
-  background-image: url('https://biltongfix.com/cdn/shop/files/BB3C71EA-1B1C-4169-B5C0-194B75A869E5.jpg?crop=center&height=4149&v=1770634369&width=4149');
-  background-size: cover; background-position: center center;
-  filter: brightness(0.18) saturate(0.7);
-  transform: scale(1.05);
-  animation: slow-zoom 20s ease-in-out infinite alternate;
-}
-@keyframes slow-zoom {
-  from { transform: scale(1.05); }
-  to   { transform: scale(1.12); }
-}
-
-/* ═══ PHOTO GALLERY STRIP ═══ */
-.photo-strip {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1.5fr;
-  height: 55vh; min-height: 380px;
-  overflow: hidden; position: relative; z-index: 10;
-}
-.photo-strip-item {
-  overflow: hidden; position: relative; cursor: none;
-}
-.photo-strip-item img {
-  width: 100%; height: 100%; object-fit: cover;
-  transition: transform 0.8s cubic-bezier(0.25,0.46,0.45,0.94), filter 0.5s ease;
-  filter: brightness(0.65) saturate(0.85);
-}
-.photo-strip-item:hover img {
-  transform: scale(1.08);
-  filter: brightness(0.85) saturate(1.1);
-}
-.photo-strip-item::after {
-  content: ''; position: absolute; inset: 0;
-  background: linear-gradient(to bottom, transparent 40%, rgba(8,2,0,0.7) 100%);
+/* Custom Cursor Luxe */
+.cursor-dot {
+  position: fixed;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gold);
   pointer-events: none;
-}
-.photo-strip-caption {
-  position: absolute; bottom: 1.5rem; left: 1.5rem; z-index: 2;
-  font-size: 0.65rem; letter-spacing: 0.25em; text-transform: uppercase;
-  color: rgba(245,236,215,0.7); font-weight: 600;
+  z-index: 10000;
+  mix-blend-mode: difference;
+  transition: transform 0.05s ease;
 }
 
-/* ═══ PRODUCT CARD IMAGES ═══ */
-.p-photo {
-  width: 100%; height: 200px; object-fit: cover;
-  border-radius: 2px; margin-bottom: 2rem;
-  filter: brightness(0.85) saturate(1.05);
-  transition: filter 0.4s ease, transform 0.4s ease;
-  display: block;
-}
-.product-card:hover .p-photo {
-  filter: brightness(1) saturate(1.2);
-  transform: scale(1.02);
-}
-
-/* ═══ STORY CARD IMAGE ═══ */
-.story-img-wrap {
-  width: 100%; height: 280px; overflow: hidden; border-radius: 2px; margin-bottom: 2rem;
-}
-.story-img-wrap img {
-  width: 100%; height: 100%; object-fit: cover;
-  filter: brightness(0.75) saturate(0.9);
-  transition: transform 0.8s ease, filter 0.5s ease;
-}
-.story-card-3d:hover .story-img-wrap img {
-  transform: scale(1.06); filter: brightness(0.9) saturate(1.1);
+.cursor-ring {
+  position: fixed;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid rgba(229, 184, 60, 0.6);
+  pointer-events: none;
+  z-index: 9999;
+  transition: width 0.2s ease, height 0.2s ease, opacity 0.2s ease;
+  backdrop-filter: blur(2px);
 }
 
-/* ═══ GRAIN OVERLAY ═══ */
-body::before {
+.cursor-ring.expand {
+  width: 76px;
+  height: 76px;
+  border-color: var(--gold);
+  background: rgba(229, 184, 60, 0.05);
+}
+
+/* Canvas Cinematic Smoke */
+#cinema-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.6;
+}
+
+/* Grain Overlay */
+body::after {
   content: '';
-  position: fixed; inset: 0; z-index: 999; pointer-events: none;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E");
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.05'/%3E%3C/svg%3E");
   mix-blend-mode: overlay;
+  z-index: 999;
 }
 
-/* ═══ NAV ═══ */
+/* Hero Background Cinematic Zoom */
+.hero-bg-cinematic {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background-image: url('https://biltongfix.com/cdn/shop/files/BB3C71EA-1B1C-4169-B5C0-194B75A869E5.jpg?crop=center&height=4149&v=1770634369&width=4149');
+  background-size: cover;
+  background-position: center 30%;
+  filter: brightness(0.2) saturate(0.9) contrast(1.1);
+  animation: slowZoom 24s ease-in-out infinite alternate;
+}
+
+@keyframes slowZoom {
+  0% { transform: scale(1.05); }
+  100% { transform: scale(1.18); }
+}
+
+/* Nav */
 nav {
-  position: fixed; top: 0; left: 0; right: 0; z-index: 500;
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 2rem 6%; transition: all 0.4s ease;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 500;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.8rem 6%;
+  transition: all 0.4s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+  backdrop-filter: blur(0px);
 }
+
 nav.scrolled {
-  padding: 1.2rem 6%;
-  background: rgba(8,2,0,0.92);
-  backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(212,175,55,0.08);
+  padding: 1rem 6%;
+  background: rgba(12, 5, 2, 0.9);
+  backdrop-filter: blur(18px);
+  border-bottom: 1px solid rgba(229, 184, 60, 0.2);
 }
+
 .nav-logo {
-  font-family: 'Bebas Neue'; font-size: 1.6rem; letter-spacing: 0.2em;
-  color: var(--gold); text-decoration: none; display: flex; align-items: center; gap: 8px;
+  font-family: 'Bebas Neue';
+  font-size: 1.7rem;
+  letter-spacing: 0.18em;
+  color: var(--gold);
+  text-decoration: none;
 }
-.nav-logo .amp { color: var(--amber); font-size: 1.2rem; }
-.nav-links { display: flex; gap: 2.5rem; list-style: none; }
+
+.nav-logo span {
+  color: var(--amber);
+}
+
+.nav-links {
+  display: flex;
+  gap: 2.8rem;
+  list-style: none;
+}
+
 .nav-links a {
-  font-size: 0.7rem; font-weight: 600; letter-spacing: 0.25em; text-transform: uppercase;
-  color: rgba(245,236,215,0.55); text-decoration: none; transition: color 0.3s;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgba(254, 243, 223, 0.6);
+  text-decoration: none;
+  transition: color 0.3s;
 }
-.nav-links a:hover { color: var(--gold); }
+
+.nav-links a:hover {
+  color: var(--gold);
+}
+
 .nav-cart-btn {
-  background: none; border: 1px solid rgba(212,175,55,0.3); color: var(--gold);
-  padding: 0.5rem 1rem; border-radius: 2px; font-family: 'Syne'; font-size: 0.7rem;
-  font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer;
-  transition: all 0.3s; display: flex; align-items: center; gap: 0.5rem; position: relative;
+  background: none;
+  border: 1px solid rgba(229, 184, 60, 0.4);
+  color: var(--gold);
+  padding: 0.5rem 1.2rem;
+  font-family: 'Syne';
+  font-weight: 700;
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  backdrop-filter: blur(5px);
 }
-.nav-cart-btn:hover { background: rgba(212,175,55,0.1); border-color: var(--gold); }
+
+.nav-cart-btn:hover {
+  background: rgba(229, 184, 60, 0.1);
+  border-color: var(--gold);
+}
+
 .nav-badge {
-  background: var(--rust); color: white; font-size: 0.6rem; width: 18px; height: 18px;
-  border-radius: 50%; display: flex; align-items: center; justify-content: center;
-  font-weight: 700; position: absolute; top: -8px; right: -8px;
+  position: absolute;
+  top: -8px;
+  right: -10px;
+  background: var(--rust);
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 0.65rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
 }
 
-/* ═══ HERO ═══ */
+/* Hero */
 .hero {
-  position: relative; min-height: 100vh;
-  display: flex; align-items: center; justify-content: center;
-  overflow: hidden; perspective: 1000px;
-}
-
-.hero-layer {
-  position: absolute; inset: 0; pointer-events: none;
-  background: radial-gradient(ellipse 80% 80% at 50% 60%, rgba(139,37,0,0.18) 0%, transparent 70%),
-              radial-gradient(ellipse 60% 40% at 50% 100%, rgba(201,105,10,0.12) 0%, transparent 60%);
-}
-
-/* Fire glow at bottom */
-.fire-glow {
-  position: absolute; bottom: 0; left: 0; right: 0; height: 30vh; pointer-events: none;
-  background: linear-gradient(to top, rgba(139,37,0,0.35) 0%, rgba(201,105,10,0.1) 40%, transparent 100%);
-  filter: blur(20px);
-}
-
-/* 3D floating meat strips */
-.meat-strip-3d {
-  position: absolute; pointer-events: none;
-  width: 4px; border-radius: 2px;
-  background: linear-gradient(to bottom, var(--amber), var(--rust), var(--deep-rust));
-  box-shadow: 0 0 15px rgba(201,105,10,0.4), 0 0 40px rgba(139,37,0,0.2);
-  transform-style: preserve-3d;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
 }
 
 .hero-content {
-  position: relative; z-index: 10; text-align: center;
-  padding: 0 2rem; max-width: 1000px; transform-style: preserve-3d;
+  text-align: center;
+  z-index: 20;
+  max-width: 1000px;
+  padding: 0 2rem;
+  transform: translateZ(50px);
 }
 
 .hero-eyebrow {
-  display: inline-flex; align-items: center; gap: 0.8rem;
-  font-size: 0.65rem; letter-spacing: 0.5em; text-transform: uppercase;
-  color: var(--gold); margin-bottom: 2.5rem;
-  border: 1px solid rgba(212,175,55,0.25); padding: 0.6rem 1.5rem;
-  border-radius: 50px; background: rgba(212,175,55,0.04);
-  opacity: 0; animation: riseIn 1.2s cubic-bezier(0.16,1,0.3,1) 0.2s forwards;
+  font-size: 0.65rem;
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+  border: 1px solid rgba(229, 184, 60, 0.3);
+  display: inline-block;
+  padding: 0.7rem 1.6rem;
+  border-radius: 60px;
+  margin-bottom: 2rem;
+  backdrop-filter: blur(10px);
+  animation: floatUp 1s ease forwards;
+  opacity: 0;
+  transform: translateY(40px);
 }
-.eyebrow-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gold); display: inline-block; animation: pulse-dot 2s ease-in-out infinite; }
-@keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:0.4;transform:scale(0.6);} }
 
 .hero-title {
   font-family: 'Cormorant Garamond', serif;
-  font-size: clamp(5rem, 12vw, 12rem);
-  font-weight: 300; line-height: 0.85;
+  font-size: clamp(4.5rem, 12vw, 11rem);
+  font-weight: 300;
+  line-height: 0.85;
   letter-spacing: -0.02em;
-  opacity: 0; animation: riseIn 1.4s cubic-bezier(0.16,1,0.3,1) 0.4s forwards;
-}
-.hero-title .t-line { display: block; }
-.hero-title .t-gold {
-  font-style: italic; font-weight: 700;
-  background: linear-gradient(135deg, #F3E5AB 0%, #D4AF37 40%, #C9690A 100%);
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  background-clip: text; filter: drop-shadow(0 0 40px rgba(212,175,55,0.4));
-}
-.hero-title .t-amp {
-  font-style: italic; color: var(--amber); opacity: 0.6; font-size: 0.7em;
-  -webkit-text-fill-color: var(--amber);
+  animation: floatUp 1.2s ease 0.2s forwards;
+  opacity: 0;
+  transform: translateY(40px);
 }
 
-.hero-divider {
-  width: 1px; height: 80px; background: linear-gradient(to bottom, transparent, var(--gold), transparent);
-  margin: 2.5rem auto; opacity: 0; animation: riseIn 1s ease 0.8s forwards;
+.hero-title .amp {
+  font-style: italic;
+  color: var(--amber);
+}
+
+.hero-title .gold-glow {
+  background: linear-gradient(135deg, #F8E5B0, #E5B83C, #D48A2C);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 0 30px rgba(229, 184, 60, 0.4);
 }
 
 .hero-sub {
-  font-size: 1rem; font-weight: 400; letter-spacing: 0.12em; text-transform: uppercase;
-  color: rgba(245,236,215,0.65);
-  opacity: 0; animation: riseIn 1s ease 1s forwards;
-  max-width: 520px; margin: 0 auto 3rem;
+  font-size: 1rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-top: 2rem;
+  opacity: 0.7;
+  animation: floatUp 1s ease 0.5s forwards;
+  opacity: 0;
+  transform: translateY(40px);
 }
-.hero-sub strong { color: var(--gold-light); font-weight: 600; }
 
 .hero-cta {
-  display: flex; gap: 1.5rem; justify-content: center; flex-wrap: wrap;
-  opacity: 0; animation: riseIn 1s ease 1.2s forwards;
+  margin-top: 3rem;
+  display: flex;
+  gap: 1.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  animation: floatUp 1s ease 0.7s forwards;
+  opacity: 0;
+  transform: translateY(40px);
 }
 
-@keyframes riseIn {
-  from { opacity: 0; transform: translateY(40px); }
-  to { opacity: 1; transform: translateY(0); }
+.btn {
+  padding: 1rem 2.5rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: all 0.35s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
 }
 
-/* Scroll indicator */
-.scroll-hint {
-  position: absolute; bottom: 3rem; left: 50%; transform: translateX(-50%);
-  display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
-  opacity: 0; animation: fadeIn 1s ease 2s forwards;
-  font-size: 0.6rem; letter-spacing: 0.3em; text-transform: uppercase; color: rgba(245,236,215,0.3);
+.btn-primary {
+  background: var(--whatsapp);
+  color: white;
+  box-shadow: 0 8px 30px rgba(37, 211, 102, 0.3);
+}
+
+.btn-primary:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 40px rgba(37, 211, 102, 0.5);
+}
+
+.btn-ghost {
+  border: 1px solid rgba(229, 184, 60, 0.5);
+  color: var(--gold);
+}
+
+.btn-ghost:hover {
+  background: rgba(229, 184, 60, 0.1);
+  transform: translateY(-3px);
+}
+
+@keyframes floatUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Photo Strip Cinematic */
+.photo-strip {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1.8fr;
+  height: 55vh;
+  position: relative;
   z-index: 10;
 }
-.scroll-line {
-  width: 1px; height: 60px;
-  background: linear-gradient(to bottom, rgba(212,175,55,0.5), transparent);
-  animation: scroll-pulse 2s ease-in-out infinite;
-}
-@keyframes scroll-pulse { 0%,100%{transform:scaleY(1);opacity:1;} 50%{transform:scaleY(0.5);opacity:0.3;} }
-@keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
 
-/* ═══ BUTTONS ═══ */
-.btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 0.8rem;
-  padding: 1rem 2.5rem; font-size: 0.72rem; font-weight: 600;
-  letter-spacing: 0.2em; text-transform: uppercase; text-decoration: none;
-  border: none; cursor: none; transition: all 0.35s cubic-bezier(0.25,0.46,0.45,0.94);
-  position: relative; overflow: hidden; clip-path: polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px));
+.photo-strip-item {
+  overflow: hidden;
+  position: relative;
 }
-.btn::before {
-  content: ''; position: absolute; inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
-  transform: translateX(-100%); transition: transform 0.5s ease;
-}
-.btn:hover::before { transform: translateX(100%); }
-.btn-primary { background: var(--whatsapp); color: white; box-shadow: 0 5px 30px rgba(37,211,102,0.3); }
-.btn-primary:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 15px 40px rgba(37,211,102,0.45); }
-.btn-gold { background: var(--gold); color: var(--charcoal); box-shadow: 0 5px 30px rgba(212,175,55,0.25); }
-.btn-gold:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 15px 40px rgba(212,175,55,0.4); }
-.btn-ghost { background: transparent; color: var(--gold); border: 1px solid rgba(212,175,55,0.4); }
-.btn-ghost:hover { border-color: var(--gold); background: rgba(212,175,55,0.08); transform: translateY(-3px); }
 
-/* ═══ MARQUEE BAND ═══ */
-.marquee-band {
-  overflow: hidden; background: var(--gold); padding: 0.8rem 0;
-  border-top: 1px solid rgba(255,255,255,0.2); border-bottom: 1px solid rgba(0,0,0,0.2);
-  position: relative; z-index: 10;
+.photo-strip-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94), filter 0.6s;
+  filter: brightness(0.55) contrast(1.05);
 }
-.marquee-track {
-  display: flex; width: max-content;
-  animation: marquee 25s linear infinite;
-}
-.marquee-item {
-  display: flex; align-items: center; gap: 1.5rem;
-  font-family: 'Bebas Neue'; font-size: 1rem; letter-spacing: 0.15em;
-  color: var(--charcoal); padding: 0 2rem; white-space: nowrap;
-}
-.marquee-sep { width: 5px; height: 5px; border-radius: 50%; background: var(--charcoal); opacity: 0.4; }
-@keyframes marquee { from{transform:translateX(0);} to{transform:translateX(-50%);} }
 
-/* ═══ SECTION BASE ═══ */
-section { padding: 8rem 6%; position: relative; z-index: 10; }
+.photo-strip-item:hover img {
+  transform: scale(1.1);
+  filter: brightness(0.8);
+}
+
+/* Sections */
+section {
+  padding: 7rem 6%;
+  position: relative;
+  z-index: 20;
+}
+
 .section-label {
-  font-size: 0.62rem; letter-spacing: 0.5em; text-transform: uppercase;
-  color: var(--amber); margin-bottom: 1rem; display: flex; align-items: center; gap: 1rem;
+  font-size: 0.6rem;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: var(--amber);
+  display: inline-block;
+  margin-bottom: 1rem;
 }
-.section-label::before { content: ''; flex: 0 0 30px; height: 1px; background: var(--amber); }
+
 .section-title {
   font-family: 'Cormorant Garamond', serif;
-  font-size: clamp(2.5rem, 5vw, 5rem);
-  font-weight: 300; line-height: 1; letter-spacing: -0.02em; margin-bottom: 3rem;
-}
-.section-title em { font-style: italic; color: var(--gold); font-weight: 700; }
-
-/* ═══ STORY SECTION ═══ */
-#story { background: var(--charcoal); }
-.story-layout {
-  max-width: 1300px; margin: 0 auto;
-  display: grid; grid-template-columns: 1fr 1fr; gap: 8rem; align-items: center;
-}
-.story-text p {
-  font-size: 1.05rem; line-height: 1.9; color: rgba(245,236,215,0.75);
-  margin-bottom: 2rem; font-weight: 300;
-}
-.story-text p strong { color: var(--gold-light); font-weight: 600; }
-.halaal-badge {
-  display: inline-flex; align-items: center; gap: 0.8rem;
-  background: rgba(37,211,102,0.08); border: 1px solid rgba(37,211,102,0.25);
-  color: var(--whatsapp); padding: 0.7rem 1.5rem; border-radius: 50px;
-  font-size: 0.78rem; font-weight: 600; letter-spacing: 0.05em; margin: 1rem 0;
-}
-.story-visual-3d {
-  position: relative; perspective: 800px;
-}
-.story-card-3d {
-  background: linear-gradient(135deg, rgba(26,10,0,0.8) 0%, rgba(40,15,0,0.6) 100%);
-  border: 1px solid rgba(212,175,55,0.15);
-  border-radius: 4px; padding: 4rem 3rem; text-align: center;
-  transform: rotateY(-8deg) rotateX(5deg);
-  transition: transform 0.6s cubic-bezier(0.34,1.56,0.64,1);
-  box-shadow: 30px 30px 80px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.05);
-  backdrop-filter: blur(20px);
-  position: relative; overflow: hidden;
-}
-.story-card-3d:hover { transform: rotateY(0deg) rotateX(0deg) scale(1.02); }
-.story-card-3d::before {
-  content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(212,175,55,0.05), transparent);
-  transition: left 0.8s ease;
-}
-.story-card-3d:hover::before { left: 100%; }
-.card-meat-icon {
-  font-size: 7rem; margin-bottom: 1.5rem; display: block;
-  filter: drop-shadow(0 0 30px rgba(201,105,10,0.5));
-  animation: levitate 6s ease-in-out infinite;
-}
-@keyframes levitate {
-  0%,100%{transform:translateY(0) rotate(-3deg);}
-  50%{transform:translateY(-12px) rotate(3deg);}
-}
-.card-tag {
-  position: absolute; top: -1px; right: 2rem;
-  background: var(--gold); color: var(--charcoal);
-  font-family: 'Bebas Neue'; font-size: 0.85rem; letter-spacing: 0.1em;
-  padding: 0.4rem 1.2rem; clip-path: polygon(0 0,100% 0,100% 80%,50% 100%,0 80%);
-}
-.card-location {
-  position: absolute; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
-  background: rgba(0,100,0,0.2); border: 1px solid rgba(37,211,102,0.3);
-  color: var(--whatsapp); font-size: 0.7rem; font-weight: 600;
-  padding: 0.3rem 1rem; border-radius: 50px; letter-spacing: 0.1em; white-space: nowrap;
+  font-size: clamp(2.8rem, 6vw, 5rem);
+  font-weight: 300;
+  line-height: 1.1;
+  margin-bottom: 3rem;
 }
 
-/* ═══ PRODUCT SECTION ═══ */
-#products {
-  background: linear-gradient(to bottom, var(--charcoal) 0%, rgba(16,6,0,1) 50%, var(--charcoal) 100%);
+.section-title em {
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 600;
 }
-.products-header { text-align: center; max-width: 600px; margin: 0 auto 6rem; }
-.products-header .section-label { justify-content: center; }
-.products-header .section-label::before { display: none; }
-.products-header p { font-size: 0.95rem; opacity: 0.55; font-weight: 300; margin-top: 1rem; }
 
+/* Products Grid */
 .products-grid {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 2px; max-width: 1300px; margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  gap: 2px;
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
 .product-card {
-  background: rgba(12,5,0,0.8);
-  border: 1px solid rgba(212,175,55,0.07);
-  padding: 3.5rem 2.5rem; text-align: center;
-  display: flex; flex-direction: column; align-items: center;
-  position: relative; overflow: hidden; transition: all 0.4s ease;
-  transform-style: preserve-3d;
-}
-.product-card::before {
-  content: ''; position: absolute; inset: 0;
-  background: radial-gradient(ellipse at 50% 0%, rgba(201,105,10,0.08) 0%, transparent 60%);
-  opacity: 0; transition: opacity 0.4s ease;
-}
-.product-card:hover { background: rgba(20,8,0,0.9); border-color: rgba(212,175,55,0.25); }
-.product-card:hover::before { opacity: 1; }
-.product-card:hover .p-icon-wrap { transform: translateY(-8px) scale(1.05); }
-
-.product-card.featured {
-  background: rgba(20,10,0,0.95);
-  border-color: rgba(212,175,55,0.2);
-  box-shadow: 0 0 60px rgba(212,175,55,0.05), inset 0 0 60px rgba(201,105,10,0.03);
-}
-.featured-ribbon {
-  position: absolute; top: 0; left: 0; right: 0;
-  background: linear-gradient(90deg, var(--deep-rust), var(--rust), var(--amber), var(--gold));
-  height: 2px;
-}
-.featured-label {
-  position: absolute; top: 1rem; left: 50%; transform: translateX(-50%);
-  background: var(--gold); color: var(--charcoal);
-  font-family: 'Bebas Neue'; font-size: 0.75rem; letter-spacing: 0.15em;
-  padding: 0.2rem 1rem; white-space: nowrap;
-}
-
-.p-icon-wrap {
-  margin-bottom: 2rem; transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  background: rgba(15, 7, 2, 0.85);
+  backdrop-filter: blur(4px);
+  padding: 3rem 2rem;
+  text-align: center;
+  transition: all 0.4s ease;
+  border: 1px solid rgba(229, 184, 60, 0.08);
   position: relative;
 }
-.p-icon-wrap::after {
-  content: ''; position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%);
-  width: 60%; height: 20px; border-radius: 50%;
-  background: radial-gradient(ellipse, rgba(201,105,10,0.3) 0%, transparent 70%);
-  filter: blur(5px); transition: all 0.4s ease;
+
+.product-card:hover {
+  background: rgba(25, 12, 4, 0.95);
+  border-color: rgba(229, 184, 60, 0.3);
+  transform: translateY(-8px);
+  box-shadow: 0 30px 40px -20px rgba(0, 0, 0, 0.8);
 }
-.product-card:hover .p-icon-wrap::after { width: 80%; opacity: 0.7; }
-.p-emoji { font-size: 3.5rem; filter: drop-shadow(0 5px 20px rgba(201,105,10,0.3)); display: block; }
+
+.p-photo {
+  width: 100%;
+  height: 210px;
+  object-fit: cover;
+  margin-bottom: 1.5rem;
+  filter: brightness(0.75) contrast(1.1);
+  transition: all 0.5s;
+}
+
+.product-card:hover .p-photo {
+  filter: brightness(1) contrast(1.2);
+  transform: scale(1.02);
+}
 
 .p-weight {
-  font-family: 'Cormorant Garamond', serif; font-size: 3.5rem; font-weight: 300;
-  color: var(--cream); line-height: 1; margin-bottom: 0.2rem;
+  font-size: 2.8rem;
+  font-family: 'Cormorant Garamond';
+  font-weight: 600;
+  color: var(--gold);
 }
+
 .p-name-label {
-  font-size: 0.65rem; font-weight: 600; letter-spacing: 0.3em; text-transform: uppercase;
-  color: var(--amber); margin-bottom: 0.8rem;
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin: 0.5rem 0;
+  opacity: 0.7;
 }
-.p-halaal {
-  display: inline-flex; align-items: center; gap: 0.4rem;
-  font-size: 0.65rem; color: var(--whatsapp); font-weight: 600;
-  background: rgba(37,211,102,0.08); border: 1px solid rgba(37,211,102,0.2);
-  padding: 0.25rem 0.8rem; border-radius: 50px; margin-bottom: 1.5rem;
-}
-.p-desc { font-size: 0.85rem; opacity: 0.45; font-weight: 300; margin-bottom: 2rem; flex-grow: 1; line-height: 1.6; }
+
 .p-price {
-  font-family: 'Cormorant Garamond', serif; font-size: 3rem; font-weight: 700;
-  color: var(--gold); margin-bottom: 0.2rem; line-height: 1;
+  font-size: 2.8rem;
+  font-family: 'Bebas Neue';
+  color: var(--gold-light);
+  margin: 0.5rem 0;
 }
-.p-price-per { font-size: 0.7rem; opacity: 0.4; margin-bottom: 2rem; }
 
-.flavor-label { font-size: 0.6rem; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(245,236,215,0.4); margin-bottom: 0.7rem; width: 100%; text-align: left; }
-.flavor-selector { display: flex; flex-wrap: wrap; gap: 0.4rem; justify-content: center; margin-bottom: 1.5rem; width: 100%; }
+.flavor-selector {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 1.2rem 0;
+}
+
 .flavor-btn {
-  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
-  color: rgba(245,236,215,0.55); padding: 0.35rem 0.8rem;
-  font-size: 0.68rem; border-radius: 20px; cursor: none; transition: all 0.25s;
-  font-family: 'Syne'; text-transform: uppercase; letter-spacing: 0.05em;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(254, 243, 223, 0.7);
+  padding: 0.4rem 1rem;
+  font-size: 0.7rem;
+  font-family: 'Syne';
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: 0.2s;
+  border-radius: 40px;
 }
-.flavor-btn:hover { border-color: rgba(212,175,55,0.4); color: var(--cream); }
-.flavor-btn.active { background: var(--gold); border-color: var(--gold); color: var(--charcoal); font-weight: 700; box-shadow: 0 0 20px rgba(212,175,55,0.35); }
 
-.qty-wrapper { display: flex; align-items: center; justify-content: center; gap: 1.2rem; margin-bottom: 1.5rem; width: 100%; }
-.qty-btn {
-  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
-  color: var(--cream); width: 36px; height: 36px; border-radius: 50%; cursor: none;
-  display: flex; align-items: center; justify-content: center; transition: all 0.25s;
-  font-size: 1.1rem;
+.flavor-btn.active {
+  background: var(--gold);
+  color: var(--charcoal);
+  border-color: var(--gold);
+  font-weight: bold;
+  box-shadow: 0 0 12px rgba(229, 184, 60, 0.5);
 }
-.qty-btn:hover { background: var(--gold); color: var(--charcoal); border-color: var(--gold); }
-.qty-display { font-family: 'Bebas Neue'; font-size: 1.5rem; letter-spacing: 0.1em; min-width: 30px; text-align: center; }
+
+.qty-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.2rem;
+  margin: 1.5rem 0;
+}
+
+.qty-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  color: var(--cream);
+  font-size: 1.2rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.qty-btn:hover {
+  background: var(--gold);
+  color: black;
+}
+
+.qty-display {
+  font-size: 1.6rem;
+  font-family: 'Bebas Neue';
+  min-width: 40px;
+  text-align: center;
+}
 
 .btn-add-cart {
-  width: 100%; border: 1px solid rgba(212,175,55,0.4); color: var(--gold);
-  background: transparent; padding: 0.9rem; text-transform: uppercase;
-  letter-spacing: 0.15em; font-size: 0.72rem; font-weight: 600; cursor: none;
-  transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 0.6rem;
-  clip-path: polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px));
-  font-family: 'Syne';
-}
-.btn-add-cart:hover { background: var(--gold); color: var(--charcoal); box-shadow: 0 0 30px rgba(212,175,55,0.3); }
-
-/* ═══ STATS BAND ═══ */
-.stats-band {
-  display: grid; grid-template-columns: repeat(4, 1fr);
-  max-width: 1100px; margin: 0 auto;
-  border: 1px solid rgba(212,175,55,0.1);
-}
-.stat-item {
-  padding: 3rem 2rem; text-align: center; border-right: 1px solid rgba(212,175,55,0.1);
-  position: relative; overflow: hidden; transition: background 0.3s;
-}
-.stat-item:last-child { border-right: none; }
-.stat-item:hover { background: rgba(212,175,55,0.03); }
-.stat-num {
-  font-family: 'Cormorant Garamond', serif; font-size: 3.5rem; font-weight: 300;
-  color: var(--gold); display: block; line-height: 1;
-}
-.stat-label { font-size: 0.65rem; letter-spacing: 0.25em; text-transform: uppercase; opacity: 0.45; margin-top: 0.5rem; display: block; }
-
-/* ═══ SERVICES ═══ */
-#services { background: var(--charcoal); }
-.services-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1px; max-width: 1100px; margin: 0 auto; border: 1px solid rgba(255,255,255,0.04); }
-.service-item {
-  padding: 3rem; border-right: 1px solid rgba(255,255,255,0.04); transition: all 0.3s;
-  position: relative; overflow: hidden;
-}
-.service-item:last-child { border-right: none; }
-.service-item::after {
-  content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px;
-  background: linear-gradient(90deg, var(--rust), var(--gold));
-  transform: scaleX(0); transform-origin: left; transition: transform 0.4s ease;
-}
-.service-item:hover::after { transform: scaleX(1); }
-.service-item:hover { background: rgba(255,255,255,0.02); }
-.service-icon {
-  font-size: 2.2rem; margin-bottom: 2rem; display: block;
-  filter: drop-shadow(0 0 10px rgba(201,105,10,0.2));
-  transition: transform 0.3s;
-}
-.service-item:hover .service-icon { transform: scale(1.15) rotate(-5deg); }
-.service-item h3 { font-family: 'Cormorant Garamond', serif; font-size: 1.4rem; margin-bottom: 1rem; color: var(--cream); font-weight: 400; }
-.service-item p { font-size: 0.85rem; opacity: 0.5; line-height: 1.7; font-weight: 300; }
-
-/* ═══ HOW TO ORDER ═══ */
-#how-to-order {
-  background: radial-gradient(ellipse at center, rgba(16,6,0,0.8) 0%, var(--charcoal) 100%);
-}
-.steps-grid {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 0;
-  max-width: 1100px; margin: 0 auto; position: relative;
-}
-.steps-grid::before {
-  content: ''; position: absolute; top: 2.5rem; left: calc(12.5% + 1rem); right: calc(12.5% + 1rem);
-  height: 1px; background: linear-gradient(90deg, transparent, var(--amber), var(--gold), var(--amber), transparent);
-}
-.step { text-align: center; padding: 3rem 2rem; position: relative; }
-.step-num-big {
-  font-family: 'Bebas Neue'; font-size: 5rem; color: rgba(212,175,55,0.07); line-height: 1;
-  position: absolute; top: 0.5rem; left: 50%; transform: translateX(-50%);
-}
-.step-icon-circle {
-  width: 56px; height: 56px; border-radius: 50%; background: rgba(20,8,0,0.8);
-  border: 1px solid rgba(212,175,55,0.25); display: flex; align-items: center; justify-content: center;
-  font-size: 1.5rem; margin: 0 auto 2rem; position: relative; z-index: 1;
-  box-shadow: 0 0 20px rgba(212,175,55,0.1);
-  transition: all 0.3s;
-}
-.step:hover .step-icon-circle { border-color: var(--gold); box-shadow: 0 0 30px rgba(212,175,55,0.25); background: rgba(212,175,55,0.05); }
-.step h4 { font-family: 'Cormorant Garamond', serif; font-size: 1.3rem; margin-bottom: 0.8rem; font-weight: 400; color: var(--cream); }
-.step p { font-size: 0.8rem; opacity: 0.5; font-weight: 300; line-height: 1.6; }
-
-/* ═══ CONTACT ═══ */
-#contact { text-align: center; }
-.contact-inner { max-width: 600px; margin: 0 auto; }
-.contact-card {
-  position: relative; overflow: hidden;
-  background: linear-gradient(135deg, rgba(20,8,0,0.9), rgba(37,211,102,0.05) 50%, rgba(20,8,0,0.9));
-  border: 1px solid rgba(37,211,102,0.15);
-  border-radius: 4px; padding: 4rem 3rem;
-  margin-top: 4rem;
-  box-shadow: 0 30px 80px rgba(0,0,0,0.5), 0 0 80px rgba(37,211,102,0.05);
-}
-.contact-card::before {
-  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-  background: linear-gradient(90deg, transparent, var(--whatsapp), transparent);
-}
-.contact-avatar { font-size: 4rem; margin-bottom: 1rem; display: block; }
-.contact-name { font-family: 'Cormorant Garamond', serif; font-size: 2.5rem; font-weight: 300; margin-bottom: 0.3rem; }
-.contact-role { font-size: 0.7rem; letter-spacing: 0.3em; text-transform: uppercase; opacity: 0.45; margin-bottom: 2rem; display: block; }
-.contact-phone {
-  font-family: 'Bebas Neue'; font-size: 3rem; letter-spacing: 0.1em;
-  color: var(--whatsapp); text-decoration: none; display: block; margin: 1rem 0;
-  transition: text-shadow 0.3s;
-}
-.contact-phone:hover { text-shadow: 0 0 30px rgba(37,211,102,0.6); }
-.contact-location { font-size: 0.75rem; opacity: 0.4; margin-bottom: 2.5rem; letter-spacing: 0.1em; }
-
-/* ═══ FOOTER ═══ */
-footer {
-  padding: 4rem 6%; text-align: center;
-  border-top: 1px solid rgba(255,255,255,0.04);
-  font-size: 0.8rem; opacity: 0.4; position: relative; z-index: 10;
-}
-.footer-logo { font-family: 'Bebas Neue'; font-size: 2rem; color: var(--gold); letter-spacing: 0.2em; display: block; margin-bottom: 1rem; opacity: 1; }
-
-/* ═══ FLOATING CART ═══ */
-.cart-float {
-  position: fixed; bottom: 2.5rem; right: 2.5rem; z-index: 900;
-  width: 60px; height: 60px; border-radius: 50%;
-  background: var(--whatsapp);
-  display: flex; align-items: center; justify-content: center; cursor: none;
-  box-shadow: 0 10px 40px rgba(37,211,102,0.4), 0 0 0 0 rgba(37,211,102,0.4);
-  animation: cart-pulse 3s ease-in-out infinite;
-  border: 2px solid rgba(255,255,255,0.15); transition: transform 0.3s;
-}
-.cart-float:hover { transform: scale(1.12); }
-.cart-float svg { width: 26px; height: 26px; fill: white; }
-@keyframes cart-pulse {
-  0%,100%{box-shadow:0 10px 40px rgba(37,211,102,0.4),0 0 0 0 rgba(37,211,102,0.3);}
-  50%{box-shadow:0 10px 40px rgba(37,211,102,0.4),0 0 0 12px rgba(37,211,102,0);}
-}
-.cart-badge {
-  position: absolute; top: -6px; right: -6px; background: var(--rust);
-  color: white; font-size: 0.65rem; font-weight: 700; width: 22px; height: 22px;
-  border-radius: 50%; display: flex; align-items: center; justify-content: center;
-  border: 2px solid var(--charcoal); font-family: 'Syne';
-}
-
-/* ═══ CART MODAL ═══ */
-.cart-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.85);
-  backdrop-filter: blur(15px); z-index: 1000;
-  display: none; opacity: 0; transition: opacity 0.35s ease;
-  align-items: flex-end; justify-content: center;
-}
-.cart-overlay.open { display: flex; opacity: 1; }
-.cart-panel {
-  background: #0E0500; width: 100%; max-width: 520px; max-height: 88vh;
-  border-top: 1px solid rgba(212,175,55,0.3);
-  display: flex; flex-direction: column;
-  transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.16,1,0.3,1);
-  box-shadow: 0 -20px 80px rgba(0,0,0,0.7); overflow: hidden;
-}
-@media(min-width:768px) {
-  .cart-overlay { align-items: center; }
-  .cart-panel { border-radius: 4px; border: 1px solid rgba(212,175,55,0.25); transform: translateY(30px) scale(0.97); max-height: 85vh; }
-}
-.cart-overlay.open .cart-panel { transform: translateY(0) scale(1); }
-.cart-head {
-  padding: 1.5rem 2rem; border-bottom: 1px solid rgba(255,255,255,0.07);
-  display: flex; justify-content: space-between; align-items: center;
-  background: rgba(212,175,55,0.03);
-}
-.cart-head h3 { font-family: 'Cormorant Garamond'; font-size: 1.6rem; color: var(--gold); font-weight: 400; }
-.close-cart { background: none; border: none; color: var(--cream); font-size: 1.5rem; cursor: none; opacity: 0.5; transition: opacity 0.2s; }
-.close-cart:hover { opacity: 1; }
-.cart-items { overflow-y: auto; padding: 1.5rem 2rem; flex-grow: 1; }
-.cart-item {
-  display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 1.5rem; padding-bottom: 1.5rem;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-}
-.item-info h4 { font-family: 'Syne'; font-size: 0.95rem; margin-bottom: 0.2rem; }
-.item-info span { font-size: 0.75rem; color: var(--amber); text-transform: uppercase; letter-spacing: 0.05em; }
-.item-right { display: flex; align-items: center; gap: 1rem; }
-.item-price { font-family: 'Bebas Neue'; font-size: 1.3rem; color: var(--gold); }
-.remove-btn { background: none; border: none; color: var(--rust); cursor: none; opacity: 0.6; transition: opacity 0.2s; font-size: 1.1rem; }
-.remove-btn:hover { opacity: 1; }
-.empty-msg { text-align: center; opacity: 0.4; padding: 3rem 1rem; font-size: 0.9rem; }
-
-/* Delivery */
-.delivery-wrap { padding: 1rem 2rem; border-top: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.2); flex-shrink: 0; }
-.delivery-wrap h4 { font-size: 0.8rem; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 0.8rem; opacity: 0.7; }
-.delivery-toggle { display: flex; gap: 0.5rem; margin-bottom: 0.7rem; }
-.delivery-opt {
-  flex: 1; padding: 0.6rem; border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(255,255,255,0.03); color: rgba(245,236,215,0.6);
-  font-family: 'Syne'; font-size: 0.75rem; cursor: none; border-radius: 2px;
-  text-align: center; transition: all 0.2s; font-weight: 500; letter-spacing: 0.05em;
+  width: 100%;
+  background: transparent;
+  border: 1px solid rgba(229, 184, 60, 0.5);
+  padding: 0.9rem;
+  font-weight: bold;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-}
-.delivery-opt.selected { background: var(--gold); border-color: var(--gold); color: var(--charcoal); font-weight: 700; }
-.delivery-note { font-size: 0.7rem; opacity: 0.4; margin-bottom: 0.5rem; }
-.delivery-address-wrap { display: none; margin-top: 0.8rem; }
-.delivery-address-wrap.show { display: block; }
-.delivery-address-wrap label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--amber); display: block; margin-bottom: 0.4rem; }
-.delivery-address-wrap textarea {
-  width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(212,175,55,0.25);
-  border-radius: 2px; color: var(--cream); font-family: 'Syne'; font-size: 0.9rem;
-  padding: 0.7rem; resize: none; outline: none; transition: border-color 0.2s;
-}
-.delivery-address-wrap textarea:focus { border-color: var(--gold); }
-.delivery-address-wrap textarea::placeholder { color: rgba(245,236,215,0.3); }
-.delivery-fee-note {
-  display: inline-flex; align-items: center; gap: 0.4rem;
-  background: rgba(37,211,102,0.1); border: 1px solid rgba(37,211,102,0.25);
-  color: var(--whatsapp); padding: 0.25rem 0.8rem; border-radius: 20px;
-  font-size: 0.7rem; font-weight: 600; margin-top: 0.5rem;
+  color: var(--gold);
+  cursor: pointer;
+  transition: 0.3s;
 }
 
-/* Cart footer */
-.cart-foot { padding: 1.5rem 2rem; border-top: 1px solid rgba(255,255,255,0.07); background: rgba(0,0,0,0.3); flex-shrink: 0; }
-.cart-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; font-size: 0.8rem; opacity: 0.5; }
-.cart-total { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; font-family: 'Cormorant Garamond'; font-size: 1.6rem; font-weight: 400; }
-.btn-checkout {
-  width: 100%; background: var(--whatsapp); color: white; padding: 1rem;
-  border: none; border-radius: 2px; font-family: 'Syne'; font-weight: 700;
-  text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.9rem; cursor: none;
-  display: flex; align-items: center; justify-content: center; gap: 0.8rem; transition: background 0.2s;
-  clip-path: polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px));
+.btn-add-cart:hover {
+  background: var(--gold);
+  color: var(--charcoal);
 }
-.btn-checkout:hover { background: var(--whatsapp-dark); }
 
-/* Toast */
+/* Story 3D */
+.story-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5rem;
+  align-items: center;
+}
+
+.story-card-3d {
+  background: linear-gradient(145deg, rgba(22, 10, 3, 0.8), rgba(8, 3, 1, 0.9));
+  padding: 3rem;
+  border-radius: 8px;
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(229, 184, 60, 0.2);
+  transform-style: preserve-3d;
+  transition: transform 0.3s ease;
+}
+
+.story-img-wrap img {
+  width: 100%;
+  border-radius: 4px;
+  max-height: 280px;
+  object-fit: cover;
+  filter: brightness(0.8);
+}
+
+.halaal-badge {
+  background: rgba(46, 125, 50, 0.15);
+  border-left: 4px solid var(--halaal-green);
+  padding: 0.8rem 1rem;
+  font-size: 0.8rem;
+  margin: 1rem 0;
+  font-weight: 600;
+}
+
+/* Steps */
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  text-align: center;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.step-icon-circle {
+  width: 70px;
+  height: 70px;
+  background: rgba(229, 184, 60, 0.1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  margin: 0 auto 1rem;
+  border: 1px solid rgba(229, 184, 60, 0.3);
+  transition: 0.4s;
+}
+
+.step:hover .step-icon-circle {
+  background: var(--gold);
+  color: black;
+  transform: scale(1.1);
+}
+
+/* Cart */
+.cart-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(20px);
+  z-index: 2000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.cart-overlay.open {
+  display: flex;
+}
+
+.cart-panel {
+  background: #0E0500;
+  width: 90%;
+  max-width: 500px;
+  border: 1px solid var(--gold);
+  border-radius: 8px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.cart-items {
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex-grow: 1;
+}
+
+.delivery-wrap {
+  padding: 1rem;
+  border-top: 1px solid rgba(255,255,255,0.1);
+}
+
+.delivery-toggle {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+
+.delivery-opt {
+  flex: 1;
+  padding: 0.5rem;
+  background: rgba(255,255,255,0.05);
+  text-align: center;
+  cursor: pointer;
+}
+
+.delivery-opt.selected {
+  background: var(--gold);
+  color: black;
+  font-weight: bold;
+}
+
 .toast {
-  position: fixed; bottom: 8rem; left: 50%; transform: translateX(-50%) translateY(20px);
-  background: var(--gold); color: var(--charcoal);
-  padding: 0.8rem 1.8rem; font-weight: 700; font-size: 0.85rem;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.4); z-index: 1100;
-  opacity: 0; transition: all 0.4s cubic-bezier(0.34,1.56,0.64,1);
-  display: flex; align-items: center; gap: 0.5rem; letter-spacing: 0.05em;
-  clip-path: polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px));
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: var(--gold);
+  color: black;
+  padding: 0.8rem 1.8rem;
+  font-weight: bold;
+  z-index: 3000;
+  transition: 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border-radius: 40px;
 }
-.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-/* ═══ SCROLL ANIMATIONS ═══ */
-.reveal { opacity: 0; transform: translateY(50px); transition: opacity 0.8s ease, transform 0.8s cubic-bezier(0.16,1,0.3,1); }
-.reveal.visible { opacity: 1; transform: translateY(0); }
-.reveal-left { opacity: 0; transform: translateX(-60px); transition: opacity 0.9s ease, transform 0.9s cubic-bezier(0.16,1,0.3,1); }
-.reveal-left.visible { opacity: 1; transform: translateX(0); }
-.reveal-right { opacity: 0; transform: translateX(60px); transition: opacity 0.9s ease, transform 0.9s cubic-bezier(0.16,1,0.3,1); }
-.reveal-right.visible { opacity: 1; transform: translateX(0); }
+.toast.show {
+  transform: translateX(-50%) translateY(0);
+}
 
-/* ═══ MOBILE ═══ */
-@media(max-width:768px) {
-  .nav-links { display: none; }
-  .story-layout { grid-template-columns: 1fr; gap: 4rem; }
+/* Responsive */
+@media (max-width: 900px) {
+  .story-layout { grid-template-columns: 1fr; }
   .steps-grid { grid-template-columns: 1fr 1fr; }
-  .steps-grid::before { display: none; }
-  .stats-band { grid-template-columns: 1fr 1fr; }
-  .stat-item:nth-child(2) { border-right: none; }
-  .hero-title { font-size: 5rem; }
+  .photo-strip { height: 35vh; }
+  .nav-links { display: none; }
 }
-@media(max-width:480px) {
+
+@media (max-width: 600px) {
   .steps-grid { grid-template-columns: 1fr; }
-  .stats-band { grid-template-columns: 1fr 1fr; }
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(60px);
+  transition: 1s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
 }
 </style>
 </head>
 <body>
 
-<!-- CURSOR -->
-<div class="cursor" id="cursor"></div>
+<div class="cursor-dot" id="cursorDot"></div>
 <div class="cursor-ring" id="cursorRing"></div>
+<canvas id="cinema-canvas"></canvas>
 
-<!-- PARTICLE CANVAS -->
-<canvas id="smoke-canvas"></canvas>
-
-<!-- NAV -->
 <nav id="navbar">
-  <a href="#" class="nav-logo">Biltong<span class="amp">&amp;</span>Bytes</a>
+  <a href="#" class="nav-logo">BILTONG<span>&amp;</span>BYTES</a>
   <ul class="nav-links">
-    <li><a href="#products">Menu</a></li>
-    <li><a href="#story">Our Story</a></li>
-    <li><a href="#services">Tech Support</a></li>
-    <li><a href="#contact">Contact</a></li>
+    <li><a href="#products">BILTONG</a></li>
+    <li><a href="#story">STORY</a></li>
+    <li><a href="#services">SERVICES</a></li>
+    <li><a href="#contact">CONTACT</a></li>
   </ul>
-  <button class="nav-cart-btn" onclick="toggleCart()">
-    🛒 Cart
-    <span class="nav-badge" id="cart-count">0</span>
-  </button>
+  <button class="nav-cart-btn" id="cartOpenBtn">🛒 CART <span id="cartNavBadge" class="nav-badge">0</span></button>
 </nav>
 
-<!-- ══════ HERO ══════ -->
-<section class="hero" id="hero">
-  <div class="hero-bg-img"></div>
-  <div class="hero-layer"></div>
-  <div class="fire-glow"></div>
-
-  <div class="hero-content" id="heroContent">
-    <div class="hero-eyebrow">
-      <span class="eyebrow-dot"></span>
-      Hand-Cured · Halaal Certified · Stanger, KZN
-      <span class="eyebrow-dot"></span>
-    </div>
-
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg-cinematic"></div>
+  <div class="hero-content">
+    <div class="hero-eyebrow">✦ HAND-CURED · HALAAL CERTIFIED ✦</div>
     <h1 class="hero-title">
-      <span class="t-line">Biltong</span>
-      <span class="t-line"><span class="t-amp">&amp;</span> <span class="t-gold">Bytes</span></span>
+      Biltong <span class="amp">&amp;</span> <span class="gold-glow">Bytes</span>
     </h1>
-
-    <div class="hero-divider"></div>
-
-    <p class="hero-sub">
-      Premium <strong>Halaal homemade wet biltong</strong> — mixed with friendly
-      <strong>remote tech support</strong>. Stanger's best kept secret.
-    </p>
-
+    <p class="hero-sub">Premium Wet Biltong • Remote Tech Support • Stanger, KZN</p>
     <div class="hero-cta">
-      <a href="#products" class="btn btn-primary">🥩 Start Your Order</a>
-      <a href="#story" class="btn btn-ghost">Our Story</a>
+      <a href="#products" class="btn btn-primary">🥩 ORDER NOW</a>
+      <a href="#story" class="btn btn-ghost">DISCOVER</a>
     </div>
-  </div>
-
-  <div class="scroll-hint">
-    <span>Scroll</span>
-    <div class="scroll-line"></div>
   </div>
 </section>
 
-<!-- MARQUEE -->
-<div class="marquee-band">
-  <div class="marquee-track">
-    <!-- duplicate for seamless loop -->
-    <div class="marquee-item">🥩 Wet Biltong<span class="marquee-sep"></span></div>
-    <div class="marquee-item">✓ Halaal Certified<span class="marquee-sep"></span></div>
-    <div class="marquee-item">🌶️ Traditional · Chilli · Honey Glazed<span class="marquee-sep"></span></div>
-    <div class="marquee-item">📍 Stanger, KZN<span class="marquee-sep"></span></div>
-    <div class="marquee-item">💻 Remote Tech Support<span class="marquee-sep"></span></div>
-    <div class="marquee-item">🛵 Delivery R30<span class="marquee-sep"></span></div>
-    <div class="marquee-item">🥩 Wet Biltong<span class="marquee-sep"></span></div>
-    <div class="marquee-item">✓ Halaal Certified<span class="marquee-sep"></span></div>
-    <div class="marquee-item">🌶️ Traditional · Chilli · Honey Glazed<span class="marquee-sep"></span></div>
-    <div class="marquee-item">📍 Stanger, KZN<span class="marquee-sep"></span></div>
-    <div class="marquee-item">💻 Remote Tech Support<span class="marquee-sep"></span></div>
-    <div class="marquee-item">🛵 Delivery R30<span class="marquee-sep"></span></div>
-  </div>
-</div>
-
-<!-- ══════ PHOTO STRIP ══════ -->
+<!-- PHOTO STRIP -->
 <div class="photo-strip">
-  <div class="photo-strip-item">
-    <img src="https://media.istockphoto.com/id/452965315/photo/biltong.jpg?s=612x612&w=0&k=20&c=POTlYIb-yTiu4ZFkCiL2rDugtle335UrbMH18qgimgA=" alt="Biltong pile close-up" loading="lazy">
-    <span class="photo-strip-caption">Hand-Sliced Daily</span>
-  </div>
-  <div class="photo-strip-item">
-    <img src="https://i0.wp.com/www.biltongblog.com/wp-content/uploads/2016/12/P1150800.jpg" alt="Biltong hanging strips" loading="lazy">
-    <span class="photo-strip-caption">Air-Cured</span>
-  </div>
-  <div class="photo-strip-item">
-    <img src="https://img.freepik.com/free-photo/sliced-stick-biltong-snack-rosemary-seasoning-wooden-surface_181624-12920.jpg?semt=ais_hybrid&w=740&q=80" alt="Sliced biltong with rosemary" loading="lazy">
-    <span class="photo-strip-caption">Traditional Spices</span>
-  </div>
-  <div class="photo-strip-item">
-    <img src="https://boerie.co/cdn/shop/files/Chilli_Biltong_03_1024x1024@2x.jpg?v=1746100500" alt="Chilli biltong" loading="lazy">
-    <span class="photo-strip-caption">Chilli Flavour</span>
-  </div>
+  <div class="photo-strip-item"><img src="https://media.istockphoto.com/id/452965315/photo/biltong.jpg?s=612x612&w=0&k=20&c=POTlYIb-yTiu4ZFkCiL2rDugtle335UrbMH18qgimgA=" alt="biltong"><div class="photo-strip-caption"></div></div>
+  <div class="photo-strip-item"><img src="https://i0.wp.com/www.biltongblog.com/wp-content/uploads/2016/12/P1150800.jpg" alt="hanging"><div class="photo-strip-caption"></div></div>
+  <div class="photo-strip-item"><img src="https://img.freepik.com/free-photo/sliced-stick-biltong-snack-rosemary-seasoning-wooden-surface_181624-12920.jpg" alt="sliced"><div class="photo-strip-caption"></div></div>
+  <div class="photo-strip-item"><img src="https://boerie.co/cdn/shop/files/Chilli_Biltong_03_1024x1024@2x.jpg?v=1746100500" alt="chilli"><div class="photo-strip-caption"></div></div>
 </div>
 
-<!-- ══════ STORY ══════ -->
+<!-- PRODUCTS SECTION (FULLY FIXED INTERACTION) -->
+<section id="products">
+  <div class="section-label">THE CRAFT</div>
+  <h2 class="section-title">Select your <em>Biltong</em> pleasure</h2>
+  <div class="products-grid" id="productsGrid"></div>
+</section>
+
+<!-- STORY -->
 <section id="story">
   <div class="story-layout">
-    <div class="story-text reveal-left">
-      <div class="section-label">The Craft</div>
-      <h2 class="section-title">Not Factory<br>Made. <em>Made<br>With Love.</em></h2>
-
-      <p><strong>Salaams! We are a proud Muslim family</strong> based right here in Stanger. For us, biltong isn't just food — it's about culture, quality, and trust.</p>
-
-      <p>That is why we guarantee that all our beef is sourced exclusively from <span style="color:var(--whatsapp);font-weight:600;">Halaal-certified butcheries.</span> We prepare it in our home with traditional spices and a lot of love.</p>
-
-      <p>Every piece is <strong>hand-cut</strong> to ensure you get the perfect texture every time. Fresh, wet, and 100% Halaal — enjoy it with complete peace of mind.</p>
-
-      <div class="halaal-badge">
-        ✓ &nbsp;100% Halaal Certified Beef — Every Single Batch
-      </div>
-    </div>
-
-    <div class="story-visual-3d reveal-right">
-      <div class="story-card-3d">
-        <div class="card-tag">100% HANDMADE</div>
-        <div class="story-img-wrap">
-          <img src="https://github.com/Streetwizetwo/biltong/blob/main/ChatGPT%20Image%20May%2019,%202026,%2009_45_16%20PM.png?raw=true" alt="Biltong close up">
-        </div>
-        <h3 style="font-family:'Cormorant Garamond';font-size:2rem;font-weight:300;color:var(--gold);margin-bottom:0.5rem;">Fresh &amp; Wet</h3>
-        <p style="font-size:0.85rem;opacity:0.5;font-weight:300;">3 Delicious Flavors · Hand-Sliced Daily</p>
-        <div class="card-location">📍 Stanger, KZN</div>
-      </div>
-    </div>
+    <div class="reveal"><div class="section-label">OUR ROOTS</div><h2 class="section-title">Handmade <em>Halaal</em> with soul</h2>
+    <p style="line-height:1.7; opacity:0.8;">We are a Muslim family in Stanger, hand-cutting premium beef from Halaal certified butcheries. Our wet biltong is famous — spiced traditionally, always fresh.</p>
+    <div class="halaal-badge">✓ 100% Halaal Certified · Every batch</div></div>
+    <div class="reveal"><div class="story-card-3d"><div class="story-img-wrap"><img src="https://github.com/Streetwizetwo/biltong/blob/main/ChatGPT%20Image%20May%2019,%202026,%2009_45_16%20PM.png?raw=true" alt="fresh biltong"></div><h3 style="color:var(--gold); margin-top:1rem;">Wet, Tender & Aromatic</h3><p style="opacity:0.7;">Traditionally spiced • Chilli Kick • Honey Glazed</p></div></div>
   </div>
 </section>
 
-<!-- STATS BAND -->
-<div style="padding: 0 6%; position: relative; z-index: 10;">
-  <div class="stats-band reveal">
-    <div class="stat-item">
-      <span class="stat-num">100%</span>
-      <span class="stat-label">Halaal Certified</span>
-    </div>
-    <div class="stat-item">
-      <span class="stat-num">3</span>
-      <span class="stat-label">Bold Flavors</span>
-    </div>
-    <div class="stat-item">
-      <span class="stat-num">R30</span>
-      <span class="stat-label">Local Delivery</span>
-    </div>
-    <div class="stat-item">
-      <span class="stat-num">∞</span>
-      <span class="stat-label">Made With Love</span>
-    </div>
-  </div>
-</div>
+<!-- SERVICES -->
+<section id="services"><div class="section-label">BYTE-SIZED HELP</div><h2 class="section-title">Remote Tech <em>Support</em></h2>
+<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:1px; background:rgba(255,255,255,0.03);">
+  <div style="padding:2rem;"><div style="font-size:2.5rem;">💻</div><h3>PC Repair</h3><p style="opacity:0.6;">Remote fix, virus removal</p></div>
+  <div style="padding:2rem;"><div style="font-size:2.5rem;">🌐</div><h3>Wi-Fi Setup</h3><p style="opacity:0.6;">Dead zones? Optimized network</p></div>
+  <div style="padding:2rem;"><div style="font-size:2.5rem;">🛡️</div><h3>Security</h3><p style="opacity:0.6;">Full system cleanup</p></div>
+  <div style="padding:2rem;"><div style="font-size:2.5rem;">🖨️</div><h3>Peripherals</h3><p style="opacity:0.6;">Printers, scanners solved</p></div>
+</div></section>
 
-<!-- ══════ PRODUCTS ══════ -->
-<section id="products">
-  <div class="products-header reveal">
-    <div class="section-label">The Menu</div>
-    <h2 class="section-title">Mix &amp; Match<br><em>Your Flavors</em></h2>
-    <p>Select a pack size, pick a flavor, choose your quantity — your full order goes to Khatija via WhatsApp in one tap.</p>
-  </div>
+<!-- HOW TO ORDER -->
+<section id="how-to-order"><div class="section-label">EASY PROCESS</div><h2 class="section-title">How to <em>Order</em></h2>
+<div class="steps-grid">
+  <div class="step"><div class="step-icon-circle">1</div><h4>Pick & flavor</h4><p style="opacity:0.6;">Choose pack & spice level</p></div>
+  <div class="step"><div class="step-icon-circle">2</div><h4>Add to cart</h4><p style="opacity:0.6;">Adjust quantity, mix flavors</p></div>
+  <div class="step"><div class="step-icon-circle">3</div><h4>WhatsApp order</h4><p style="opacity:0.6;">One-tap checkout with Khatija</p></div>
+  <div class="step"><div class="step-icon-circle">4</div><h4>Collect or delivery</h4><p style="opacity:0.6;">R30 delivery (Stanger only)</p></div>
+</div></section>
 
-  <div class="products-grid">
+<!-- CONTACT -->
+<section id="contact"><div class="contact-inner" style="text-align:center;"><div class="section-label">MEET KHATIJA</div><h2 class="section-title">Your biltong <em>artisan</em></h2>
+<div style="background:linear-gradient(145deg, #160A03, #0C0502); border:1px solid var(--gold); padding:3rem; border-radius:8px;"><div style="font-size:4rem;">👩🏻‍🍳</div><h3 style="font-size:2rem;">Khatija</h3><p>Biltong maker & tech wizard • Stanger</p><a href="https://wa.me/27636402722" class="btn btn-primary" style="margin-top:1.5rem; display:inline-block;">💬 CHAT ON WHATSAPP</a></div></div></section>
 
-    <!-- 50g Taster -->
-    <div class="product-card reveal" style="transition-delay:0s">
-      <img class="p-photo" src="https://t4.ftcdn.net/jpg/00/41/14/91/360_F_41149170_hkxBmCVDZgbokGTiw5MjRV0nMfOzLv3t.jpg" alt="50g biltong taster">
-      <div class="p-icon-wrap" style="display:none;"><span class="p-emoji">🥩</span></div>
-      <div class="p-weight">50g</div>
-      <div class="p-name-label">The Taster</div>
-      <div class="p-halaal">✓ Halaal Certified</div>
-      <div class="p-desc">The perfect first bite. Sample the craft before committing to the full experience.</div>
-      <div class="p-price">R35</div>
-      <div class="p-price-per">per pouch</div>
-      <div class="flavor-label">Choose Flavor:</div>
-      <div class="flavor-selector">
-        <button class="flavor-btn active" data-flavor="Traditional">Traditional</button>
-        <button class="flavor-btn" data-flavor="Chilli">Chilli</button>
-        <button class="flavor-btn" data-flavor="Honey Glazed">Honey Glazed</button>
-      </div>
-      <div class="qty-wrapper">
-        <button class="qty-btn qty-minus">−</button>
-        <span class="qty-display">1</span>
-        <button class="qty-btn qty-plus">+</button>
-      </div>
-      <button class="btn-add-cart" onclick="addToCart(this)">🛒 &nbsp;Add to Cart</button>
-      <input type="hidden" class="p-name" value="The Taster (50g)">
-      <input type="hidden" class="p-price" value="35">
-    </div>
+<footer style="padding:2rem; text-align:center; opacity:0.6;">© 2025 Biltong & Bytes • Handmade with love in Stanger, KZN • Halaal Certified</footer>
 
-    <!-- 150g Snack Pack -->
-    <div class="product-card reveal" style="transition-delay:0.1s">
-      <img class="p-photo" src="https://img.freepik.com/free-photo/sliced-stick-biltong-snack-rosemary-seasoning-wooden-surface_181624-12920.jpg?semt=ais_hybrid&w=740&q=80" alt="150g biltong snack pack">
-      <div class="p-icon-wrap" style="display:none;"><span class="p-emoji">🥩🥩</span></div>
-      <div class="p-weight">150g</div>
-      <div class="p-name-label">The Snack Pack</div>
-      <div class="p-halaal">✓ Halaal Certified</div>
-      <div class="p-desc">Your afternoon sorted. Enough to share — if you're generous like that.</div>
-      <div class="p-price">R100</div>
-      <div class="p-price-per">per pouch</div>
-      <div class="flavor-label">Choose Flavor:</div>
-      <div class="flavor-selector">
-        <button class="flavor-btn active" data-flavor="Traditional">Traditional</button>
-        <button class="flavor-btn" data-flavor="Chilli">Chilli</button>
-        <button class="flavor-btn" data-flavor="Honey Glazed">Honey Glazed</button>
-      </div>
-      <div class="qty-wrapper">
-        <button class="qty-btn qty-minus">−</button>
-        <span class="qty-display">1</span>
-        <button class="qty-btn qty-plus">+</button>
-      </div>
-      <button class="btn-add-cart" onclick="addToCart(this)">🛒 &nbsp;Add to Cart</button>
-      <input type="hidden" class="p-name" value="The Snack Pack (150g)">
-      <input type="hidden" class="p-price" value="100">
-    </div>
+<div class="cart-float" id="floatCartBtn" style="position:fixed; bottom:2rem; right:2rem; background:var(--whatsapp); width:56px; height:56px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:300; box-shadow:0 0 20px rgba(37,211,102,0.5);"><span style="font-size:1.6rem;">🛒</span><span id="cartFloatBadge" style="position:absolute; top:-6px; right:-6px; background:var(--rust); border-radius:50%; width:22px; height:22px; font-size:0.7rem; display:flex; align-items:center; justify-content:center;">0</span></div>
 
-    <!-- 500g Family Batch — FEATURED -->
-    <div class="product-card featured reveal" style="transition-delay:0.2s">
-      <div class="featured-ribbon"></div>
-      <div class="featured-label">⭐ BEST VALUE</div>
-      <img class="p-photo" src="https://www.biltongboyz.com/wp-content/uploads/2018/12/sliced-spicy-biltong.jpg" alt="500g family biltong batch">
-      <div class="p-icon-wrap" style="display:none;"><span class="p-emoji">🧺</span></div>
-      <div class="p-weight">500g</div>
-      <div class="p-name-label">The Family Batch</div>
-      <div class="p-halaal">✓ Halaal Certified</div>
-      <div class="p-desc">The crowd-pleaser. Made for gatherings, Jumuah, and those moments you just need more.</div>
-      <div class="p-price">R300</div>
-      <div class="p-price-per">per batch</div>
-      <div class="flavor-label">Choose Flavor:</div>
-      <div class="flavor-selector">
-        <button class="flavor-btn active" data-flavor="Traditional">Traditional</button>
-        <button class="flavor-btn" data-flavor="Chilli">Chilli</button>
-        <button class="flavor-btn" data-flavor="Honey Glazed">Honey Glazed</button>
-      </div>
-      <div class="qty-wrapper">
-        <button class="qty-btn qty-minus">−</button>
-        <span class="qty-display">1</span>
-        <button class="qty-btn qty-plus">+</button>
-      </div>
-      <button class="btn-add-cart" onclick="addToCart(this)">🛒 &nbsp;Add to Cart</button>
-      <input type="hidden" class="p-name" value="The Family Batch (500g)">
-      <input type="hidden" class="p-price" value="300">
-    </div>
-
-    <!-- 1kg The Feast -->
-    <div class="product-card reveal" style="transition-delay:0.3s">
-      <img class="p-photo" src="https://boerie.co/cdn/shop/files/Chilli_Biltong_03_1024x1024@2x.jpg?v=1746100500" alt="1kg biltong feast">
-      <div class="p-icon-wrap" style="display:none;"><span class="p-emoji">🎁</span></div>
-      <div class="p-weight">1kg</div>
-      <div class="p-name-label">The Feast</div>
-      <div class="p-halaal">✓ Halaal Certified</div>
-      <div class="p-desc">Serious biltong for serious people. Stock the fridge. You'll thank yourself later.</div>
-      <div class="p-price">R550</div>
-      <div class="p-price-per">per order</div>
-      <div class="flavor-label">Choose Flavor:</div>
-      <div class="flavor-selector">
-        <button class="flavor-btn active" data-flavor="Traditional">Traditional</button>
-        <button class="flavor-btn" data-flavor="Chilli">Chilli</button>
-        <button class="flavor-btn" data-flavor="Honey Glazed">Honey Glazed</button>
-      </div>
-      <div class="qty-wrapper">
-        <button class="qty-btn qty-minus">−</button>
-        <span class="qty-display">1</span>
-        <button class="qty-btn qty-plus">+</button>
-      </div>
-      <button class="btn-add-cart" onclick="addToCart(this)">🛒 &nbsp;Add to Cart</button>
-      <input type="hidden" class="p-name" value="The Feast (1kg)">
-      <input type="hidden" class="p-price" value="550">
-    </div>
-
-  </div>
-</section>
-
-<!-- ══════ SERVICES ══════ -->
-<section id="services">
-  <div style="max-width:1100px;margin:0 auto;">
-    <div class="section-label reveal">Also Available</div>
-    <h2 class="section-title reveal">When Tech<br><em>Misbehaves</em></h2>
-  </div>
-  <div class="services-grid reveal">
-    <div class="service-item">
-      <span class="service-icon">💻</span>
-      <h3>Remote Troubleshooting</h3>
-      <p>Slow PC? Blue screens? I connect remotely to diagnose and fix software issues without you leaving the house.</p>
-    </div>
-    <div class="service-item">
-      <span class="service-icon">🌐</span>
-      <h3>Wi-Fi &amp; Networks</h3>
-      <p>Dead zones? Router setup? I'll help optimize your home network for seamless streaming and remote work.</p>
-    </div>
-    <div class="service-item">
-      <span class="service-icon">🛡️</span>
-      <h3>Security &amp; Maintenance</h3>
-      <p>Virus removal, antivirus installation, and system cleanup to make your machine run like new again.</p>
-    </div>
-    <div class="service-item">
-      <span class="service-icon">🖨️</span>
-      <h3>Peripherals Setup</h3>
-      <p>Printers, scanners, and devices that actually work when you need them. Every time.</p>
-    </div>
-  </div>
-</section>
-
-<!-- ══════ CINEMATIC BANNER ══════ -->
-<div style="position:relative;height:50vh;min-height:320px;overflow:hidden;z-index:10;">
-  <img src="https://media.istockphoto.com/id/452965315/photo/biltong.jpg?s=612x612&w=0&k=20&c=POTlYIb-yTiu4ZFkCiL2rDugtle335UrbMH18qgimgA=" 
-       alt="Biltong craftsmanship" 
-       style="width:100%;height:100%;object-fit:cover;filter:brightness(0.3) saturate(0.8);">
-  <div style="position:absolute;inset:0;background:linear-gradient(to right,rgba(8,2,0,0.85) 0%,rgba(8,2,0,0.3) 50%,rgba(8,2,0,0.6) 100%);display:flex;align-items:center;padding:0 8%;">
-    <div>
-      <div style="font-size:0.65rem;letter-spacing:0.5em;text-transform:uppercase;color:var(--amber);margin-bottom:1rem;">The Promise</div>
-      <h3 style="font-family:'Cormorant Garamond';font-size:clamp(2rem,5vw,4rem);font-weight:300;line-height:1.1;max-width:600px;">
-        Every piece is <em style="color:var(--gold);font-style:italic;">hand-cut</em>,<br>
-        every batch made <em style="color:var(--gold);font-style:italic;">fresh</em>.
-      </h3>
-      <p style="margin-top:1.5rem;font-size:0.9rem;opacity:0.55;max-width:400px;font-weight:300;line-height:1.7;">No machines. No shortcuts. Just traditional craft and a whole lot of love — right here in Stanger.</p>
-    </div>
-  </div>
-</div>
-
-<!-- ══════ HOW TO ORDER ══════ -->
-<section id="how-to-order">
-  <div style="max-width:1100px;margin:0 auto 5rem;">
-    <div class="section-label reveal" style="justify-content:center;">Process</div>
-    <h2 class="section-title reveal" style="text-align:center;">How to <em>Order</em></h2>
-  </div>
-  <div class="steps-grid reveal">
-    <div class="step">
-      <div class="step-num-big">01</div>
-      <div class="step-icon-circle">📋</div>
-      <h4>Select &amp; Mix</h4>
-      <p>Choose pack sizes, mix flavors, set quantities to your liking.</p>
-    </div>
-    <div class="step">
-      <div class="step-num-big">02</div>
-      <div class="step-icon-circle">🛒</div>
-      <h4>Build Cart</h4>
-      <p>Add everything to your virtual cart — it all adds up automatically.</p>
-    </div>
-    <div class="step">
-      <div class="step-num-big">03</div>
-      <div class="step-icon-circle">📱</div>
-      <h4>WhatsApp Order</h4>
-      <p>Send your full list to Khatija in one click — no typing needed.</p>
-    </div>
-    <div class="step">
-      <div class="step-num-big">04</div>
-      <div class="step-icon-circle">🚀</div>
-      <h4>Collect or Deliver</h4>
-      <p>Pay EFT, collect in Stanger, or get it delivered for only R30.</p>
-    </div>
-  </div>
-</section>
-
-<!-- ══════ CONTACT ══════ -->
-<section id="contact">
-  <div class="contact-inner reveal">
-    <div class="section-label" style="justify-content:center;">Get In Touch</div>
-    <h2 class="section-title" style="text-align:center;">Ready to Taste<br><em>The Difference?</em></h2>
-
-    <div class="contact-card">
-      <span class="contact-avatar">👩🏻‍💻</span>
-      <h3 class="contact-name">Khatija</h3>
-      <span class="contact-role">Biltong Maker · Tech Support Specialist · Stanger, KZN</span>
-      <a href="https://wa.me/27636402722" class="contact-phone">063 640 2722</a>
-      <div class="contact-location">📍 Based in Stanger, KZN · WhatsApp Preferred</div>
-      <a href="https://wa.me/27636402722" target="_blank" class="btn btn-primary" style="width:100%;max-width:320px;">
-        💬 &nbsp;Chat on WhatsApp
-      </a>
-    </div>
-  </div>
-</section>
-
-<!-- FOOTER -->
-<footer>
-  <span class="footer-logo">Biltong &amp; Bytes</span>
-  <p>© 2025 Handmade with love in Stanger, KZN.</p>
-  <p style="margin-top:0.5rem;font-size:0.72rem;">100% Halaal Certified Beef · Delivery within Stanger only (R30) · Prices subject to change based on meat availability.</p>
-</footer>
-
-<!-- FLOATING CART -->
-<div class="cart-float" onclick="toggleCart()">
-  <svg viewBox="0 0 24 24"><path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/></svg>
-  <div class="cart-badge" id="cart-count-float">0</div>
-</div>
-
-<!-- CART MODAL -->
-<div class="cart-overlay" id="cart-modal" onclick="closeCart(event)">
-  <div class="cart-panel">
-    <div class="cart-head">
-      <h3>Your Order</h3>
-      <button class="close-cart" onclick="toggleCart()">×</button>
-    </div>
-
-    <div class="cart-items" id="cart-items-container">
-      <div class="empty-msg">Your cart is empty — add some biltong! 🥩</div>
-    </div>
-
-    <div id="delivery-section" style="display:none;">
-      <div class="delivery-wrap">
-        <h4>🚗 Delivery Option</h4>
-        <div class="delivery-toggle">
-          <button class="delivery-opt selected" id="opt-collect" onclick="setDelivery('collect')">📦 Collect</button>
-          <button class="delivery-opt" id="opt-deliver" onclick="setDelivery('deliver')">🛵 Deliver (R30)</button>
-        </div>
-        <div class="delivery-note">⚠️ Delivery within Stanger only</div>
-        <div class="delivery-address-wrap" id="address-wrap">
-          <label>Your Delivery Address</label>
-          <textarea id="delivery-address" rows="3" placeholder="e.g. 12 King St, Stanger, 4450"></textarea>
-          <div class="delivery-fee-note">🛵 +R30 delivery fee added</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="cart-foot">
-      <div class="cart-row" id="subtotal-row" style="display:none;">
-        <span>Subtotal:</span><span id="cart-subtotal-price">R0</span>
-      </div>
-      <div class="cart-row" id="delivery-fee-row" style="display:none;">
-        <span>Delivery fee:</span><span style="color:var(--whatsapp);">+R30</span>
-      </div>
-      <div class="cart-total">
-        <span>Total:</span>
-        <span id="cart-total-price" style="color:var(--gold);">R0</span>
-      </div>
-      <button class="btn-checkout" onclick="checkoutWhatsApp()">
-        📱 &nbsp;Send Order via WhatsApp
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- TOAST -->
-<div class="toast" id="toast">✅ &nbsp;Added to cart!</div>
+<div class="cart-overlay" id="cartModal"><div class="cart-panel"><div class="cart-head" style="padding:1rem; display:flex; justify-content:space-between;"><h3>YOUR BILTONG 🥩</h3><button id="closeCartBtn" style="background:none; border:none; color:white; font-size:1.8rem; cursor:pointer;">✕</button></div><div id="cartItemsList" class="cart-items"></div><div class="delivery-wrap"><div class="delivery-toggle"><button class="delivery-opt selected" data-delivery="collect">📦 COLLECT</button><button class="delivery-opt" data-delivery="deliver">🛵 DELIVER (R30)</button></div><div id="addressField" style="display:none;"><textarea id="deliveryAddress" placeholder="Your Stanger address..." rows="2" style="width:100%; background:#1E0A02; color:white; border:1px solid var(--gold); padding:0.5rem;"></textarea></div></div><div class="cart-foot" style="padding:1rem;"><div class="total-line" style="display:flex; justify-content:space-between; font-size:1.4rem;"><span>TOTAL:</span><span id="cartTotalDisplay" style="color:var(--gold);">R0</span></div><button id="whatsappCheckoutBtn" class="btn-add-cart" style="margin-top:1rem;">📱 SEND ORDER VIA WHATSAPP</button></div></div></div>
+<div class="toast" id="toastMsg">✨ Added to cart!</div>
 
 <script>
-// ═══ CURSOR ═══
-const cursor = document.getElementById('cursor');
-const cursorRing = document.getElementById('cursorRing');
-let mx = -100, my = -100, rx = -100, ry = -100;
+// PRODUCT DATA
+const products = [
+  { id:0, name:"The Taster (50g)", weight:"50g", price:35, img:"https://t4.ftcdn.net/jpg/00/41/14/91/360_F_41149170_hkxBmCVDZgbokGTiw5MjRV0nMfOzLv3t.jpg" },
+  { id:1, name:"The Snack Pack (150g)", weight:"150g", price:100, img:"https://img.freepik.com/free-photo/sliced-stick-biltong-snack-rosemary-seasoning-wooden-surface_181624-12920.jpg" },
+  { id:2, name:"The Family Batch (500g)", weight:"500g", price:300, img:"https://www.biltongboyz.com/wp-content/uploads/2018/12/sliced-spicy-biltong.jpg", featured:true },
+  { id:3, name:"The Feast (1kg)", weight:"1kg", price:550, img:"https://boerie.co/cdn/shop/files/Chilli_Biltong_03_1024x1024@2x.jpg?v=1746100500" }
+];
+const flavors = ["Traditional", "Chilli", "Honey Glazed"];
 
-document.addEventListener('mousemove', e => {
-  mx = e.clientX; my = e.clientY;
-  cursor.style.left = mx - 6 + 'px';
-  cursor.style.top = my - 6 + 'px';
-});
-function animRing() {
-  rx += (mx - rx) * 0.12;
-  ry += (my - ry) *.12;
-  cursorRing.style.left = rx - 20 + 'px';
-  cursorRing.style.top = ry - 20 + 'px';
-  requestAnimationFrame(animRing);
-}
-animRing();
-
-document.querySelectorAll('a,button,.flavor-btn,.qty-btn,.btn-add-cart,.delivery-opt,.cart-float').forEach(el => {
-  el.addEventListener('mouseenter', () => cursorRing.classList.add('expand'));
-  el.addEventListener('mouseleave', () => cursorRing.classList.remove('expand'));
-});
-
-// ═══ PARTICLE SYSTEM ═══
-const canvas = document.getElementById('smoke-canvas');
-const ctx = canvas.getContext('2d');
-let W, H, particles = [], embers = [];
-
-function resize() {
-  W = canvas.width = window.innerWidth;
-  H = canvas.height = window.innerHeight;
-}
-resize();
-window.addEventListener('resize', resize);
-
-// Smoke particles
-class Particle {
-  constructor() { this.reset(true); }
-  reset(initial) {
-    this.x = W * 0.5 + (Math.random()-0.5)*W*0.6;
-    this.y = initial ? Math.random()*H : H + 20;
-    this.vx = (Math.random()-0.5)*0.4;
-    this.vy = -(Math.random()*0.6+0.2);
-    this.r = Math.random()*70+40;
-    this.alpha = 0;
-    this.maxAlpha = Math.random()*0.045+0.01;
-    this.life = 0;
-    this.maxLife = Math.random()*300+200;
-    this.color = `hsl(${Math.random()>0.6?15:35},${Math.random()>0.7?60:30}%,${15+Math.random()*10}%)`;
-  }
-  update() {
-    this.life++;
-    if(this.life < 60) this.alpha = (this.life/60)*this.maxAlpha;
-    else if(this.life > this.maxLife-60) this.alpha = ((this.maxLife-this.life)/60)*this.maxAlpha;
-    else this.alpha = this.maxAlpha;
-    this.x += this.vx;
-    this.y += this.vy;
-    this.vx += (Math.random()-0.5)*0.05;
-    if(this.life > this.maxLife) this.reset(false);
-  }
-  draw() {
-    ctx.save();
-    ctx.globalAlpha = this.alpha;
-    const g = ctx.createRadialGradient(this.x,this.y,0,this.x,this.y,this.r);
-    g.addColorStop(0,this.color);
-    g.addColorStop(1,'transparent');
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(this.x,this.y,this.r,0,Math.PI*2);
-    ctx.fill();
-    ctx.restore();
-  }
-}
-
-// Ember particles
-class Ember {
-  constructor() { this.reset(true); }
-  reset(initial) {
-    this.x = W*0.5 + (Math.random()-0.5)*200;
-    this.y = initial ? Math.random()*H : H+10;
-    this.vx = (Math.random()-0.5)*1.5;
-    this.vy = -(Math.random()*2+0.8);
-    this.r = Math.random()*2.5+0.5;
-    this.alpha = 0;
-    this.life = 0;
-    this.maxLife = Math.random()*200+100;
-    this.hue = Math.random()>0.5?45:15;
-  }
-  update() {
-    this.life++;
-    const p = this.life/this.maxLife;
-    this.alpha = Math.sin(p*Math.PI)*0.9;
-    this.x += this.vx;
-    this.y += this.vy;
-    this.vx += (Math.random()-0.5)*0.1;
-    this.vy += (Math.random()-0.5)*0.05;
-    if(this.life > this.maxLife) this.reset(false);
-  }
-  draw() {
-    ctx.save();
-    ctx.globalAlpha = this.alpha;
-    ctx.shadowBlur = 8;
-    ctx.shadowColor = `hsl(${this.hue},100%,60%)`;
-    ctx.fillStyle = `hsl(${this.hue},100%,70%)`;
-    ctx.beginPath();
-    ctx.arc(this.x,this.y,this.r,0,Math.PI*2);
-    ctx.fill();
-    ctx.restore();
-  }
-}
-
-for(let i=0;i<35;i++) particles.push(new Particle());
-for(let i=0;i<50;i++) embers.push(new Ember());
-
-function animCanvas() {
-  ctx.clearRect(0,0,W,H);
-  particles.forEach(p => { p.update(); p.draw(); });
-  embers.forEach(e => { e.update(); e.draw(); });
-  requestAnimationFrame(animCanvas);
-}
-animCanvas();
-
-// ═══ PARALLAX HERO ═══
-window.addEventListener('scroll', () => {
-  const sy = window.scrollY;
-  const heroContent = document.getElementById('heroContent');
-  if(heroContent && sy < window.innerHeight) {
-    heroContent.style.transform = `translateY(${sy*0.35}px)`;
-    heroContent.style.opacity = 1 - sy/700;
-  }
-
-  // nav
-  document.getElementById('navbar').classList.toggle('scrolled', sy > 50);
-});
-
-// ═══ MOUSE 3D TILT (story card) ═══
-const card3d = document.querySelector('.story-card-3d');
-if(card3d) {
-  const wrap = card3d.parentElement;
-  wrap.addEventListener('mousemove', e => {
-    const rect = wrap.getBoundingClientRect();
-    const cx = rect.left+rect.width/2, cy = rect.top+rect.height/2;
-    const dx = (e.clientX-cx)/rect.width*18;
-    const dy = -(e.clientY-cy)/rect.height*12;
-    card3d.style.transform = `rotateY(${dx}deg) rotateX(${dy}deg)`;
-  });
-  wrap.addEventListener('mouseleave', () => {
-    card3d.style.transform = 'rotateY(-8deg) rotateX(5deg)';
-  });
-}
-
-// ═══ FLAVOR BUTTONS ═══
-document.querySelectorAll('.flavor-btn').forEach(btn => {
-  btn.addEventListener('click', e => {
-    e.target.closest('.product-card').querySelectorAll('.flavor-btn').forEach(b => b.classList.remove('active'));
-    e.target.classList.add('active');
-  });
-});
-
-// ═══ QUANTITY ═══
-document.querySelectorAll('.qty-minus').forEach(btn => {
-  btn.addEventListener('click', e => {
-    const d = e.target.closest('.qty-wrapper').querySelector('.qty-display');
-    if(parseInt(d.innerText) > 1) d.innerText = parseInt(d.innerText)-1;
-  });
-});
-document.querySelectorAll('.qty-plus').forEach(btn => {
-  btn.addEventListener('click', e => {
-    const d = e.target.closest('.qty-wrapper').querySelector('.qty-display');
-    d.innerText = parseInt(d.innerText)+1;
-  });
-});
-
-// ═══ CART ═══
 let cart = [];
-let deliveryMode = 'collect';
+let deliveryMode = "collect";
+let currentAddress = "";
 
-function addToCart(btn) {
-  const card = btn.closest('.product-card');
-  const name = card.querySelector('.p-name').value;
-  const price = parseInt(card.querySelector('.p-price').value);
-  const flavor = card.querySelector('.flavor-btn.active').getAttribute('data-flavor');
-  const qty = parseInt(card.querySelector('.qty-display').innerText);
-  const existing = cart.find(i => i.name===name && i.flavor===flavor);
-  if(existing) existing.qty += qty;
-  else cart.push({name,flavor,price,qty});
-  updateCartUI();
-  showToast();
-  card.querySelector('.qty-display').innerText='1';
+// render product grid
+function renderProducts() {
+  const container = document.getElementById("productsGrid");
+  container.innerHTML = products.map(prod => `
+    <div class="product-card" data-product-id="${prod.id}">
+      <img class="p-photo" src="${prod.img}" alt="${prod.name}">
+      <div class="p-weight">${prod.weight}</div>
+      <div class="p-name-label">${prod.name}</div>
+      <div class="p-price">R${prod.price}</div>
+      <div class="flavor-selector" data-pid="${prod.id}">
+        ${flavors.map((f,idx) => `<button class="flavor-btn ${idx===0?'active':''}" data-flavor="${f}">${f}</button>`).join('')}
+      </div>
+      <div class="qty-wrapper">
+        <button class="qty-btn minus">−</button>
+        <span class="qty-display">1</span>
+        <button class="qty-btn plus">+</button>
+      </div>
+      <button class="btn-add-cart add-to-cart">➕ ADD TO CART</button>
+      <input type="hidden" class="p-name-field" value="${prod.name}">
+      <input type="hidden" class="p-price-field" value="${prod.price}">
+    </div>
+  `).join('');
+
+  // attach events after render
+  document.querySelectorAll('.product-card').forEach(card => {
+    const minusBtn = card.querySelector('.minus');
+    const plusBtn = card.querySelector('.plus');
+    const qtySpan = card.querySelector('.qty-display');
+    const addBtn = card.querySelector('.add-to-cart');
+    const flavorBtns = card.querySelectorAll('.flavor-btn');
+    const nameVal = card.querySelector('.p-name-field').value;
+    const priceVal = parseInt(card.querySelector('.p-price-field').value);
+
+    minusBtn?.addEventListener('click', () => { let q = parseInt(qtySpan.innerText); if(q>1) qtySpan.innerText = q-1; });
+    plusBtn?.addEventListener('click', () => { let q = parseInt(qtySpan.innerText); qtySpan.innerText = q+1; });
+    
+    let selectedFlavor = "Traditional";
+    flavorBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        flavorBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedFlavor = btn.getAttribute('data-flavor');
+        e.stopPropagation();
+      });
+    });
+
+    addBtn?.addEventListener('click', () => {
+      const qty = parseInt(qtySpan.innerText);
+      const flavor = card.querySelector('.flavor-btn.active')?.getAttribute('data-flavor') || "Traditional";
+      const existingIdx = cart.findIndex(i => i.name === nameVal && i.flavor === flavor);
+      if(existingIdx !== -1) cart[existingIdx].qty += qty;
+      else cart.push({ name: nameVal, flavor, price: priceVal, qty });
+      updateCartUI();
+      showToastMessage();
+    });
+  });
 }
 
-function removeFromCart(i) {
-  cart.splice(i,1);
-  updateCartUI();
+function updateCartUI() {
+  const totalItems = cart.reduce((acc,i)=>acc+i.qty,0);
+  document.getElementById('cartNavBadge').innerText = totalItems;
+  document.getElementById('cartFloatBadge').innerText = totalItems;
+  const container = document.getElementById('cartItemsList');
+  if(cart.length === 0) { container.innerHTML = '<div style="text-align:center; padding:2rem;">Your cart is empty 🥩</div>'; }
+  else {
+    container.innerHTML = cart.map((item, idx) => `
+      <div style="display:flex; justify-content:space-between; margin-bottom:1rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:0.8rem;">
+        <div><strong>${item.qty}x ${item.name}</strong><br><span style="font-size:0.8rem; color:var(--amber);">${item.flavor}</span></div>
+        <div>R${item.price * item.qty} <button class="remove-item" data-idx="${idx}" style="background:none; border:none; color:var(--rust); margin-left:10px; cursor:pointer;">🗑️</button></div>
+      </div>
+    `).join('');
+    document.querySelectorAll('.remove-item').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const idx = parseInt(btn.getAttribute('data-idx'));
+        cart.splice(idx,1);
+        updateCartUI();
+        computeTotal();
+      });
+    });
+  }
+  computeTotal();
+}
+
+function computeTotal() {
+  const sub = cart.reduce((s,i)=>s+(i.price*i.qty),0);
+  const fee = deliveryMode === "deliver" ? 30 : 0;
+  document.getElementById('cartTotalDisplay').innerText = `R${sub+fee}`;
 }
 
 function setDelivery(mode) {
   deliveryMode = mode;
-  document.getElementById('opt-collect').classList.toggle('selected',mode==='collect');
-  document.getElementById('opt-deliver').classList.toggle('selected',mode==='deliver');
-  document.getElementById('address-wrap').classList.toggle('show',mode==='deliver');
-  document.getElementById('delivery-fee-row').style.display = mode==='deliver'?'flex':'none';
-  document.getElementById('subtotal-row').style.display = mode==='deliver'?'flex':'none';
-  updateTotals();
+  document.querySelectorAll('.delivery-opt').forEach(opt => {
+    if(opt.getAttribute('data-delivery') === mode) opt.classList.add('selected');
+    else opt.classList.remove('selected');
+  });
+  document.getElementById('addressField').style.display = mode === "deliver" ? "block" : "none";
+  computeTotal();
 }
 
-function updateTotals() {
-  const sub = cart.reduce((s,i)=>s+i.price*i.qty,0);
-  const fee = deliveryMode==='deliver'?30:0;
-  document.getElementById('cart-subtotal-price').innerText='R'+sub;
-  document.getElementById('cart-total-price').innerText='R'+(sub+fee);
+function showToastMessage() {
+  const toast = document.getElementById('toastMsg');
+  toast.classList.add('show');
+  setTimeout(()=> toast.classList.remove('show'), 1800);
 }
 
-function updateCartUI() {
-  const con = document.getElementById('cart-items-container');
-  const total = cart.reduce((s,i)=>s+i.qty,0);
-  document.getElementById('cart-count').innerText = total;
-  document.getElementById('cart-count-float').innerText = total;
-  if(cart.length===0) {
-    con.innerHTML='<div class="empty-msg">Your cart is empty — add some biltong! 🥩</div>';
-    document.getElementById('delivery-section').style.display='none';
-  } else {
-    con.innerHTML = cart.map((item,idx)=>`
-      <div class="cart-item">
-        <div class="item-info">
-          <h4>${item.qty}× ${item.name}</h4>
-          <span>${item.flavor}</span>
-        </div>
-        <div class="item-right">
-          <div class="item-price">R${item.price*item.qty}</div>
-          <button class="remove-btn" onclick="removeFromCart(${idx})">🗑</button>
-        </div>
-      </div>
-    `).join('');
-    document.getElementById('delivery-section').style.display='block';
-  }
-  updateTotals();
-}
+function openCart() { document.getElementById('cartModal').classList.add('open'); }
+function closeCart() { document.getElementById('cartModal').classList.remove('open'); }
 
-function toggleCart() {
-  document.getElementById('cart-modal').classList.toggle('open');
-}
-
-function closeCart(e) {
-  if(e.target.id==='cart-modal') toggleCart();
-}
-
-function showToast() {
-  const t = document.getElementById('toast');
-  t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'),2200);
-}
-
-function checkoutWhatsApp() {
-  if(!cart.length) return;
-  const addr = document.getElementById('delivery-address').value.trim();
-  if(deliveryMode==='deliver' && !addr) {
-    document.getElementById('delivery-address').style.borderColor='var(--rust)';
-    document.getElementById('delivery-address').focus();
-    return;
-  }
-  let msg = "Hi Khatija! I'd like to place an order:%0A%0A";
+function sendWhatsAppOrder() {
+  if(cart.length === 0) { alert("Cart empty!"); return; }
+  let msg = "🥩 *BILTONG ORDER* 🥩%0A%0A";
   let sub = 0;
-  cart.forEach(i => {
-    const lt = i.price*i.qty;
-    sub += lt;
-    msg += `• ${i.qty}x ${i.name} (${i.flavor}) - R${lt}%0A`;
+  cart.forEach(item => {
+    let lineTotal = item.price * item.qty;
+    sub += lineTotal;
+    msg += `• ${item.qty}x ${item.name} (${item.flavor}) - R${lineTotal}%0A`;
   });
-  msg += `%0ASubtotal: R${sub}`;
-  if(deliveryMode==='deliver') {
-    msg += `%0ADelivery fee: R30%0A*TOTAL: R${sub+30}*%0A%0A📍 *Delivery Address:*%0A${encodeURIComponent(addr)}`;
+  msg += `%0A📦 Subtotal: R${sub}`;
+  if(deliveryMode === "deliver") {
+    let addr = document.getElementById('deliveryAddress')?.value.trim() || "";
+    if(!addr) { alert("Please enter your Stanger delivery address."); return; }
+    msg += `%0A🛵 Delivery fee: R30%0A*TOTAL: R${sub+30}*%0A📍 Address: ${encodeURIComponent(addr)}`;
   } else {
-    msg += `%0A*TOTAL: R${sub}*%0A%0A🏠 I will collect in Stanger.`;
+    msg += `%0A✅ *TOTAL: R${sub}*%0A📍 Collection in Stanger`;
   }
-  msg += "%0A%0APlease let me know payment details. JazakAllah Khair!";
-  window.open(`https://wa.me/27636402722?text=${msg}`,'_blank');
+  msg += "%0A%0AThank you, Khatija! 🙌";
+  window.open(`https://wa.me/27636402722?text=${msg}`, '_blank');
 }
 
-// ═══ SCROLL REVEAL ═══
-const revealObs = new IntersectionObserver((entries) => {
-  entries.forEach(e => {
-    if(e.isIntersecting) {
-      e.target.classList.add('visible');
-      revealObs.unobserve(e.target);
-    }
-  });
-}, {threshold:0.12});
+// Cursor + Canvas
+const dot = document.getElementById('cursorDot'), ring = document.getElementById('cursorRing');
+let mouseX=0,mouseY=0,ringX=0,ringY=0;
+document.addEventListener('mousemove', (e)=>{ mouseX=e.clientX; mouseY=e.clientY; dot.style.transform=`translate(${mouseX-4}px, ${mouseY-4}px)`; });
+function animateRing(){ ringX += (mouseX - ringX) * 0.12; ringY += (mouseY - ringY) * 0.12; ring.style.transform=`translate(${ringX-21}px, ${ringY-21}px)`; requestAnimationFrame(animateRing); } animateRing();
+document.querySelectorAll('button, a, .flavor-btn, .qty-btn, .btn-add-cart').forEach(el => el.addEventListener('mouseenter',()=>ring.classList.add('expand')));
+document.querySelectorAll('button, a, .flavor-btn, .qty-btn, .btn-add-cart').forEach(el => el.addEventListener('mouseleave',()=>ring.classList.remove('expand')));
 
-document.querySelectorAll('.reveal,.reveal-left,.reveal-right').forEach((el,i) => {
-  if(!el.style.transitionDelay) el.style.transitionDelay = (i%6)*0.08+'s';
-  revealObs.observe(el);
+const canvasEl = document.getElementById('cinema-canvas');
+const ctxCanvas = canvasEl.getContext('2d');
+let w,h;
+function resizeCanvas() { w = canvasEl.width = window.innerWidth; h = canvasEl.height = window.innerHeight; }
+resizeCanvas(); window.addEventListener('resize', resizeCanvas);
+
+let particles = [];
+for(let i=0;i<40;i++) particles.push({x:Math.random()*w, y:Math.random()*h, radius:30+Math.random()*70, alpha:Math.random()*0.03, vx:(Math.random()-0.5)*0.2, vy:-(Math.random()*0.4+0.1)});
+function animateSmoke() { ctxCanvas.clearRect(0,0,w,h);
+  particles.forEach(p => { p.x+=p.vx; p.y+=p.vy; if(p.y<-100) p.y=h+50; if(p.x< -100) p.x=w+50; if(p.x>w+100) p.x=-100;
+    ctxCanvas.globalAlpha = p.alpha * 0.5;
+    let grad = ctxCanvas.createRadialGradient(p.x,p.y,0, p.x,p.y,p.radius);
+    grad.addColorStop(0, `rgba(200,100,30,0.05)`); grad.addColorStop(1, `rgba(0,0,0,0)`);
+    ctxCanvas.fillStyle=grad; ctxCanvas.beginPath(); ctxCanvas.arc(p.x,p.y,p.radius,0,Math.PI*2); ctxCanvas.fill();
+  }); requestAnimationFrame(animateSmoke);
+} animateSmoke();
+
+// Nav scroll
+window.addEventListener('scroll',()=> document.getElementById('navbar').classList.toggle('scrolled', window.scrollY>50));
+
+// Intersection Observer
+const reveals = document.querySelectorAll('.reveal');
+const observer = new IntersectionObserver((entries)=>entries.forEach(e=>e.isIntersecting&&e.target.classList.add('visible')),{threshold:0.15});
+reveals.forEach(r=>observer.observe(r));
+
+// Event listeners after DOM
+document.getElementById('cartOpenBtn')?.addEventListener('click', openCart);
+document.getElementById('floatCartBtn')?.addEventListener('click', openCart);
+document.getElementById('closeCartBtn')?.addEventListener('click', closeCart);
+document.getElementById('whatsappCheckoutBtn')?.addEventListener('click', sendWhatsAppOrder);
+document.querySelectorAll('.delivery-opt').forEach(opt => {
+  opt.addEventListener('click', (e) => { setDelivery(opt.getAttribute('data-delivery')); });
 });
 
-// ═══ PRODUCT CARD 3D TILT ═══
-document.querySelectorAll('.product-card').forEach(card => {
-  card.addEventListener('mousemove', e => {
-    const r = card.getBoundingClientRect();
-    const x = (e.clientX-r.left)/r.width-0.5;
-    const y = (e.clientY-r.top)/r.height-0.5;
-    card.style.transform = `perspective(600px) rotateY(${x*12}deg) rotateX(${-y*8}deg) translateY(-8px)`;
-  });
-  card.addEventListener('mouseleave', () => {
-    card.style.transform = '';
-  });
-});
+renderProducts();
+updateCartUI();
+setDelivery("collect");
 </script>
 </body>
 </html>
