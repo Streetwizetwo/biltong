@@ -439,7 +439,7 @@ function ProductCard({ product, index, onAdd }: { product: (typeof PRODUCTS)[0];
 
   const isPopular = product.id === 2; // Family Batch is the most popular
   const isBestValue = product.id === 3; // 1kg is best value per gram
-  const pricePerGram = (product.price / parseInt(product.weight)).toFixed(1);
+  const pricePerGram = (product.price / product.grams).toFixed(2);
 
   const handleAdd = () => {
     addItem({
