@@ -104,6 +104,7 @@ export const useCartStore = create<CartStore>()(
           items: [],
           currentOrderId: null,
           pendingIkhokhaOrder: null,
+          deliveryAddress: "",
         }),
 
       setDeliveryMode: (mode) => set({ deliveryMode: mode }),

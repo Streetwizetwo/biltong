@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
-import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
+import {
+  motion,
+  AnimatePresence,
+  useScroll,
+  useTransform,
+  useMotionValue,
+  useDragControls,
+} from "framer-motion";
 import {
   ShoppingCart,
   Menu,
@@ -10,27 +17,29 @@ import {
   Minus,
   Trash2,
   MapPin,
-  Phone,
-  ChevronRight,
   Flame,
   Leaf,
   Droplets,
-  Star,
-  Clock,
   Truck,
   CreditCard,
   MessageCircle,
   Check,
-  ArrowRight,
-  Sparkles,
-  Loader2,
   ChevronUp,
   Package,
-  Heart,
+  Sparkles,
+  Loader2,
+  BadgeCheck,
+  PartyPopper,
+  ArrowDown,
+  CircleDot,
+  CircleCheck,
+  Circle,
+  Zap,
+  Crown,
+  TrendingUp,
 } from "lucide-react";
 import {
   useCartStore,
-  type CartItem,
   type DeliveryMode,
 } from "@/lib/store";
 import {
@@ -68,19 +77,64 @@ const scaleIn = {
 
 const staggerContainer = {
   hidden: {},
-  visible: {
-    transition: { staggerChildren: 0.08 },
-  },
+  visible: { transition: { staggerChildren: 0.08 } },
 };
 
 const cartItemVariants = {
   enter: { opacity: 0, x: 60, scale: 0.95 },
   center: { opacity: 1, x: 0, scale: 1 },
-  exit: { opacity: 0, x: -60, scale: 0.95 },
+  exit: { opacity: 0, x: -80, scale: 0.9, transition: { duration: 0.25 } },
 };
 
 // ============================================
-// SMOKE CANVAS COMPONENT
+// CONFETTI PARTICLE SYSTEM
+// ============================================
+function Confetti({ confettiKey }: { confettiKey: number }) {
+  const [particles, setParticles] = useState<
+    { id: number; x: number; y: number; color: string; size: number; rotation: number }[]
+  >([]);
+
+  useEffect(() => {
+    if (confettiKey === 0) return;
+    const colors = ["#E5B83C", "#E07A2C", "#25D366", "#B23A1A", "#F8E5B0", "#2E7D32"];
+    const newParticles = Array.from({ length: 25 }, (_, i) => ({
+      id: Date.now() + i,
+      x: 30 + Math.random() * 40,
+      y: 50 + Math.random() * 20,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      size: 6 + Math.random() * 8,
+      rotation: Math.random() * 360,
+    }));
+    setParticles(newParticles);
+    const timer = setTimeout(() => setParticles([]), 1500);
+    return () => clearTimeout(timer);
+  }, [confettiKey]);
+
+  return (
+    <div className="fixed inset-0 pointer-events-none z-[9999] overflow-hidden">
+      <AnimatePresence>
+        {particles.map((p) => (
+          <motion.div
+            key={p.id}
+            initial={{ x: `${p.x}vw`, y: `${p.y}vh`, rotate: p.rotation, opacity: 1 }}
+            animate={{ y: "110vh", rotate: p.rotation + 720, opacity: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1.2 + Math.random() * 0.5, ease: "easeIn" }}
+            className="absolute rounded-sm"
+            style={{
+              width: p.size,
+              height: p.size,
+              backgroundColor: p.color,
+            }}
+          />
+        ))}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ============================================
+// SMOKE CANVAS
 // ============================================
 function SmokeCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -121,7 +175,6 @@ function SmokeCanvas() {
       });
       animationId = requestAnimationFrame(animate);
     };
-
     animate();
 
     const handleResize = () => {
@@ -135,22 +188,13 @@ function SmokeCanvas() {
     };
   }, []);
 
-  return (
-    <canvas
-      ref={canvasRef}
-      className="fixed inset-0 pointer-events-none z-[1] opacity-60"
-    />
-  );
+  return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-[1] opacity-60" />;
 }
 
 // ============================================
 // NAVBAR
 // ============================================
-function Navbar({
-  onCartOpen,
-}: {
-  onCartOpen: () => void;
-}) {
+function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const totalItems = useCartStore((s) => s.totalItems());
@@ -162,10 +206,10 @@ function Navbar({
   }, []);
 
   const navLinks = [
-    { href: "#products", label: "MENU" },
-    { href: "#story", label: "STORY" },
-    { href: "#how-to-order", label: "ORDER" },
-    { href: "#contact", label: "CONTACT" },
+    { href: "#products", label: "MENU", icon: Package },
+    { href: "#story", label: "STORY", icon: Flame },
+    { href: "#how-to-order", label: "ORDER", icon: CreditCard },
+    { href: "#contact", label: "CONTACT", icon: MessageCircle },
   ];
 
   return (
@@ -176,54 +220,55 @@ function Navbar({
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
         className={`fixed top-0 left-0 right-0 z-[500] flex justify-between items-center transition-all duration-400 ${
           scrolled
-            ? "py-3 px-5 bg-[#0A0301]/95 backdrop-blur-xl border-b border-[#E5B83C]/20"
-            : "py-5 px-5 md:px-[6%]"
+            ? "py-3 px-4 bg-[#0A0301]/95 backdrop-blur-xl border-b border-[#E5B83C]/20 shadow-lg shadow-black/30"
+            : "py-4 px-4 md:px-[6%]"
         }`}
       >
-        <a
-          href="#"
-          className="font-['Bebas_Neue'] text-xl md:text-[1.8rem] tracking-[0.2em] text-[#E5B83C] no-underline"
-        >
+        <a href="#" className="font-['Bebas_Neue'] text-xl md:text-[1.8rem] tracking-[0.2em] text-[#E5B83C] no-underline flex items-center gap-2">
+          <span className="text-lg">🥩</span>
           BILTONG<span className="text-[#E07A2C]">&amp;</span>BYTES
         </a>
 
         <ul className="hidden md:flex gap-10 list-none">
           {navLinks.map((link) => (
             <li key={link.href}>
-              <a
-                href={link.href}
-                className="text-[0.7rem] font-semibold tracking-[0.25em] uppercase text-[#FEF3DF]/60 no-underline transition-colors hover:text-[#E5B83C]"
-              >
+              <a href={link.href} className="text-[0.7rem] font-semibold tracking-[0.25em] uppercase text-[#FEF3DF]/60 no-underline transition-colors hover:text-[#E5B83C]">
                 {link.label}
               </a>
             </li>
           ))}
         </ul>
 
-        <div className="flex items-center gap-3">
-          <button
+        <div className="flex items-center gap-2">
+          <motion.button
+            whileTap={{ scale: 0.9 }}
             onClick={onCartOpen}
-            className="relative border border-[#E5B83C]/40 text-[#E5B83C] px-3 py-2 md:px-4 font-['Syne'] font-bold text-[0.7rem] tracking-[0.15em] cursor-pointer transition-all hover:bg-[#E5B83C]/10 hover:border-[#E5B83C] rounded-lg"
+            className="relative border border-[#E5B83C]/40 text-[#E5B83C] px-3 py-2 md:px-4 font-bold text-[0.7rem] tracking-[0.15em] cursor-pointer transition-all hover:bg-[#E5B83C]/10 hover:border-[#E5B83C] rounded-xl flex items-center gap-1.5"
           >
-            <ShoppingCart className="inline w-4 h-4 mr-1" />
+            <ShoppingCart className="w-4 h-4" />
             <span className="hidden md:inline">CART</span>
-            {totalItems > 0 && (
-              <motion.span
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className="absolute -top-2 -right-2 bg-[#B23A1A] text-white w-5 h-5 rounded-full text-[0.6rem] flex items-center justify-center font-bold"
-              >
-                {totalItems}
-              </motion.span>
-            )}
-          </button>
+            <AnimatePresence mode="wait">
+              {totalItems > 0 && (
+                <motion.span
+                  key={totalItems}
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  exit={{ scale: 0 }}
+                  className="absolute -top-2 -right-2 bg-[#B23A1A] text-white w-5 h-5 rounded-full text-[0.6rem] flex items-center justify-center font-bold"
+                >
+                  {totalItems}
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </motion.button>
 
-          <button
+          <motion.button
+            whileTap={{ scale: 0.9 }}
             onClick={() => setMobileOpen(true)}
-            className="md:hidden border border-[#E5B83C]/40 text-[#E5B83C] p-2 cursor-pointer rounded-lg"
+            className="md:hidden border border-[#E5B83C]/40 text-[#E5B83C] p-2 cursor-pointer rounded-xl"
           >
             <Menu className="w-5 h-5" />
-          </button>
+          </motion.button>
         </div>
       </motion.nav>
 
@@ -231,49 +276,38 @@ function Navbar({
       <AnimatePresence>
         {mobileOpen && (
           <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/70 z-[599] backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/70 z-[599] backdrop-blur-sm"
-              onClick={() => setMobileOpen(false)}
-            />
-            <motion.div
-              initial={{ x: "-100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "-100%" }}
+              initial={{ x: "-100%" }} animate={{ x: 0 }} exit={{ x: "-100%" }}
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
               className="fixed top-0 left-0 w-[80%] max-w-[300px] h-full bg-[#0A0301]/98 backdrop-blur-xl z-[600] p-8 pt-20"
             >
-              <button
-                onClick={() => setMobileOpen(false)}
-                className="absolute top-5 right-5 text-[#E5B83C] cursor-pointer"
-              >
+              <button onClick={() => setMobileOpen(false)} className="absolute top-5 right-5 text-[#E5B83C] cursor-pointer">
                 <X className="w-7 h-7" />
               </button>
-              <ul className="flex flex-col gap-8 list-none">
+              <ul className="flex flex-col gap-6 list-none">
                 {navLinks.map((link, i) => (
-                  <motion.li
-                    key={link.href}
-                    initial={{ opacity: 0, x: -30 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.1 + i * 0.08 }}
-                  >
-                    <a
-                      href={link.href}
-                      onClick={() => setMobileOpen(false)}
-                      className="text-[#FEF3DF] no-underline text-xl tracking-[0.1em] font-semibold"
-                    >
+                  <motion.li key={link.href} initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.1 + i * 0.08 }}>
+                    <a href={link.href} onClick={() => setMobileOpen(false)}
+                      className="text-[#FEF3DF] no-underline text-lg tracking-[0.1em] font-semibold flex items-center gap-3">
+                      <link.icon className="w-5 h-5 text-[#E5B83C]" />
                       {link.label}
                     </a>
                   </motion.li>
                 ))}
               </ul>
-
-              <div className="mt-12 p-4 bg-[#2E7D32]/15 rounded-xl border border-[#2E7D32]/30">
-                <p className="text-[#2E7D32] text-sm font-semibold flex items-center gap-2">
-                  <Leaf className="w-4 h-4" /> 100% Halaal Certified
-                </p>
+              <div className="mt-10 space-y-3">
+                <div className="p-3 bg-[#2E7D32]/15 rounded-xl border border-[#2E7D32]/30">
+                  <p className="text-[#2E7D32] text-xs font-semibold flex items-center gap-2">
+                    <Leaf className="w-3.5 h-3.5" /> 100% Halaal Certified
+                  </p>
+                </div>
+                <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noopener noreferrer"
+                  className="bg-[#25D366] text-white px-4 py-3 text-xs font-bold tracking-[0.1em] uppercase no-underline inline-flex items-center gap-2 rounded-xl w-full justify-center">
+                  <MessageCircle className="w-4 h-4" /> WhatsApp Khatija
+                </a>
               </div>
             </motion.div>
           </>
@@ -288,106 +322,53 @@ function Navbar({
 // ============================================
 function Hero() {
   const ref = useRef(null);
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start start", "end start"],
-  });
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
   const bgScale = useTransform(scrollYProgress, [0, 1], [1.05, 1.3]);
   const bgOpacity = useTransform(scrollYProgress, [0, 0.5], [0.2, 0.05]);
   const contentY = useTransform(scrollYProgress, [0, 0.5], [0, -60]);
 
   return (
     <section ref={ref} className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Parallax background */}
-      <motion.div
-        style={{ scale: bgScale, opacity: bgOpacity }}
-        className="absolute inset-0 z-[-2]"
-      >
-        <div
-          className="w-full h-full bg-cover bg-center"
-          style={{
-            backgroundImage:
-              "url('https://biltongfix.com/cdn/shop/files/BB3C71EA-1B1C-4169-B5C0-194B75A869E5.jpg?crop=center&height=4149&v=1770634369&width=4149')",
-            filter: "saturate(0.8)",
-          }}
-        />
+      <motion.div style={{ scale: bgScale, opacity: bgOpacity }} className="absolute inset-0 z-[-2]">
+        <div className="w-full h-full bg-cover bg-center" style={{
+          backgroundImage: "url('https://biltongfix.com/cdn/shop/files/BB3C71EA-1B1C-4169-B5C0-194B75A869E5.jpg?crop=center&height=4149&v=1770634369&width=4149')",
+          filter: "saturate(0.8)",
+        }} />
       </motion.div>
-
-      {/* Gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-b from-[#0A0301]/60 via-transparent to-[#0A0301] z-[-1]" />
 
-      <motion.div
-        style={{ y: contentY }}
-        className="z-20 max-w-[900px] px-5 text-center"
-      >
-        <motion.div
-          variants={fadeUp}
-          initial="hidden"
-          animate="visible"
-          custom={0}
-          className="text-[0.6rem] md:text-[0.65rem] tracking-[0.5em] uppercase text-[#F8E5B0] border border-[#E5B83C]/40 inline-block px-4 py-2.5 rounded-full mb-6 md:mb-8 backdrop-blur-md"
-        >
+      <motion.div style={{ y: contentY }} className="z-20 max-w-[900px] px-5 text-center">
+        <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={0}
+          className="text-[0.55rem] md:text-[0.65rem] tracking-[0.5em] uppercase text-[#F8E5B0] border border-[#E5B83C]/40 inline-block px-4 py-2.5 rounded-full mb-6 backdrop-blur-md">
           ✦ HALAAL · HAND-CURED · STANGER ✦
         </motion.div>
 
-        <motion.h1
-          variants={fadeUp}
-          initial="hidden"
-          animate="visible"
-          custom={0.2}
-          className="font-['Cormorant_Garamond'] text-[3.5rem] md:text-[7rem] lg:text-[10rem] font-light leading-[0.85]"
-        >
-          Biltong{" "}
-          <span className="bg-gradient-to-br from-[#F8E5B0] to-[#E5B83C] bg-clip-text text-transparent">
-            &amp; Bytes
-          </span>
+        <motion.h1 variants={fadeUp} initial="hidden" animate="visible" custom={0.2}
+          className="font-['Cormorant_Garamond'] text-[3.2rem] md:text-[7rem] lg:text-[10rem] font-light leading-[0.85]">
+          Biltong <span className="bg-gradient-to-br from-[#F8E5B0] to-[#E5B83C] bg-clip-text text-transparent">&amp; Bytes</span>
         </motion.h1>
 
-        <motion.p
-          variants={fadeUp}
-          initial="hidden"
-          animate="visible"
-          custom={0.4}
-          className="text-[0.75rem] md:text-[0.9rem] tracking-[0.15em] uppercase mt-4 md:mt-6 text-[#FEF3DF]/80"
-        >
+        <motion.p variants={fadeUp} initial="hidden" animate="visible" custom={0.4}
+          className="text-[0.7rem] md:text-[0.9rem] tracking-[0.15em] uppercase mt-4 md:mt-6 text-[#FEF3DF]/80">
           Premium Wet Biltong · Remote Tech Support · KZN
         </motion.p>
 
-        <motion.div
-          variants={fadeUp}
-          initial="hidden"
-          animate="visible"
-          custom={0.6}
-          className="mt-6 md:mt-8 flex gap-3 md:gap-5 justify-center flex-wrap"
-        >
-          <a
-            href="#products"
-            className="bg-[#25D366] text-white px-5 py-3 md:px-8 md:py-3.5 text-[0.7rem] font-bold tracking-[0.2em] uppercase no-underline transition-all hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(37,211,102,0.4)] rounded-xl"
-          >
-            VIEW MENU &amp; ORDER
-          </a>
-          <a
-            href="#story"
-            className="border border-[#E5B83C]/60 text-[#E5B83C] px-5 py-3 md:px-8 md:py-3.5 text-[0.7rem] font-bold tracking-[0.2em] uppercase no-underline transition-all hover:bg-[#E5B83C]/10 hover:-translate-y-0.5 rounded-xl"
-          >
+        <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={0.6}
+          className="mt-6 md:mt-8 flex gap-3 justify-center flex-wrap">
+          <motion.a href="#products" whileTap={{ scale: 0.95 }}
+            className="bg-[#25D366] text-white px-5 py-3.5 md:px-8 text-[0.7rem] font-bold tracking-[0.2em] uppercase no-underline rounded-xl flex items-center gap-2 shadow-[0_4px_20px_rgba(37,211,102,0.3)]">
+            <Zap className="w-4 h-4" /> ORDER NOW
+          </motion.a>
+          <a href="#story"
+            className="border border-[#E5B83C]/60 text-[#E5B83C] px-5 py-3.5 md:px-8 text-[0.7rem] font-bold tracking-[0.2em] uppercase no-underline transition-all hover:bg-[#E5B83C]/10 rounded-xl">
             OUR STORY
           </a>
         </motion.div>
 
-        {/* Scroll indicator */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.5 }}
-          className="mt-12 md:mt-16"
-        >
-          <motion.div
-            animate={{ y: [0, 8, 0] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-            className="text-[#E5B83C]/40 text-xs tracking-[0.3em] uppercase"
-          >
-            <ChevronUp className="w-5 h-5 mx-auto rotate-180 mb-1" />
-            Scroll
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.5 }} className="mt-12 md:mt-16">
+          <motion.div animate={{ y: [0, 8, 0] }} transition={{ duration: 1.5, repeat: Infinity }}
+            className="text-[#E5B83C]/40 text-xs tracking-[0.3em] uppercase flex flex-col items-center">
+            <ArrowDown className="w-5 h-5" />
           </motion.div>
         </motion.div>
       </motion.div>
@@ -396,9 +377,11 @@ function Hero() {
 }
 
 // ============================================
-// PHOTO STRIP
+// PHOTO STRIP (horizontal scroll on mobile)
 // ============================================
 function PhotoStrip() {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
   const images = [
     { src: "https://media.istockphoto.com/id/452965315/photo/biltong.jpg?s=612x612&w=0&k=20&c=POTlYIb-yTiu4ZFkCiL2rDugtle335UrbMH18qgimgA=", alt: "Biltong" },
     { src: "https://i0.wp.com/www.biltongblog.com/wp-content/uploads/2016/12/P1150800.jpg", alt: "Hanging" },
@@ -407,26 +390,30 @@ function PhotoStrip() {
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 h-[30vh] md:h-[45vh] relative z-10">
-      {images.map((img, i) => (
-        <motion.div
-          key={i}
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ delay: i * 0.1 }}
-          className="overflow-hidden relative"
-        >
-          <motion.img
-            whileHover={{ scale: 1.08 }}
-            transition={{ duration: 0.6 }}
-            src={img.src}
-            alt={img.alt}
-            className="w-full h-full object-cover brightness-[0.55] hover:brightness-[0.75] transition-all"
-          />
-        </motion.div>
-      ))}
-    </div>
+    <>
+      {/* Desktop grid */}
+      <div className="hidden md:grid grid-cols-4 h-[45vh] relative z-10">
+        {images.map((img, i) => (
+          <motion.div key={i} initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}
+            transition={{ delay: i * 0.1 }} className="overflow-hidden">
+            <motion.img whileHover={{ scale: 1.08 }} transition={{ duration: 0.6 }}
+              src={img.src} alt={img.alt}
+              className="w-full h-full object-cover brightness-[0.55] hover:brightness-[0.75] transition-all" />
+          </motion.div>
+        ))}
+      </div>
+      {/* Mobile horizontal scroll */}
+      <div ref={scrollRef} className="md:hidden flex overflow-x-auto snap-x snap-mandatory gap-2 px-4 py-3 relative z-10 scrollbar-hide"
+        style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
+        {images.map((img, i) => (
+          <motion.div key={i} initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }} transition={{ delay: i * 0.1 }}
+            className="flex-shrink-0 w-[75vw] snap-center overflow-hidden rounded-2xl">
+            <img src={img.src} alt={img.alt} className="w-full h-48 object-cover brightness-[0.65] rounded-2xl" />
+          </motion.div>
+        ))}
+      </div>
+    </>
   );
 }
 
@@ -435,29 +422,71 @@ function PhotoStrip() {
 // ============================================
 function FlavorIcon({ flavor }: { flavor: string }) {
   switch (flavor) {
-    case "Chilli":
-      return <Flame className="w-3.5 h-3.5" />;
-    case "Honey Glazed":
-      return <Droplets className="w-3.5 h-3.5" />;
-    default:
-      return <Leaf className="w-3.5 h-3.5" />;
+    case "Chilli": return <Flame className="w-3.5 h-3.5" />;
+    case "Honey Glazed": return <Droplets className="w-3.5 h-3.5" />;
+    default: return <Leaf className="w-3.5 h-3.5" />;
   }
 }
 
 // ============================================
-// PRODUCT CARD
+// COMBO DEAL BADGE
 // ============================================
-function ProductCard({
-  product,
-  index,
-}: {
-  product: (typeof PRODUCTS)[0];
-  index: number;
-}) {
+function ComboDeal({ onAdd }: { onAdd?: () => void }) {
+  const addItem = useCartStore((s) => s.addItem);
+  const [added, setAdded] = useState(false);
+
+  const handleCombo = () => {
+    addItem({ name: "The Taster 50g", weight: "50g", flavor: "Traditional", price: 35, qty: 1, img: PRODUCTS[0].img });
+    addItem({ name: "The Taster 50g", weight: "50g", flavor: "Chilli", price: 35, qty: 1, img: PRODUCTS[0].img });
+    addItem({ name: "The Taster 50g", weight: "50g", flavor: "Honey Glazed", price: 35, qty: 1, img: PRODUCTS[0].img });
+    setAdded(true);
+    toast.success("Flavor Trio added! 3 for R90 🎉", { icon: "🥩", duration: 2500 });
+    onAdd?.();
+    setTimeout(() => setAdded(false), 1500);
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+      className="max-w-[1400px] mx-auto mb-6">
+      <div className="bg-gradient-to-r from-[#E5B83C]/10 via-[#E07A2C]/10 to-[#E5B83C]/10 border-2 border-[#E5B83C]/30 rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <motion.div animate={{ rotate: [0, 10, -10, 0] }} transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+            className="text-4xl">🔥</motion.div>
+          <div>
+            <div className="flex items-center gap-2">
+              <Crown className="w-4 h-4 text-[#E5B83C]" />
+              <h3 className="font-['Cormorant_Garamond'] text-xl md:text-2xl font-bold text-[#E5B83C]">Flavor Trio Deal</h3>
+            </div>
+            <p className="text-sm text-[#FEF3DF]/70 mt-1">
+              Try all 3 flavors! 3x Taster Pack (50g each) — <span className="text-[#E5B83C] font-bold">R90</span>
+              <span className="text-[#FEF3DF]/40 line-through ml-2">R105</span>
+              <span className="bg-[#2E7D32]/20 text-[#2E7D32] text-xs px-2 py-0.5 rounded-full ml-2 font-bold">SAVE R15</span>
+            </p>
+          </div>
+        </div>
+        <motion.button whileTap={{ scale: 0.95 }} onClick={handleCombo}
+          className={`px-6 py-3 font-bold tracking-[0.1em] uppercase cursor-pointer rounded-xl text-sm transition-all whitespace-nowrap ${
+            added ? "bg-[#2E7D32] text-white" : "bg-[#E5B83C] text-[#0A0301] hover:shadow-[0_4px_20px_rgba(229,184,60,0.4)]"
+          }`}>
+          {added ? <span className="flex items-center gap-2"><Check className="w-4 h-4" /> ADDED!</span> : "ADD TRIO"}
+        </motion.button>
+      </div>
+    </motion.div>
+  );
+}
+
+// ============================================
+// PRODUCT CARD — Exciting mobile version
+// ============================================
+function ProductCard({ product, index, onAdd }: { product: (typeof PRODUCTS)[0]; index: number; onAdd?: () => void }) {
   const [selectedFlavor, setSelectedFlavor] = useState(FLAVORS[0]);
   const [qty, setQty] = useState(1);
   const [justAdded, setJustAdded] = useState(false);
   const addItem = useCartStore((s) => s.addItem);
+
+  const isPopular = product.id === 2; // Family Batch is the most popular
+  const isBestValue = product.id === 3; // 1kg is best value per gram
+  const pricePerGram = (product.price / parseInt(product.weight)).toFixed(1);
 
   const handleAdd = () => {
     addItem({
@@ -468,104 +497,95 @@ function ProductCard({
       qty,
       img: product.img,
     });
-
     setJustAdded(true);
-    toast.success(`${qty}x ${product.name} (${selectedFlavor}) added!`, {
-      icon: "🥩",
-      duration: 2000,
-    });
+    toast.success(`${qty}x ${product.name} (${selectedFlavor}) added!`, { icon: "🥩", duration: 2000 });
+    onAdd?.();
     setTimeout(() => setJustAdded(false), 1200);
     setQty(1);
   };
 
   return (
     <motion.div
-      variants={fadeUp}
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, margin: "-50px" }}
+      variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-30px" }}
       custom={index * 0.1}
-      whileTap={{ scale: 0.98 }}
-      className="bg-gradient-to-br from-[#140A04]/90 to-[#0C0502]/95 backdrop-blur-sm p-5 md:p-6 text-center rounded-2xl border border-[#E5B83C]/15 transition-all hover:border-[#E5B83C]/40 hover:-translate-y-2"
+      className="bg-gradient-to-br from-[#140A04]/90 to-[#0C0502]/95 backdrop-blur-sm p-4 md:p-6 text-center rounded-2xl border border-[#E5B83C]/15 hover:border-[#E5B83C]/40 transition-all relative overflow-hidden group"
     >
-      <div className="relative overflow-hidden rounded-xl mb-4">
-        <motion.img
-          whileHover={{ scale: 1.05 }}
-          transition={{ duration: 0.4 }}
-          src={product.img}
-          alt={product.name}
-          className="w-full h-44 md:h-52 object-cover brightness-[0.75] rounded-xl"
-        />
+      {/* Badges */}
+      <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5">
+        {isPopular && (
+          <span className="bg-[#E07A2C] text-white text-[0.55rem] px-2.5 py-1 rounded-full font-bold tracking-wider uppercase flex items-center gap-1">
+            <TrendingUp className="w-3 h-3" /> POPULAR
+          </span>
+        )}
+        {isBestValue && (
+          <span className="bg-[#2E7D32] text-white text-[0.55rem] px-2.5 py-1 rounded-full font-bold tracking-wider uppercase flex items-center gap-1">
+            <Crown className="w-3 h-3" /> BEST VALUE
+          </span>
+        )}
+      </div>
+
+      {/* Image */}
+      <div className="relative overflow-hidden rounded-xl mb-3">
+        <motion.img whileHover={{ scale: 1.05 }} transition={{ duration: 0.4 }}
+          src={product.img} alt={product.name}
+          className="w-full h-40 md:h-52 object-cover brightness-[0.75] rounded-xl" />
         <div className="absolute top-3 right-3 bg-[#0A0301]/80 backdrop-blur-md text-[#E5B83C] px-3 py-1 rounded-full text-xs font-bold tracking-wider">
           {product.weight}
         </div>
+        <div className="absolute bottom-3 left-3 bg-[#0A0301]/70 backdrop-blur-md text-[#FEF3DF]/60 px-2 py-0.5 rounded-full text-[0.6rem]">
+          R{pricePerGram}/g
+        </div>
       </div>
 
-      <h3 className="font-['Cormorant_Garamond'] text-xl md:text-2xl font-bold text-[#FEF3DF]">
+      <h3 className="font-['Cormorant_Garamond'] text-lg md:text-2xl font-bold text-[#FEF3DF]">
         {product.name}
       </h3>
-      <p className="text-xs text-[#FEF3DF]/50 mt-1">{product.description}</p>
-      <div className="font-['Bebas_Neue'] text-3xl md:text-4xl text-[#F8E5B0] mt-2">
-        R{product.price}
-      </div>
+      <p className="text-[0.65rem] md:text-xs text-[#FEF3DF]/50 mt-0.5">{product.description}</p>
+
+      <div className="font-['Bebas_Neue'] text-3xl md:text-4xl text-[#F8E5B0] mt-1.5">R{product.price}</div>
 
       {/* Flavor Selector */}
-      <div className="flex justify-center gap-2 mt-3 flex-wrap">
+      <div className="flex justify-center gap-1.5 mt-3 flex-wrap">
         {FLAVORS.map((f) => (
-          <button
-            key={f}
+          <motion.button key={f} whileTap={{ scale: 0.9 }}
             onClick={() => setSelectedFlavor(f)}
-            className={`flex items-center gap-1 px-3 py-1.5 text-[0.7rem] rounded-full cursor-pointer transition-all ${
+            className={`flex items-center gap-1 px-2.5 py-1.5 text-[0.65rem] rounded-full cursor-pointer transition-all ${
               selectedFlavor === f
                 ? "bg-[#E5B83C] text-[#0A0301] border border-[#E5B83C] font-bold"
                 : "bg-white/5 border border-white/10 text-[#FEF3DF]/70 hover:border-[#E5B83C]/40"
-            }`}
-          >
-            <FlavorIcon flavor={f} />
-            {f}
-          </button>
+            }`}>
+            <FlavorIcon flavor={f} /> {f}
+          </motion.button>
         ))}
       </div>
 
       {/* Quantity */}
-      <div className="flex items-center justify-center gap-4 mt-4">
-        <motion.button
-          whileTap={{ scale: 0.85 }}
+      <div className="flex items-center justify-center gap-4 mt-3">
+        <motion.button whileTap={{ scale: 0.8 }}
           onClick={() => setQty(Math.max(1, qty - 1))}
-          className="bg-white/8 w-9 h-9 rounded-full flex items-center justify-center text-[#FEF3DF] cursor-pointer hover:bg-[#E5B83C] hover:text-black transition-colors"
-        >
+          className="bg-white/8 w-9 h-9 rounded-full flex items-center justify-center text-[#FEF3DF] cursor-pointer hover:bg-[#E5B83C] hover:text-black transition-colors">
           <Minus className="w-4 h-4" />
         </motion.button>
-        <span className="font-['Bebas_Neue'] text-2xl min-w-[40px] text-center">
-          {qty}
-        </span>
-        <motion.button
-          whileTap={{ scale: 0.85 }}
+        <motion.span key={qty} initial={{ scale: 1.3 }} animate={{ scale: 1 }}
+          className="font-['Bebas_Neue'] text-2xl min-w-[40px] text-center">{qty}</motion.span>
+        <motion.button whileTap={{ scale: 0.8 }}
           onClick={() => setQty(qty + 1)}
-          className="bg-white/8 w-9 h-9 rounded-full flex items-center justify-center text-[#FEF3DF] cursor-pointer hover:bg-[#E5B83C] hover:text-black transition-colors"
-        >
+          className="bg-white/8 w-9 h-9 rounded-full flex items-center justify-center text-[#FEF3DF] cursor-pointer hover:bg-[#E5B83C] hover:text-black transition-colors">
           <Plus className="w-4 h-4" />
         </motion.button>
       </div>
 
       {/* Add to Cart */}
-      <motion.button
-        whileTap={{ scale: 0.95 }}
-        onClick={handleAdd}
-        className={`w-full mt-4 py-3 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-full text-sm ${
+      <motion.button whileTap={{ scale: 0.95 }} onClick={handleAdd}
+        className={`w-full mt-3 py-3 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-full text-sm ${
           justAdded
             ? "bg-[#2E7D32] text-white border border-[#2E7D32]"
             : "bg-transparent border border-[#E5B83C]/50 text-[#E5B83C] hover:bg-[#E5B83C] hover:text-[#0A0301]"
-        }`}
-      >
+        }`}>
         {justAdded ? (
-          <span className="flex items-center justify-center gap-2">
-            <Check className="w-4 h-4" /> ADDED!
-          </span>
+          <span className="flex items-center justify-center gap-2"><Check className="w-4 h-4" /> ADDED!</span>
         ) : (
-          <span className="flex items-center justify-center gap-2">
-            <ShoppingCart className="w-4 h-4" /> ADD TO CART
-          </span>
+          <span className="flex items-center justify-center gap-2"><ShoppingCart className="w-4 h-4" /> ADD TO CART</span>
         )}
       </motion.button>
     </motion.div>
@@ -575,33 +595,23 @@ function ProductCard({
 // ============================================
 // PRODUCTS SECTION
 // ============================================
-function ProductsSection() {
+function ProductsSection({ onItemAdd }: { onItemAdd?: () => void }) {
   return (
-    <section id="products" className="py-16 md:py-24 px-5 md:px-[6%] relative z-20">
-      <motion.div
-        variants={fadeUp}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true }}
-        className="text-center"
-      >
-        <p className="text-[0.6rem] tracking-[0.4em] uppercase text-[#E07A2C] mb-3">
-          THE MENU
-        </p>
-        <h2 className="font-['Cormorant_Garamond'] text-[2.5rem] md:text-[4.5rem] font-light leading-tight mb-10 md:mb-14">
+    <section id="products" className="py-16 md:py-24 px-4 md:px-[6%] relative z-20">
+      <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} className="text-center">
+        <p className="text-[0.6rem] tracking-[0.4em] uppercase text-[#E07A2C] mb-3">THE MENU</p>
+        <h2 className="font-['Cormorant_Garamond'] text-[2.5rem] md:text-[4.5rem] font-light leading-tight mb-6">
           Choose your <em className="italic text-[#E5B83C] font-semibold">Biltong</em>
         </h2>
       </motion.div>
 
-      <motion.div
-        variants={staggerContainer}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: "-50px" }}
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 md:gap-6 max-w-[1400px] mx-auto"
-      >
+      {/* Combo Deal Banner */}
+      <ComboDeal onAdd={onItemAdd} />
+
+      <motion.div variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-30px" }}
+        className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 max-w-[1400px] mx-auto">
         {PRODUCTS.map((prod, i) => (
-          <ProductCard key={prod.id} product={prod} index={i} />
+          <ProductCard key={prod.id} product={prod} index={i} onAdd={onItemAdd} />
         ))}
       </motion.div>
     </section>
@@ -613,61 +623,39 @@ function ProductsSection() {
 // ============================================
 function StorySection() {
   return (
-    <section id="story" className="py-16 md:py-24 px-5 md:px-[6%] relative z-20">
+    <section id="story" className="py-16 md:py-24 px-4 md:px-[6%] relative z-20">
       <div className="max-w-[1200px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16 items-center">
-        <motion.div
-          variants={fadeUp}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-        >
-          <p className="text-[0.6rem] tracking-[0.4em] uppercase text-[#E07A2C] mb-3">
-            OUR ROOTS
-          </p>
+        <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }}>
+          <p className="text-[0.6rem] tracking-[0.4em] uppercase text-[#E07A2C] mb-3">OUR ROOTS</p>
           <h2 className="font-['Cormorant_Garamond'] text-[2.5rem] md:text-[4.5rem] font-light leading-tight mb-6">
             Handmade <em className="italic text-[#E5B83C] font-semibold">Halaal</em> with soul
           </h2>
           <p className="leading-relaxed text-[#FEF3DF]/85 text-sm md:text-base">
-            We are a Muslim family in Stanger, hand-cutting premium beef from Halaal certified
-            butcheries. Our wet biltong is famous — spiced traditionally, always fresh, made with
-            love. Every strip is carefully prepared, hung, and cured to perfection using
-            time-honoured recipes passed down through generations. From our family to yours.
+            We are a Muslim family in Stanger, hand-cutting premium beef from Halaal certified butcheries.
+            Our wet biltong is famous — spiced traditionally, always fresh, made with love. Every strip is
+            carefully prepared, hung, and cured to perfection using time-honoured recipes passed down through
+            generations. From our family to yours.
           </p>
           <div className="bg-[#2E7D32]/15 border-l-4 border-[#2E7D32] p-4 mt-6 rounded-r-lg">
             <p className="text-[#2E7D32] font-semibold flex items-center gap-2 text-sm">
-              <Leaf className="w-4 h-4 flex-shrink-0" /> 100% Halaal Certified · Every single batch
+              <BadgeCheck className="w-4 h-4 flex-shrink-0" /> 100% Halaal Certified · Every single batch
             </p>
           </div>
           <div className="mt-4 flex gap-3 flex-wrap">
             {FLAVORS.map((f) => (
-              <span
-                key={f}
-                className="bg-[#E5B83C]/10 border border-[#E5B83C]/25 text-[#E5B83C] px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5"
-              >
+              <span key={f} className="bg-[#E5B83C]/10 border border-[#E5B83C]/25 text-[#E5B83C] px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5">
                 <FlavorIcon flavor={f} /> {f}
               </span>
             ))}
           </div>
         </motion.div>
 
-        <motion.div
-          variants={scaleIn}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          className="bg-gradient-to-br from-[#160A03]/90 to-[#080301]/95 p-5 md:p-8 rounded-2xl border border-[#E5B83C]/25"
-        >
-          <img
-            src="https://github.com/Streetwizetwo/biltong/blob/main/ChatGPT%20Image%20May%2019,%202026,%2009_45_16%20PM.png?raw=true"
-            alt="Fresh Biltong"
-            className="w-full rounded-xl"
-          />
-          <h3 className="text-[#E5B83C] mt-4 font-['Cormorant_Garamond'] text-2xl font-bold">
-            Wet, Tender &amp; Aromatic
-          </h3>
-          <p className="text-sm text-[#FEF3DF]/60 mt-1">
-            Traditional · Chilli · Honey Glazed
-          </p>
+        <motion.div variants={scaleIn} initial="hidden" whileInView="visible" viewport={{ once: true }}
+          className="bg-gradient-to-br from-[#160A03]/90 to-[#080301]/95 p-5 md:p-8 rounded-2xl border border-[#E5B83C]/25">
+          <img src="https://github.com/Streetwizetwo/biltong/blob/main/ChatGPT%20Image%20May%2019,%202026,%2009_45_16%20PM.png?raw=true"
+            alt="Fresh Biltong" className="w-full rounded-xl" />
+          <h3 className="text-[#E5B83C] mt-4 font-['Cormorant_Garamond'] text-2xl font-bold">Wet, Tender &amp; Aromatic</h3>
+          <p className="text-sm text-[#FEF3DF]/60 mt-1">Traditional · Chilli · Honey Glazed</p>
         </motion.div>
       </div>
     </section>
@@ -686,53 +674,31 @@ function HowToOrderSection() {
   ];
 
   return (
-    <section id="how-to-order" className="py-16 md:py-24 px-5 md:px-[6%] relative z-20">
-      <motion.div
-        variants={fadeUp}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true }}
-        className="text-center mb-10 md:mb-14"
-      >
-        <p className="text-[0.6rem] tracking-[0.4em] uppercase text-[#E07A2C] mb-3">
-          HOW IT WORKS
-        </p>
+    <section id="how-to-order" className="py-16 md:py-24 px-4 md:px-[6%] relative z-20">
+      <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} className="text-center mb-10">
+        <p className="text-[0.6rem] tracking-[0.4em] uppercase text-[#E07A2C] mb-3">HOW IT WORKS</p>
         <h2 className="font-['Cormorant_Garamond'] text-[2.5rem] md:text-[4.5rem] font-light leading-tight">
           Simple <em className="italic text-[#E5B83C] font-semibold">4-Step</em> Ordering
         </h2>
       </motion.div>
 
-      <motion.div
-        variants={staggerContainer}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true }}
-        className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 max-w-[1100px] mx-auto"
-      >
+      {/* Mobile: horizontal scroll, Desktop: grid */}
+      <div className="flex md:grid md:grid-cols-4 gap-3 md:gap-6 max-w-[1100px] mx-auto overflow-x-auto snap-x snap-mandatory pb-2 md:overflow-visible"
+        style={{ scrollbarWidth: "none" }}>
         {steps.map((step, i) => (
-          <motion.div
-            key={step.num}
-            variants={fadeUp}
-            custom={i}
-            whileHover={{ y: -5 }}
-            className="text-center p-5 rounded-2xl bg-[#0E0500]/50 border border-[#E5B83C]/10 hover:border-[#E5B83C]/30 transition-all"
-          >
-            <motion.div
-              whileHover={{ scale: 1.1 }}
-              className="w-16 h-16 md:w-[70px] md:h-[70px] bg-[#E5B83C]/10 rounded-full flex items-center justify-center mx-auto mb-3 border border-[#E5B83C]/30"
-            >
-              <step.icon className="w-7 h-7 text-[#E5B83C]" />
+          <motion.div key={step.num} variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }}
+            custom={i} whileHover={{ y: -5 }}
+            className="text-center p-5 rounded-2xl bg-[#0E0500]/50 border border-[#E5B83C]/10 hover:border-[#E5B83C]/30 transition-all flex-shrink-0 w-[70vw] md:w-auto snap-center">
+            <motion.div whileHover={{ scale: 1.1 }}
+              className="w-14 h-14 md:w-[70px] md:h-[70px] bg-[#E5B83C]/10 rounded-full flex items-center justify-center mx-auto mb-3 border border-[#E5B83C]/30">
+              <step.icon className="w-6 h-6 text-[#E5B83C]" />
             </motion.div>
-            <div className="text-[#E5B83C]/40 font-['Bebas_Neue'] text-3xl -mt-2 mb-1">
-              {step.num}
-            </div>
-            <h4 className="text-sm md:text-base font-bold text-[#FEF3DF]">
-              {step.title}
-            </h4>
+            <div className="text-[#E5B83C]/40 font-['Bebas_Neue'] text-3xl -mt-1 mb-1">{step.num}</div>
+            <h4 className="text-sm md:text-base font-bold text-[#FEF3DF]">{step.title}</h4>
             <p className="text-xs text-[#FEF3DF]/50 mt-1">{step.desc}</p>
           </motion.div>
         ))}
-      </motion.div>
+      </div>
     </section>
   );
 }
@@ -742,38 +708,20 @@ function HowToOrderSection() {
 // ============================================
 function ContactSection() {
   return (
-    <section id="contact" className="py-16 md:py-24 px-5 md:px-[6%] relative z-20">
-      <motion.div
-        variants={fadeUp}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true }}
-        className="text-center max-w-[550px] mx-auto"
-      >
-        <p className="text-[0.6rem] tracking-[0.4em] uppercase text-[#E07A2C] mb-3">
-          GET IN TOUCH
-        </p>
+    <section id="contact" className="py-16 md:py-24 px-4 md:px-[6%] relative z-20">
+      <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }}
+        className="text-center max-w-[550px] mx-auto">
+        <p className="text-[0.6rem] tracking-[0.4em] uppercase text-[#E07A2C] mb-3">GET IN TOUCH</p>
         <h2 className="font-['Cormorant_Garamond'] text-[2.5rem] md:text-[4.5rem] font-light leading-tight mb-8">
           Contact <em className="italic text-[#E5B83C] font-semibold">Khatija</em>
         </h2>
-
-        <motion.div
-          whileHover={{ y: -3 }}
-          className="bg-gradient-to-br from-[#160A03] to-[#0C0502] border border-[#E5B83C] p-8 rounded-2xl"
-        >
+        <motion.div whileHover={{ y: -3 }}
+          className="bg-gradient-to-br from-[#160A03] to-[#0C0502] border border-[#E5B83C] p-8 rounded-2xl">
           <div className="text-5xl mb-4">👩🏽‍🍳</div>
-          <h3 className="text-2xl font-bold font-['Cormorant_Garamond']">
-            Khatija
-          </h3>
-          <p className="text-sm text-[#FEF3DF]/60 mb-6">
-            Biltong Maker &amp; Tech Support
-          </p>
-          <a
-            href={`https://wa.me/${WHATSAPP_NUMBER}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-[#25D366] text-white px-6 py-3 text-sm font-bold tracking-[0.1em] uppercase no-underline inline-flex items-center gap-2 rounded-xl transition-all hover:-translate-y-1 hover:shadow-[0_8px_25px_rgba(37,211,102,0.4)]"
-          >
+          <h3 className="text-2xl font-bold font-['Cormorant_Garamond']">Khatija</h3>
+          <p className="text-sm text-[#FEF3DF]/60 mb-6">Biltong Maker &amp; Tech Support</p>
+          <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noopener noreferrer"
+            className="bg-[#25D366] text-white px-6 py-3 text-sm font-bold tracking-[0.1em] uppercase no-underline inline-flex items-center gap-2 rounded-xl transition-all hover:-translate-y-1 hover:shadow-[0_8px_25px_rgba(37,211,102,0.4)]">
             <MessageCircle className="w-4 h-4" /> ORDER ON WHATSAPP
           </a>
         </motion.div>
@@ -783,17 +731,9 @@ function ContactSection() {
 }
 
 // ============================================
-// CART DRAWER
+// CART DRAWER — Drag to close
 // ============================================
-function CartDrawer({
-  open,
-  onClose,
-  onCheckout,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onCheckout: () => void;
-}) {
+function CartDrawer({ open, onClose, onCheckout }: { open: boolean; onClose: () => void; onCheckout: () => void }) {
   const items = useCartStore((s) => s.items);
   const removeItem = useCartStore((s) => s.removeItem);
   const incrementQty = useCartStore((s) => s.incrementQty);
@@ -807,113 +747,78 @@ function CartDrawer({
   const total = useCartStore((s) => s.total());
   const [addressQuery, setAddressQuery] = useState(deliveryAddress);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const dragY = useMotionValue(0);
+  const dragControls = useDragControls();
 
   const filteredAddresses = useMemo(
-    () =>
-      addressQuery.length >= 2
-        ? STANGER_ADDRESSES.filter((a) =>
-            a.toLowerCase().includes(addressQuery.toLowerCase())
-          )
-        : [],
+    () => addressQuery.length >= 2 ? STANGER_ADDRESSES.filter((a) => a.toLowerCase().includes(addressQuery.toLowerCase())) : [],
     [addressQuery]
   );
 
-  useEffect(() => {
-    setAddressQuery(deliveryAddress);
-  }, [deliveryAddress]);
+  useEffect(() => { setAddressQuery(deliveryAddress); }, [deliveryAddress]);
 
   return (
     <AnimatePresence>
       {open && (
         <>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-md z-[2000]" onClick={onClose} />
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-md z-[2000]"
-            onClick={onClose}
-          />
-          <motion.div
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
+            drag="y" dragControls={dragControls} dragConstraints={{ top: 0 }} dragElastic={0.2}
+            onDragEnd={(_, info) => { if (info.offset.y > 150) onClose(); }}
+            initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className="fixed bottom-0 left-0 right-0 z-[2001] bg-[#0E0500] border-t border-[#E5B83C] rounded-t-3xl max-h-[90vh] flex flex-col"
+            className="fixed bottom-0 left-0 right-0 z-[2001] bg-[#0E0500] border-t border-[#E5B83C] rounded-t-3xl max-h-[92vh] flex flex-col touch-none"
           >
             {/* Drag handle */}
-            <div className="flex justify-center pt-3 pb-1">
-              <div className="w-10 h-1 bg-[#E5B83C]/30 rounded-full" />
+            <div className="flex justify-center pt-3 pb-1 cursor-grab" onPointerDown={(e) => dragControls.start(e)}>
+              <div className="w-10 h-1.5 bg-[#E5B83C]/30 rounded-full" />
             </div>
 
             {/* Header */}
             <div className="flex justify-between items-center px-5 py-3 border-b border-white/10">
-              <h3 className="font-['Cormorant_Garamond'] text-xl md:text-2xl text-[#E5B83C]">
-                Your Order
+              <h3 className="font-['Cormorant_Garamond'] text-xl text-[#E5B83C]">
+                Your Order <span className="text-sm text-[#FEF3DF]/40 ml-2">({items.reduce((s, i) => s + i.qty, 0)} items)</span>
               </h3>
-              <button
-                onClick={onClose}
-                className="text-white/60 hover:text-white cursor-pointer p-1"
-              >
-                <X className="w-6 h-6" />
-              </button>
+              <button onClick={onClose} className="text-white/60 hover:text-white cursor-pointer p-1"><X className="w-6 h-6" /></button>
             </div>
 
             {/* Cart Items */}
-            <div className="flex-1 overflow-y-auto px-5 py-3 min-h-[120px]">
+            <div className="flex-1 overflow-y-auto px-5 py-3 min-h-[100px]">
               {items.length === 0 ? (
                 <div className="text-center py-10 text-white/40">
-                  <ShoppingCart className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                  <p>Your cart is empty</p>
-                  <p className="text-xs mt-1">Add some delicious biltong!</p>
+                  <motion.div animate={{ y: [0, -5, 0] }} transition={{ duration: 2, repeat: Infinity }}>
+                    <ShoppingCart className="w-14 h-14 mx-auto mb-3 opacity-20" />
+                  </motion.div>
+                  <p className="font-semibold">Your cart is empty</p>
+                  <p className="text-xs mt-1 text-[#FEF3DF]/30">Tap a product to add some delicious biltong!</p>
                 </div>
               ) : (
                 <AnimatePresence mode="popLayout">
                   {items.map((item) => (
-                    <motion.div
-                      key={item.id}
-                      variants={cartItemVariants}
-                      initial="enter"
-                      animate="center"
-                      exit="exit"
-                      layout
-                      className="flex justify-between items-start py-3 border-b border-white/8"
-                    >
+                    <motion.div key={item.id} variants={cartItemVariants} initial="enter" animate="center" exit="exit" layout
+                      className="flex justify-between items-start py-3 border-b border-white/8">
                       <div className="flex-1">
-                        <p className="font-semibold text-sm text-[#FEF3DF]">
-                          {item.qty}x {item.name}
-                        </p>
-                        <p className="text-xs text-[#E5B83C]/70 mt-0.5">
-                          {item.flavor}
+                        <p className="font-semibold text-sm text-[#FEF3DF]">{item.name}</p>
+                        <p className="text-xs text-[#E5B83C]/70 mt-0.5 flex items-center gap-1">
+                          <FlavorIcon flavor={item.flavor} /> {item.flavor}
                         </p>
                         <div className="flex items-center gap-2 mt-2">
-                          <motion.button
-                            whileTap={{ scale: 0.8 }}
-                            onClick={() => decrementQty(item.id)}
-                            className="bg-white/8 w-7 h-7 rounded-full flex items-center justify-center cursor-pointer hover:bg-[#E5B83C] hover:text-black transition-colors"
-                          >
+                          <motion.button whileTap={{ scale: 0.75 }} onClick={() => decrementQty(item.id)}
+                            className="bg-white/8 w-7 h-7 rounded-full flex items-center justify-center cursor-pointer hover:bg-[#E5B83C] hover:text-black transition-colors">
                             <Minus className="w-3 h-3" />
                           </motion.button>
-                          <span className="text-sm font-bold w-6 text-center">
-                            {item.qty}
-                          </span>
-                          <motion.button
-                            whileTap={{ scale: 0.8 }}
-                            onClick={() => incrementQty(item.id)}
-                            className="bg-white/8 w-7 h-7 rounded-full flex items-center justify-center cursor-pointer hover:bg-[#E5B83C] hover:text-black transition-colors"
-                          >
+                          <span className="text-sm font-bold w-6 text-center">{item.qty}</span>
+                          <motion.button whileTap={{ scale: 0.75 }} onClick={() => incrementQty(item.id)}
+                            className="bg-white/8 w-7 h-7 rounded-full flex items-center justify-center cursor-pointer hover:bg-[#E5B83C] hover:text-black transition-colors">
                             <Plus className="w-3 h-3" />
                           </motion.button>
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="font-['Bebas_Neue'] text-lg text-[#F8E5B0]">
-                          R{item.price * item.qty}
-                        </span>
-                        <motion.button
-                          whileTap={{ scale: 0.8 }}
-                          onClick={() => removeItem(item.id)}
-                          className="text-[#B23A1A] cursor-pointer p-1 hover:bg-[#B23A1A]/10 rounded-full transition-colors"
-                        >
+                        <span className="font-['Bebas_Neue'] text-lg text-[#F8E5B0]">R{item.price * item.qty}</span>
+                        <motion.button whileTap={{ scale: 0.75 }} onClick={() => { removeItem(item.id); toast("Item removed", { icon: "🗑️" }); }}
+                          className="text-[#B23A1A]/70 cursor-pointer p-1 hover:text-[#B23A1A] hover:bg-[#B23A1A]/10 rounded-full transition-colors">
                           <Trash2 className="w-4 h-4" />
                         </motion.button>
                       </div>
@@ -926,72 +831,39 @@ function CartDrawer({
             {/* Delivery Options */}
             <div className="px-5 py-3 border-t border-white/10">
               <div className="flex gap-2 mb-2">
-                <button
-                  onClick={() => setDeliveryMode("collect")}
-                  className={`flex-1 py-2 text-center cursor-pointer rounded-full text-xs font-semibold transition-all ${
-                    deliveryMode === "collect"
-                      ? "bg-[#E5B83C] text-[#0A0301]"
-                      : "bg-white/5 text-[#FEF3DF]/70"
-                  }`}
-                >
-                  <MapPin className="inline w-3 h-3 mr-1" />
-                  COLLECT (Free)
-                </button>
-                <button
-                  onClick={() => setDeliveryMode("deliver")}
-                  className={`flex-1 py-2 text-center cursor-pointer rounded-full text-xs font-semibold transition-all ${
-                    deliveryMode === "deliver"
-                      ? "bg-[#E5B83C] text-[#0A0301]"
-                      : "bg-white/5 text-[#FEF3DF]/70"
-                  }`}
-                >
-                  <Truck className="inline w-3 h-3 mr-1" />
-                  DELIVER (R30)
-                </button>
+                {[{ mode: "collect" as DeliveryMode, icon: MapPin, label: "COLLECT", sub: "Free" },
+                  { mode: "deliver" as DeliveryMode, icon: Truck, label: "DELIVER", sub: "R30" }].map(({ mode, icon: Icon, label, sub }) => (
+                  <motion.button key={mode} whileTap={{ scale: 0.97 }}
+                    onClick={() => setDeliveryMode(mode)}
+                    className={`flex-1 py-2.5 text-center cursor-pointer rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
+                      deliveryMode === mode ? "bg-[#E5B83C] text-[#0A0301]" : "bg-white/5 text-[#FEF3DF]/70"
+                    }`}>
+                    <Icon className="w-3.5 h-3.5" /> {label} <span className="opacity-70">({sub})</span>
+                  </motion.button>
+                ))}
               </div>
-
               <AnimatePresence>
                 {deliveryMode === "deliver" && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="overflow-hidden"
-                  >
+                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
                     <div className="relative">
-                      <input
-                        type="text"
-                        value={addressQuery}
-                        onChange={(e) => {
-                          setAddressQuery(e.target.value);
-                          setShowSuggestions(true);
-                        }}
+                      <input type="text" value={addressQuery}
+                        onChange={(e) => { setAddressQuery(e.target.value); setShowSuggestions(true); }}
                         onFocus={() => setShowSuggestions(true)}
                         placeholder="Start typing your Stanger address..."
-                        className="w-full bg-[#1E0A02] text-white border border-[#E5B83C] p-2.5 mt-2 rounded-lg text-sm font-['Syne'] placeholder:text-[#FEF3DF]/25 focus:outline-none focus:border-[#E5B83C]"
-                      />
+                        className="w-full bg-[#1E0A02] text-white border border-[#E5B83C] p-2.5 mt-2 rounded-lg text-sm placeholder:text-[#FEF3DF]/25 focus:outline-none focus:border-[#E5B83C]" />
                       {showSuggestions && filteredAddresses.length > 0 && (
                         <div className="absolute top-full left-0 right-0 bg-[#2A1508] rounded-lg mt-1 max-h-[150px] overflow-y-auto z-10 shadow-xl">
                           {filteredAddresses.map((addr) => (
-                            <button
-                              key={addr}
-                              onClick={() => {
-                                setDeliveryAddress(addr);
-                                setAddressQuery(addr);
-                                setShowSuggestions(false);
-                              }}
-                              className="w-full text-left px-3 py-2 text-sm text-[#FEF3DF] cursor-pointer border-b border-[#E5B83C]/10 hover:bg-[#E5B83C] hover:text-[#0A0301] transition-colors"
-                            >
+                            <button key={addr} onClick={() => { setDeliveryAddress(addr); setAddressQuery(addr); setShowSuggestions(false); }}
+                              className="w-full text-left px-3 py-2 text-sm text-[#FEF3DF] cursor-pointer border-b border-[#E5B83C]/10 hover:bg-[#E5B83C] hover:text-[#0A0301] transition-colors">
                               {addr}
                             </button>
                           ))}
                         </div>
                       )}
                     </div>
-                    <p className="text-[0.6rem] text-[#FEF3DF]/40 mt-1.5">
-                      Stanger delivery only · R30 fee
-                    </p>
+                    <p className="text-[0.6rem] text-[#FEF3DF]/40 mt-1.5">Stanger delivery only · R30 fee</p>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -999,31 +871,23 @@ function CartDrawer({
 
             {/* Footer */}
             <div className="px-5 py-4 border-t border-white/10 bg-[#0A0301]">
-              <div className="flex justify-between items-center mb-3">
-                <span className="text-sm text-[#FEF3DF]/60">Subtotal:</span>
-                <span className="text-sm">R{subtotal}</span>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-xs text-[#FEF3DF]/60">Subtotal:</span><span className="text-xs">R{subtotal}</span>
               </div>
               {deliveryFee > 0 && (
-                <div className="flex justify-between items-center mb-3">
-                  <span className="text-sm text-[#FEF3DF]/60">Delivery:</span>
-                  <span className="text-sm">R{deliveryFee}</span>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-xs text-[#FEF3DF]/60">Delivery:</span><span className="text-xs">R{deliveryFee}</span>
                 </div>
               )}
               <div className="flex justify-between items-center font-['Bebas_Neue'] text-2xl">
                 <span>TOTAL:</span>
-                <span className="text-[#E5B83C]">R{total}</span>
+                <motion.span key={total} initial={{ scale: 1.2 }} animate={{ scale: 1 }} className="text-[#E5B83C]">R{total}</motion.span>
               </div>
-              <motion.button
-                whileTap={{ scale: 0.97 }}
-                onClick={onCheckout}
-                disabled={items.length === 0}
-                className={`w-full mt-3 py-3.5 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-sm ${
-                  items.length === 0
-                    ? "bg-white/5 text-white/30 cursor-not-allowed"
-                    : "bg-[#25D366] text-white hover:shadow-[0_8px_25px_rgba(37,211,102,0.4)]"
-                }`}
-              >
-                PROCEED TO CHECKOUT
+              <motion.button whileTap={{ scale: 0.97 }} onClick={onCheckout} disabled={items.length === 0}
+                className={`w-full mt-3 py-3.5 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-sm flex items-center justify-center gap-2 ${
+                  items.length === 0 ? "bg-white/5 text-white/30 cursor-not-allowed" : "bg-[#25D366] text-white hover:shadow-[0_8px_25px_rgba(37,211,102,0.4)]"
+                }`}>
+                <CreditCard className="w-4 h-4" /> CHECKOUT
               </motion.button>
             </div>
           </motion.div>
@@ -1034,17 +898,41 @@ function CartDrawer({
 }
 
 // ============================================
-// CHECKOUT MODAL
+// ORDER SUCCESS SCREEN
 // ============================================
-function CheckoutModal({
-  open,
-  onClose,
-  resetKey,
-}: {
-  open: boolean;
-  onClose: () => void;
-  resetKey: number;
-}) {
+function OrderSuccess({ orderId, paymentMethod, onClose }: { orderId: string; paymentMethod: string; onClose: () => void }) {
+  return (
+    <div className="text-center py-8 px-4">
+      <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", damping: 15, stiffness: 200, delay: 0.2 }}>
+        <PartyPopper className="w-16 h-16 text-[#E5B83C] mx-auto" />
+      </motion.div>
+      <motion.h3 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+        className="font-['Cormorant_Garamond'] text-3xl text-[#E5B83C] mt-4">Order Placed!</motion.h3>
+      <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}
+        className="text-[#FEF3DF]/70 mt-2 text-sm">
+        {paymentMethod === "ikhokha"
+          ? "Please complete payment in the iKhokha tab, then confirm on WhatsApp."
+          : "Khatija will confirm your order on WhatsApp shortly!"}
+      </motion.p>
+      <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.8 }}
+        className="bg-[#2E7D32]/15 border border-[#2E7D32] rounded-xl p-4 mt-4 inline-block">
+        <p className="text-[0.6rem] tracking-[0.15em] uppercase text-[#FEF3DF]/70">Order Reference</p>
+        <p className="font-['Bebas_Neue'] text-2xl text-[#2E7D32] tracking-[0.1em]">{orderId}</p>
+      </motion.div>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1 }}>
+        <button onClick={onClose}
+          className="mt-6 px-6 py-3 bg-[#E5B83C] text-[#0A0301] font-bold tracking-[0.1em] uppercase rounded-xl cursor-pointer text-sm">
+          DONE
+        </button>
+      </motion.div>
+    </div>
+  );
+}
+
+// ============================================
+// CHECKOUT MODAL — with step progress
+// ============================================
+function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: () => void; resetKey: number }) {
   const items = useCartStore((s) => s.items);
   const deliveryMode = useCartStore((s) => s.deliveryMode);
   const deliveryAddress = useCartStore((s) => s.deliveryAddress);
@@ -1063,11 +951,10 @@ function CheckoutModal({
   const [phone, setPhone] = useState(customerPhone);
   const [email, setEmail] = useState(customerEmail);
   const [orderId, setOrderId] = useState<string | null>(null);
-  const [savingStatus, setSavingStatus] = useState<
-    "idle" | "saving" | "saved" | "error"
-  >("idle");
+  const [savingStatus, setSavingStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [ikhokhaStep, setIkhokhaStep] = useState(false);
-  const [openCount, setOpenCount] = useState(0);
+  const [orderSuccess, setOrderSuccess] = useState(false);
+  const [lastPaymentMethod, setLastPaymentMethod] = useState("cash");
 
   // Save order to Supabase via API
   const saveOrder = useCallback(
@@ -1084,337 +971,221 @@ function CheckoutModal({
         customer_email: email || null,
         items: items.map((i) => ({ name: i.name, price: i.price, qty: i.qty })),
         items_summary: items.map((i) => `${i.qty}x ${i.name}`).join(", "),
-        subtotal,
-        delivery_fee: deliveryFee,
-        total,
+        subtotal, delivery_fee: deliveryFee, total,
         delivery_mode: deliveryMode,
         delivery_address: deliveryMode === "deliver" ? deliveryAddress : null,
         payment_method: paymentMethod,
-        payment_status:
-          paymentMethod === "ikhokha" ? "pending" : "cash_on_delivery",
+        payment_status: paymentMethod === "ikhokha" ? "pending" : "cash_on_delivery",
         order_status: "new",
       };
 
-      // Save customer info
       setCustomerInfo(name, phone, email);
 
-      // Also save to localStorage as backup
-      const localOrders = JSON.parse(
-        localStorage.getItem("biltong_orders") || "[]"
-      );
+      const localOrders = JSON.parse(localStorage.getItem("biltong_orders") || "[]");
       localOrders.push({ ...orderData, created_at: new Date().toISOString() });
       localStorage.setItem("biltong_orders", JSON.stringify(localOrders));
 
-      // Save to Supabase via API (non-blocking)
       try {
         const res = await fetch("/api/orders", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(orderData),
         });
-        if (res.ok) {
-          setSavingStatus("saved");
-        } else {
-          setSavingStatus("error");
-        }
+        setSavingStatus(res.ok ? "saved" : "error");
       } catch {
         setSavingStatus("error");
       }
-
       return orderData;
     },
-    [
-      name,
-      phone,
-      email,
-      items,
-      subtotal,
-      deliveryFee,
-      total,
-      deliveryMode,
-      deliveryAddress,
-      setCurrentOrderId,
-      setCustomerInfo,
-    ]
+    [name, phone, email, items, subtotal, deliveryFee, total, deliveryMode, deliveryAddress, setCustomerInfo, setCurrentOrderId]
   );
 
   const validate = useCallback((): boolean => {
-    if (!name.trim()) {
-      toast.error("Please enter your name");
-      return false;
-    }
-    if (!phone.trim()) {
-      toast.error("Please enter your phone number");
-      return false;
-    }
-    if (deliveryMode === "deliver" && !deliveryAddress.trim()) {
-      toast.error("Please enter your delivery address");
-      return false;
-    }
+    if (!name.trim()) { toast.error("Please enter your name"); return false; }
+    if (!phone.trim()) { toast.error("Please enter your phone number"); return false; }
+    if (deliveryMode === "deliver" && !deliveryAddress.trim()) { toast.error("Please enter your delivery address"); return false; }
     return true;
   }, [name, phone, deliveryMode, deliveryAddress]);
 
   const handleWhatsAppCash = async () => {
     if (!validate()) return;
     const orderData = await saveOrder("cash");
+    setLastPaymentMethod("cash");
     const msg = buildWhatsAppMessage(orderData);
-    window.open(
-      `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`,
-      "_blank"
-    );
-    toast.success(`Order ${orderData.order_id} sent to Khatija!`, {
-      icon: "🥩",
-    });
+    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, "_blank");
+    toast.success(`Order ${orderData.order_id} sent!`, { icon: "🥩" });
+    setOrderSuccess(true);
   };
 
   const handleIkhokha = async () => {
     if (!validate()) return;
     const orderData = await saveOrder("ikhokha");
+    setLastPaymentMethod("ikhokha");
     setPendingIkhokhaOrder(orderData as unknown as Record<string, unknown>);
     setIkhokhaStep(true);
-
-    // Open iKhokha in new tab
     window.open(IKHOKHA_PAYMENT_URL, "_blank");
+    toast.info("iKhokha opened! Pay there, then confirm below.", { icon: "💳", duration: 4000 });
 
-    toast.info("iKhokha opened in new tab! Pay there, then confirm below.", {
-      icon: "💳",
-      duration: 4000,
-    });
-
-    // Update order status
     try {
       await fetch("/api/orders", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          order_id: orderData.order_id,
-          order_status: "payment_initiated",
-        }),
+        body: JSON.stringify({ order_id: orderData.order_id, order_status: "payment_initiated" }),
       });
-    } catch {
-      // Non-critical
-    }
+    } catch { /* non-critical */ }
   };
 
   const handleConfirmWhatsApp = () => {
     const pendingOrder = useCartStore.getState().pendingIkhokhaOrder;
-    if (!pendingOrder) {
-      toast.error("No pending order found");
-      return;
-    }
+    if (!pendingOrder) { toast.error("No pending order found"); return; }
     const orderData = pendingOrder as unknown as OrderData;
-    const msg =
-      buildWhatsAppMessage(orderData) + "\n\n✅ Payment completed via iKhokha!";
-    window.open(
-      `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`,
-      "_blank"
-    );
-    toast.success("Confirmation sent to Khatija!", { icon: "✅" });
-    clearCart();
+    const msg = buildWhatsAppMessage(orderData) + "\n\n✅ Payment completed via iKhokha!";
+    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, "_blank");
+    toast.success("Confirmation sent!", { icon: "✅" });
+    setOrderSuccess(true);
+  };
+
+  const handleClose = () => {
+    if (orderSuccess) clearCart();
+    setOrderSuccess(false);
+    setIkhokhaStep(false);
     onClose();
   };
 
-  // Reset checkout state when reopening
-  // Incrementing resetKey triggers a reset inside CheckoutModal
+  // Checkout steps for progress indicator
+  const checkoutSteps = ["Details", "Payment", "Confirm"];
+  const currentStep = orderSuccess ? 3 : ikhokhaStep ? 2 : !name || !phone ? 0 : 1;
 
   return (
     <AnimatePresence>
       {open && (
         <>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[3000]" onClick={handleClose} />
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[3000]"
-            onClick={onClose}
-          />
-          <motion.div
-            initial={{ y: "100%", opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: "100%", opacity: 0 }}
+            initial={{ y: "100%", opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: "100%", opacity: 0 }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
             className="fixed bottom-0 left-0 right-0 z-[3001] max-h-[95vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div key={resetKey} className="bg-gradient-to-br from-[#1A0A04] to-[#0E0500] border-t border-[#E5B83C] rounded-t-3xl p-5 md:p-8 max-w-[500px] mx-auto">
-              {/* Drag handle */}
-              <div className="flex justify-center mb-4">
-                <div className="w-10 h-1 bg-[#E5B83C]/30 rounded-full" />
-              </div>
+              <div className="flex justify-center mb-3"><div className="w-10 h-1.5 bg-[#E5B83C]/30 rounded-full" /></div>
 
-              <h3 className="font-['Cormorant_Garamond'] text-2xl text-[#E5B83C] text-center mb-6">
-                Complete Your Order
-              </h3>
-
-              {/* Order ID */}
-              <AnimatePresence>
-                {orderId && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="bg-[#2E7D32]/15 border border-[#2E7D32] rounded-xl p-3 text-center mb-4"
-                  >
-                    <p className="text-[0.6rem] tracking-[0.15em] uppercase text-[#FEF3DF]/70">
-                      Order Reference
-                    </p>
-                    <p className="font-['Bebas_Neue'] text-xl text-[#2E7D32] tracking-[0.1em]">
-                      {orderId}
-                    </p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Saving indicator */}
-              {savingStatus !== "idle" && (
-                <div
-                  className={`text-center text-xs mb-4 ${
-                    savingStatus === "saving"
-                      ? "text-[#E5B83C]/70"
-                      : savingStatus === "saved"
-                      ? "text-[#2E7D32]"
-                      : "text-[#B23A1A]"
-                  }`}
-                >
-                  {savingStatus === "saving" && (
-                    <span className="flex items-center justify-center gap-2">
-                      <Loader2 className="w-3 h-3 animate-spin" /> Saving
-                      order...
-                    </span>
-                  )}
-                  {savingStatus === "saved" && "✓ Order saved!"}
-                  {savingStatus === "error" &&
-                    "Saved locally (database unavailable)"}
-                </div>
-              )}
-
-              {/* Customer Info */}
-              <div className="space-y-3 mb-5">
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Your Full Name *"
-                    className="w-full bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-3 text-[#FEF3DF] text-sm placeholder:text-[#FEF3DF]/25 focus:outline-none focus:border-[#E5B83C] focus:bg-white/12 transition-all"
-                  />
-                </div>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="Your Phone Number *"
-                  className="w-full bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-3 text-[#FEF3DF] text-sm placeholder:text-[#FEF3DF]/25 focus:outline-none focus:border-[#E5B83C] focus:bg-white/12 transition-all"
-                />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Your Email (for receipt)"
-                  className="w-full bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-3 text-[#FEF3DF] text-sm placeholder:text-[#FEF3DF]/25 focus:outline-none focus:border-[#E5B83C] focus:bg-white/12 transition-all"
-                />
-              </div>
-
-              {/* Order Summary */}
-              <div className="bg-white/4 rounded-xl p-4 mb-5 border border-white/5">
-                <p className="text-xs font-semibold text-[#FEF3DF]/60 mb-2 tracking-wider uppercase">
-                  Order Summary
-                </p>
-                {items.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex justify-between text-sm py-1"
-                  >
-                    <span>
-                      {item.qty}x {item.name}
-                    </span>
-                    <span className="text-[#F8E5B0]">
-                      R{item.price * item.qty}
-                    </span>
-                  </div>
-                ))}
-                {deliveryFee > 0 && (
-                  <div className="flex justify-between text-sm py-1 border-t border-white/10 mt-1">
-                    <span className="text-[#FEF3DF]/60">Delivery</span>
-                    <span>R{deliveryFee}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Total */}
-              <div className="bg-[#E5B83C]/12 border-2 border-[#E5B83C] rounded-xl p-5 text-center mb-5">
-                <p className="text-[0.7rem] tracking-[0.2em] uppercase text-[#FEF3DF]/70">
-                  AMOUNT TO PAY
-                </p>
-                <p className="font-['Bebas_Neue'] text-4xl md:text-[3.5rem] text-[#E5B83C]">
-                  R{total}
-                </p>
-              </div>
-
-              {/* Payment Buttons */}
-              {!ikhokhaStep ? (
-                <>
-                  <motion.button
-                    whileTap={{ scale: 0.97 }}
-                    onClick={handleIkhokha}
-                    className="w-full border-2 border-[#E5B83C] text-[#E5B83C] py-3.5 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-sm mb-3 hover:bg-[#E5B83C]/15"
-                  >
-                    <CreditCard className="inline w-4 h-4 mr-2" />
-                    PAY WITH IKHOKHA
-                  </motion.button>
-
-                  <div className="flex items-center gap-3 my-3">
-                    <div className="flex-1 h-px bg-white/15" />
-                    <span className="text-[0.6rem] text-white/40 uppercase tracking-[0.1em]">
-                      or
-                    </span>
-                    <div className="flex-1 h-px bg-white/15" />
-                  </div>
-
-                  <motion.button
-                    whileTap={{ scale: 0.97 }}
-                    onClick={handleWhatsAppCash}
-                    className="w-full bg-[#B23A1A] text-white py-3.5 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-sm mb-3 hover:bg-[#B23A1A]/80"
-                  >
-                    <MessageCircle className="inline w-4 h-4 mr-2" />
-                    ORDER VIA WHATSAPP (Cash/Card)
-                  </motion.button>
-                </>
+              {orderSuccess ? (
+                <OrderSuccess orderId={orderId || ""} paymentMethod={lastPaymentMethod} onClose={handleClose} />
               ) : (
                 <>
-                  <motion.button
-                    whileTap={{ scale: 0.97 }}
-                    onClick={handleConfirmWhatsApp}
-                    className="w-full bg-[#25D366] text-white py-3.5 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-sm mb-3 hover:shadow-[0_8px_25px_rgba(37,211,102,0.4)]"
-                  >
-                    <MessageCircle className="inline w-4 h-4 mr-2" />
-                    CONFIRM ON WHATSAPP
-                  </motion.button>
+                  <h3 className="font-['Cormorant_Garamond'] text-2xl text-[#E5B83C] text-center mb-4">Complete Your Order</h3>
 
-                  <motion.button
-                    whileTap={{ scale: 0.97 }}
-                    onClick={() => window.open(IKHOKHA_PAYMENT_URL, "_blank")}
-                    className="w-full border-2 border-[#E5B83C] text-[#E5B83C] py-3 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-xs mb-3 hover:bg-[#E5B83C]/15"
-                  >
-                    RE-OPEN IKHOKHA
-                  </motion.button>
+                  {/* Step Progress */}
+                  <div className="flex items-center justify-center gap-2 mb-5">
+                    {checkoutSteps.map((step, i) => (
+                      <div key={step} className="flex items-center gap-2">
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                          i <= currentStep ? "bg-[#E5B83C] text-[#0A0301]" : "bg-white/10 text-white/40"
+                        }`}>
+                          {i < currentStep ? <Check className="w-3.5 h-3.5" /> : i + 1}
+                        </div>
+                        <span className={`text-[0.6rem] tracking-wider uppercase hidden sm:inline ${
+                          i <= currentStep ? "text-[#E5B83C]" : "text-white/30"
+                        }`}>{step}</span>
+                        {i < checkoutSteps.length - 1 && (
+                          <div className={`w-8 h-0.5 ${i < currentStep ? "bg-[#E5B83C]" : "bg-white/10"}`} />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Order ID & saving */}
+                  <AnimatePresence>
+                    {orderId && (
+                      <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+                        className="bg-[#2E7D32]/15 border border-[#2E7D32] rounded-xl p-3 text-center mb-3">
+                        <p className="text-[0.6rem] tracking-[0.15em] uppercase text-[#FEF3DF]/70">Order Reference</p>
+                        <p className="font-['Bebas_Neue'] text-xl text-[#2E7D32] tracking-[0.1em]">{orderId}</p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                  {savingStatus !== "idle" && (
+                    <div className={`text-center text-xs mb-3 ${
+                      savingStatus === "saving" ? "text-[#E5B83C]/70" : savingStatus === "saved" ? "text-[#2E7D32]" : "text-[#B23A1A]"
+                    }`}>
+                      {savingStatus === "saving" && <span className="flex items-center justify-center gap-2"><Loader2 className="w-3 h-3 animate-spin" /> Saving...</span>}
+                      {savingStatus === "saved" && "✓ Order saved!"}
+                      {savingStatus === "error" && "Saved locally (database unavailable)"}
+                    </div>
+                  )}
+
+                  {/* Customer Info */}
+                  <div className="space-y-3 mb-4">
+                    <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your Full Name *"
+                      className="w-full bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-3 text-[#FEF3DF] text-sm placeholder:text-[#FEF3DF]/25 focus:outline-none focus:border-[#E5B83C] focus:bg-white/12 transition-all" />
+                    <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Your Phone Number *"
+                      className="w-full bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-3 text-[#FEF3DF] text-sm placeholder:text-[#FEF3DF]/25 focus:outline-none focus:border-[#E5B83C] focus:bg-white/12 transition-all" />
+                    <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Your Email (for receipt)"
+                      className="w-full bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-3 text-[#FEF3DF] text-sm placeholder:text-[#FEF3DF]/25 focus:outline-none focus:border-[#E5B83C] focus:bg-white/12 transition-all" />
+                  </div>
+
+                  {/* Order Summary */}
+                  <div className="bg-white/4 rounded-xl p-3 mb-4 border border-white/5">
+                    <p className="text-[0.6rem] font-semibold text-[#FEF3DF]/60 mb-2 tracking-wider uppercase">Order Summary</p>
+                    {items.map((item) => (
+                      <div key={item.id} className="flex justify-between text-xs py-1">
+                        <span className="text-[#FEF3DF]/80">{item.qty}x {item.name}</span>
+                        <span className="text-[#F8E5B0]">R{item.price * item.qty}</span>
+                      </div>
+                    ))}
+                    {deliveryFee > 0 && (
+                      <div className="flex justify-between text-xs py-1 border-t border-white/10 mt-1">
+                        <span className="text-[#FEF3DF]/60">Delivery</span><span>R{deliveryFee}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Total */}
+                  <div className="bg-[#E5B83C]/12 border-2 border-[#E5B83C] rounded-xl p-4 text-center mb-4">
+                    <p className="text-[0.65rem] tracking-[0.2em] uppercase text-[#FEF3DF]/70">AMOUNT TO PAY</p>
+                    <motion.p key={total} initial={{ scale: 1.1 }} animate={{ scale: 1 }}
+                      className="font-['Bebas_Neue'] text-4xl text-[#E5B83C]">R{total}</motion.p>
+                  </div>
+
+                  {/* Payment Buttons */}
+                  {!ikhokhaStep ? (
+                    <>
+                      <motion.button whileTap={{ scale: 0.97 }} onClick={handleIkhokha}
+                        className="w-full border-2 border-[#E5B83C] text-[#E5B83C] py-3.5 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-sm mb-3 hover:bg-[#E5B83C]/15 flex items-center justify-center gap-2">
+                        <CreditCard className="w-4 h-4" /> PAY WITH IKHOKHA
+                      </motion.button>
+                      <div className="flex items-center gap-3 my-3">
+                        <div className="flex-1 h-px bg-white/15" />
+                        <span className="text-[0.55rem] text-white/40 uppercase tracking-[0.1em]">or</span>
+                        <div className="flex-1 h-px bg-white/15" />
+                      </div>
+                      <motion.button whileTap={{ scale: 0.97 }} onClick={handleWhatsAppCash}
+                        className="w-full bg-[#B23A1A] text-white py-3.5 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-sm mb-3 hover:bg-[#B23A1A]/80 flex items-center justify-center gap-2">
+                        <MessageCircle className="w-4 h-4" /> WHATSAPP (Cash/Card)
+                      </motion.button>
+                    </>
+                  ) : (
+                    <>
+                      <motion.button whileTap={{ scale: 0.97 }} onClick={handleConfirmWhatsApp}
+                        className="w-full bg-[#25D366] text-white py-3.5 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-sm mb-3 hover:shadow-[0_8px_25px_rgba(37,211,102,0.4)] flex items-center justify-center gap-2">
+                        <MessageCircle className="w-4 h-4" /> CONFIRM ON WHATSAPP
+                      </motion.button>
+                      <motion.button whileTap={{ scale: 0.97 }} onClick={() => window.open(IKHOKHA_PAYMENT_URL, "_blank")}
+                        className="w-full border border-[#E5B83C]/40 text-[#E5B83C] py-2.5 font-bold tracking-[0.1em] uppercase cursor-pointer rounded-xl text-xs mb-3 hover:bg-[#E5B83C]/10 flex items-center justify-center gap-2">
+                        <CreditCard className="w-3.5 h-3.5" /> RE-OPEN IKHOKHA
+                      </motion.button>
+                    </>
+                  )}
+                  <button onClick={handleClose}
+                    className="w-full text-white/40 py-3 cursor-pointer text-sm hover:text-white transition-colors bg-transparent border-none">Cancel</button>
+                  <p className="text-[0.6rem] text-white/35 text-center mt-2 leading-relaxed">
+                    iKhokha: Opens in a new tab. Enter amount and use Order ID as reference, then confirm on WhatsApp.
+                    <br />WhatsApp: For cash or card on collection/delivery.
+                  </p>
                 </>
               )}
-
-              <button
-                onClick={onClose}
-                className="w-full text-white/40 py-3 cursor-pointer text-sm hover:text-white transition-colors bg-transparent border-none"
-              >
-                Cancel
-              </button>
-
-              <p className="text-[0.65rem] text-white/40 text-center mt-3 leading-relaxed">
-                iKhokha: Opens payment in a new tab. Enter the amount shown and
-                use your Order ID as reference. After paying, click &quot;Confirm on
-                WhatsApp&quot; so Khatija knows it&apos;s paid.
-                <br />
-                <br />
-                WhatsApp: For cash or card on collection/delivery.
-              </p>
             </div>
           </motion.div>
         </>
@@ -1428,26 +1199,18 @@ function CheckoutModal({
 // ============================================
 function FloatingCartButton({ onClick }: { onClick: () => void }) {
   const totalItems = useCartStore((s) => s.totalItems());
-
   return (
     <AnimatePresence>
       {totalItems > 0 && (
         <motion.button
-          initial={{ scale: 0, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0, opacity: 0 }}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
+          initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }}
+          whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
           onClick={onClick}
-          className="fixed bottom-6 right-6 bg-[#25D366] w-14 h-14 rounded-full flex items-center justify-center cursor-pointer z-[300] shadow-[0_4px_20px_rgba(37,211,102,0.4)]"
+          className="fixed bottom-6 right-5 bg-[#25D366] w-14 h-14 rounded-full flex items-center justify-center cursor-pointer z-[300] shadow-[0_4px_20px_rgba(37,211,102,0.4)]"
         >
           <ShoppingCart className="w-6 h-6 text-white" />
-          <motion.span
-            key={totalItems}
-            initial={{ scale: 1.5 }}
-            animate={{ scale: 1 }}
-            className="absolute -top-1 -right-1 bg-[#B23A1A] text-white w-5 h-5 rounded-full text-[0.6rem] flex items-center justify-center font-bold"
-          >
+          <motion.span key={totalItems} initial={{ scale: 1.5 }} animate={{ scale: 1 }}
+            className="absolute -top-1 -right-1 bg-[#B23A1A] text-white w-5 h-5 rounded-full text-[0.6rem] flex items-center justify-center font-bold">
             {totalItems}
           </motion.span>
         </motion.button>
@@ -1462,9 +1225,7 @@ function FloatingCartButton({ onClick }: { onClick: () => void }) {
 function Footer() {
   return (
     <footer className="py-8 text-center text-[#FEF3DF]/30 text-xs relative z-20 border-t border-white/5">
-      <p className="font-['Bebas_Neue'] text-lg tracking-[0.15em] text-[#E5B83C]/30 mb-2">
-        BILTONG &amp; BYTES
-      </p>
+      <p className="font-['Bebas_Neue'] text-lg tracking-[0.15em] text-[#E5B83C]/30 mb-2">BILTONG &amp; BYTES</p>
       <p>&copy; 2025 Biltong &amp; Bytes · Handmade in Stanger, KZN · Halaal Certified</p>
     </footer>
   );
@@ -1477,15 +1238,18 @@ export default function BiltongAndBytes() {
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [checkoutResetKey, setCheckoutResetKey] = useState(0);
+  const [confettiActive, setConfettiActive] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  // Use sync external store pattern for hydration safety
   useEffect(() => {
-    // Schedule mount for next frame - safe because this is
-    // synchronizing with the DOM hydration state
     const id = requestAnimationFrame(() => setMounted(true));
     return () => cancelAnimationFrame(id);
   }, []);
+
+  // Confetti is triggered via confettiKey increment from add-to-cart actions
+  const [confettiKey, setConfettiKey] = useState(0);
+
+  const triggerConfetti = useCallback(() => setConfettiKey((k) => k + 1), []);
 
   const handleCartOpen = useCallback(() => setCartOpen(true), []);
   const handleCartClose = useCallback(() => setCartOpen(false), []);
@@ -1499,12 +1263,12 @@ export default function BiltongAndBytes() {
   if (!mounted) {
     return (
       <div className="min-h-screen bg-[#0A0301] flex items-center justify-center">
-        <div className="text-center">
-          <div className="font-['Bebas_Neue'] text-4xl tracking-[0.2em] text-[#E5B83C] animate-pulse">
-            BILTONG<span className="text-[#E07A2C]">&amp;</span>BYTES
-          </div>
-          <p className="text-[#FEF3DF]/40 text-sm mt-2">Loading...</p>
-        </div>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
+          <div className="text-4xl mb-3">🥩</div>
+          <div className="font-['Bebas_Neue'] text-3xl tracking-[0.2em] text-[#E5B83C]">BILTONG<span className="text-[#E07A2C]">&amp;</span>BYTES</div>
+          <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1.5, repeat: Infinity }}
+            className="text-[#FEF3DF]/40 text-xs mt-3 tracking-widest uppercase">Loading...</motion.div>
+        </motion.div>
       </div>
     );
   }
@@ -1512,28 +1276,18 @@ export default function BiltongAndBytes() {
   return (
     <div className="min-h-screen bg-[#0A0301] text-[#FEF3DF] font-['Syne',sans-serif] overflow-x-hidden">
       <SmokeCanvas />
+      <Confetti confettiKey={confettiKey} />
       <Navbar onCartOpen={handleCartOpen} />
       <Hero />
       <PhotoStrip />
-      <ProductsSection />
+      <ProductsSection onItemAdd={triggerConfetti} />
       <StorySection />
       <HowToOrderSection />
       <ContactSection />
       <Footer />
-
       <FloatingCartButton onClick={handleCartOpen} />
-
-      <CartDrawer
-        open={cartOpen}
-        onClose={handleCartClose}
-        onCheckout={handleCheckout}
-      />
-
-      <CheckoutModal
-        open={checkoutOpen}
-        onClose={handleCheckoutClose}
-        resetKey={checkoutResetKey}
-      />
+      <CartDrawer open={cartOpen} onClose={handleCartClose} onCheckout={handleCheckout} />
+      <CheckoutModal open={checkoutOpen} onClose={handleCheckoutClose} resetKey={checkoutResetKey} />
     </div>
   );
 }
