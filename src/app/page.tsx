@@ -953,6 +953,8 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
   const [orderId, setOrderId] = useState<string | null>(null);
   const [savingStatus, setSavingStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [ikhokhaStep, setIkhokhaStep] = useState(false);
+  const [ikhokhaLoading, setIkhokhaLoading] = useState(false);
+  const [paylinkUrl, setPaylinkUrl] = useState<string | null>(null);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [lastPaymentMethod, setLastPaymentMethod] = useState("cash");
 
@@ -1019,20 +1021,58 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
 
   const handleIkhokha = async () => {
     if (!validate()) return;
-    const orderData = await saveOrder("ikhokha");
-    setLastPaymentMethod("ikhokha");
-    setPendingIkhokhaOrder(orderData as unknown as Record<string, unknown>);
-    setIkhokhaStep(true);
-    window.open(IKHOKHA_PAYMENT_URL, "_blank");
-    toast.info("iKhokha opened! Pay there, then confirm below.", { icon: "💳", duration: 4000 });
-
+    setIkhokhaLoading(true);
     try {
-      await fetch("/api/orders", {
-        method: "PATCH",
+      const orderData = await saveOrder("ikhokha");
+      setLastPaymentMethod("ikhokha");
+      setPendingIkhokhaOrder(orderData as unknown as Record<string, unknown>);
+
+      // Call our API to create an iKhokha payment link with the exact amount
+      const res = await fetch("/api/ikhokha/create-payment", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ order_id: orderData.order_id, order_status: "payment_initiated" }),
+        body: JSON.stringify({
+          amount: total,
+          orderId: orderData.order_id,
+          description: `Biltong & Bytes - ${orderData.items_summary}`,
+        }),
       });
-    } catch { /* non-critical */ }
+
+      const paymentData = await res.json();
+
+      if (res.ok && paymentData.success && paymentData.paylinkUrl) {
+        // Open the iKhokha payment page with the exact amount pre-filled
+        setPaylinkUrl(paymentData.paylinkUrl);
+        window.open(paymentData.paylinkUrl, "_blank");
+        toast.info("iKhokha payment page opened! Complete payment, then confirm below.", { icon: "💳", duration: 5000 });
+
+        // Update order status
+        try {
+          await fetch("/api/orders", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ order_id: orderData.order_id, order_status: "payment_initiated" }),
+          });
+        } catch { /* non-critical */ }
+      } else {
+        // Fallback: open the static iKhokha link if API fails
+        console.warn("iKhokha API failed, falling back to static URL");
+        window.open(IKHOKHA_PAYMENT_URL, "_blank");
+        toast.info("Pay on iKhokha (enter amount manually), then confirm below.", { icon: "💳", duration: 5000 });
+      }
+
+      setIkhokhaStep(true);
+    } catch {
+      // Fallback to static URL on any error
+      const orderData = await saveOrder("ikhokha");
+      setLastPaymentMethod("ikhokha");
+      setPendingIkhokhaOrder(orderData as unknown as Record<string, unknown>);
+      window.open(IKHOKHA_PAYMENT_URL, "_blank");
+      toast.info("Pay on iKhokha (enter amount manually), then confirm below.", { icon: "💳", duration: 5000 });
+      setIkhokhaStep(true);
+    } finally {
+      setIkhokhaLoading(false);
+    }
   };
 
   const handleConfirmWhatsApp = () => {
@@ -1152,9 +1192,9 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
                   {/* Payment Buttons */}
                   {!ikhokhaStep ? (
                     <>
-                      <motion.button whileTap={{ scale: 0.97 }} onClick={handleIkhokha}
-                        className="w-full border-2 border-[#E5B83C] text-[#E5B83C] py-3.5 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-sm mb-3 hover:bg-[#E5B83C]/15 flex items-center justify-center gap-2">
-                        <CreditCard className="w-4 h-4" /> PAY WITH IKHOKHA
+                      <motion.button whileTap={{ scale: 0.97 }} onClick={handleIkhokha} disabled={ikhokhaLoading}
+                        className={`w-full border-2 border-[#E5B83C] text-[#E5B83C] py-3.5 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-sm mb-3 hover:bg-[#E5B83C]/15 flex items-center justify-center gap-2 ${ikhokhaLoading ? 'opacity-60 cursor-not-allowed' : ''}`}>
+                        {ikhokhaLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />} {ikhokhaLoading ? 'CREATING PAYMENT...' : 'PAY WITH IKHOKHA'}
                       </motion.button>
                       <div className="flex items-center gap-3 my-3">
                         <div className="flex-1 h-px bg-white/15" />
@@ -1172,16 +1212,16 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
                         className="w-full bg-[#25D366] text-white py-3.5 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-sm mb-3 hover:shadow-[0_8px_25px_rgba(37,211,102,0.4)] flex items-center justify-center gap-2">
                         <MessageCircle className="w-4 h-4" /> CONFIRM ON WHATSAPP
                       </motion.button>
-                      <motion.button whileTap={{ scale: 0.97 }} onClick={() => window.open(IKHOKHA_PAYMENT_URL, "_blank")}
+                      <motion.button whileTap={{ scale: 0.97 }} onClick={() => window.open(paylinkUrl || IKHOKHA_PAYMENT_URL, "_blank")}
                         className="w-full border border-[#E5B83C]/40 text-[#E5B83C] py-2.5 font-bold tracking-[0.1em] uppercase cursor-pointer rounded-xl text-xs mb-3 hover:bg-[#E5B83C]/10 flex items-center justify-center gap-2">
-                        <CreditCard className="w-3.5 h-3.5" /> RE-OPEN IKHOKHA
+                        <CreditCard className="w-3.5 h-3.5" /> RE-OPEN PAYMENT
                       </motion.button>
                     </>
                   )}
                   <button onClick={handleClose}
                     className="w-full text-white/40 py-3 cursor-pointer text-sm hover:text-white transition-colors bg-transparent border-none">Cancel</button>
                   <p className="text-[0.6rem] text-white/35 text-center mt-2 leading-relaxed">
-                    iKhokha: Opens in a new tab. Enter amount and use Order ID as reference, then confirm on WhatsApp.
+                    iKhokha: Card payment opens in a new tab with your exact total. Complete payment, then confirm on WhatsApp.
                     <br />WhatsApp: For cash or card on collection/delivery.
                   </p>
                 </>
