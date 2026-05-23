@@ -6,10 +6,14 @@ const SUPABASE_ANON_KEY =
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "Yumna@786";
 
+function checkAuth(request: NextRequest): boolean {
+  const authHeader = request.headers.get("authorization");
+  return authHeader === `Bearer ${ADMIN_PASSWORD}`;
+}
+
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get("authorization");
-    if (!authHeader || authHeader !== `Bearer ${ADMIN_PASSWORD}`) {
+    if (!checkAuth(request)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -17,7 +21,8 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status");
     const search = searchParams.get("search");
 
-    let query = `${SUPABASE_URL}/rest/v1/orders?select=*&order=created_at.desc`;
+    // Always exclude soft-deleted orders (order_status = "deleted")
+    let query = `${SUPABASE_URL}/rest/v1/orders?select=*&order=created_at.desc&order_status=neq.deleted`;
 
     if (status && status !== "all") {
       query += `&order_status=eq.${status}`;
@@ -57,8 +62,7 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const authHeader = request.headers.get("authorization");
-    if (!authHeader || authHeader !== `Bearer ${ADMIN_PASSWORD}`) {
+    if (!checkAuth(request)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -75,6 +79,8 @@ export async function PATCH(request: NextRequest) {
     if (orderStatus) updateData.order_status = orderStatus;
     if (paymentStatus) updateData.payment_status = paymentStatus;
 
+    console.log(`[Admin] Updating order ${orderId}:`, updateData);
+
     const response = await fetch(
       `${SUPABASE_URL}/rest/v1/orders?order_id=eq.${orderId}`,
       {
@@ -83,6 +89,7 @@ export async function PATCH(request: NextRequest) {
           "Content-Type": "application/json",
           apikey: SUPABASE_ANON_KEY,
           Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          Prefer: "return=representation",
         },
         body: JSON.stringify(updateData),
       }
@@ -92,12 +99,15 @@ export async function PATCH(request: NextRequest) {
       const errorText = await response.text();
       console.error("Supabase update error:", errorText);
       return NextResponse.json(
-        { error: "Failed to update order" },
+        { error: "Failed to update order", details: errorText },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ success: true });
+    const result = await response.json();
+    console.log(`[Admin] Order ${orderId} updated successfully:`, result);
+
+    return NextResponse.json({ success: true, data: result });
   } catch (error) {
     console.error("Admin update error:", error);
     return NextResponse.json(
@@ -107,10 +117,11 @@ export async function PATCH(request: NextRequest) {
   }
 }
 
+// Soft delete: mark order as "deleted" instead of actually removing it
+// This avoids RLS issues with DELETE operations on the anon key
 export async function DELETE(request: NextRequest) {
   try {
-    const authHeader = request.headers.get("authorization");
-    if (!authHeader || authHeader !== `Bearer ${ADMIN_PASSWORD}`) {
+    if (!checkAuth(request)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -124,26 +135,39 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    console.log(`[Admin] Soft-deleting order ${orderId}`);
+
+    // Soft delete: set order_status to "deleted"
     const response = await fetch(
       `${SUPABASE_URL}/rest/v1/orders?order_id=eq.${orderId}`,
       {
-        method: "DELETE",
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           apikey: SUPABASE_ANON_KEY,
           Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          Prefer: "return=representation",
         },
+        body: JSON.stringify({
+          order_status: "deleted",
+          payment_status: "cancelled",
+        }),
       }
     );
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Supabase soft-delete error:", errorText);
       return NextResponse.json(
-        { error: "Failed to delete order" },
+        { error: "Failed to delete order", details: errorText },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ success: true });
+    const result = await response.json();
+    console.log(`[Admin] Order ${orderId} soft-deleted:`, result);
+
+    return NextResponse.json({ success: true, deleted: true });
   } catch (error) {
     console.error("Admin delete error:", error);
     return NextResponse.json(

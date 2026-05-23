@@ -429,53 +429,6 @@ function FlavorIcon({ flavor }: { flavor: string }) {
 }
 
 // ============================================
-// COMBO DEAL BADGE
-// ============================================
-function ComboDeal({ onAdd }: { onAdd?: () => void }) {
-  const addItem = useCartStore((s) => s.addItem);
-  const [added, setAdded] = useState(false);
-
-  const handleCombo = () => {
-    addItem({ name: "The Taster 50g", weight: "50g", flavor: "Traditional", price: 35, qty: 1, img: PRODUCTS[0].img });
-    addItem({ name: "The Taster 50g", weight: "50g", flavor: "Chilli", price: 35, qty: 1, img: PRODUCTS[0].img });
-    addItem({ name: "The Taster 50g", weight: "50g", flavor: "Honey Glazed", price: 35, qty: 1, img: PRODUCTS[0].img });
-    setAdded(true);
-    toast.success("Flavor Trio added! 3 for R90 🎉", { icon: "🥩", duration: 2500 });
-    onAdd?.();
-    setTimeout(() => setAdded(false), 1500);
-  };
-
-  return (
-    <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-      className="max-w-[1400px] mx-auto mb-6">
-      <div className="bg-gradient-to-r from-[#E5B83C]/10 via-[#E07A2C]/10 to-[#E5B83C]/10 border-2 border-[#E5B83C]/30 rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <motion.div animate={{ rotate: [0, 10, -10, 0] }} transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
-            className="text-4xl">🔥</motion.div>
-          <div>
-            <div className="flex items-center gap-2">
-              <Crown className="w-4 h-4 text-[#E5B83C]" />
-              <h3 className="font-['Cormorant_Garamond'] text-xl md:text-2xl font-bold text-[#E5B83C]">Flavor Trio Deal</h3>
-            </div>
-            <p className="text-sm text-[#FEF3DF]/70 mt-1">
-              Try all 3 flavors! 3x Taster Pack (50g each) — <span className="text-[#E5B83C] font-bold">R90</span>
-              <span className="text-[#FEF3DF]/40 line-through ml-2">R105</span>
-              <span className="bg-[#2E7D32]/20 text-[#2E7D32] text-xs px-2 py-0.5 rounded-full ml-2 font-bold">SAVE R15</span>
-            </p>
-          </div>
-        </div>
-        <motion.button whileTap={{ scale: 0.95 }} onClick={handleCombo}
-          className={`px-6 py-3 font-bold tracking-[0.1em] uppercase cursor-pointer rounded-xl text-sm transition-all whitespace-nowrap ${
-            added ? "bg-[#2E7D32] text-white" : "bg-[#E5B83C] text-[#0A0301] hover:shadow-[0_4px_20px_rgba(229,184,60,0.4)]"
-          }`}>
-          {added ? <span className="flex items-center gap-2"><Check className="w-4 h-4" /> ADDED!</span> : "ADD TRIO"}
-        </motion.button>
-      </div>
-    </motion.div>
-  );
-}
-
-// ============================================
 // PRODUCT CARD — Exciting mobile version
 // ============================================
 function ProductCard({ product, index, onAdd }: { product: (typeof PRODUCTS)[0]; index: number; onAdd?: () => void }) {
@@ -604,9 +557,6 @@ function ProductsSection({ onItemAdd }: { onItemAdd?: () => void }) {
           Choose your <em className="italic text-[#E5B83C] font-semibold">Biltong</em>
         </h2>
       </motion.div>
-
-      {/* Combo Deal Banner */}
-      <ComboDeal onAdd={onItemAdd} />
 
       <motion.div variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-30px" }}
         className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 max-w-[1400px] mx-auto">
