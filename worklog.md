@@ -66,5 +66,5 @@ Work Log:
 Stage Summary:
 - Orders saved to Supabase via server-side API (no exposed keys on client)
 - iKhokha integration: opens payment link, then WhatsApp confirmation
-- WhatsApp Cash/Card flow: direct message to Khatija
+- WhatsApp Cash/Card flow: direct message via WhatsApp
 - Order status tracking: new → payment_initiated → paid → confirmed

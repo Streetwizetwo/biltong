@@ -306,7 +306,7 @@ function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
                 </div>
                 <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noopener noreferrer"
                   className="bg-[#25D366] text-white px-4 py-3 text-xs font-bold tracking-[0.1em] uppercase no-underline inline-flex items-center gap-2 rounded-xl w-full justify-center">
-                  <MessageCircle className="w-4 h-4" /> WhatsApp Khatija
+                  <MessageCircle className="w-4 h-4" /> WhatsApp Us
                 </a>
               </div>
             </motion.div>
@@ -713,13 +713,13 @@ function ContactSection() {
         className="text-center max-w-[550px] mx-auto">
         <p className="text-[0.6rem] tracking-[0.4em] uppercase text-[#E07A2C] mb-3">GET IN TOUCH</p>
         <h2 className="font-['Cormorant_Garamond'] text-[2.5rem] md:text-[4.5rem] font-light leading-tight mb-8">
-          Contact <em className="italic text-[#E5B83C] font-semibold">Khatija</em>
+          Contact <em className="italic text-[#E5B83C] font-semibold">Us</em>
         </h2>
         <motion.div whileHover={{ y: -3 }}
           className="bg-gradient-to-br from-[#160A03] to-[#0C0502] border border-[#E5B83C] p-8 rounded-2xl">
           <div className="text-5xl mb-4">👩🏽‍🍳</div>
-          <h3 className="text-2xl font-bold font-['Cormorant_Garamond']">Khatija</h3>
-          <p className="text-sm text-[#FEF3DF]/60 mb-6">Biltong Maker &amp; Tech Support</p>
+          <h3 className="text-2xl font-bold font-['Cormorant_Garamond']">Biltong &amp; Bytes</h3>
+          <p className="text-sm text-[#FEF3DF]/60 mb-6">Stanger, KZN &bull; Halaal Biltong</p>
           <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noopener noreferrer"
             className="bg-[#25D366] text-white px-6 py-3 text-sm font-bold tracking-[0.1em] uppercase no-underline inline-flex items-center gap-2 rounded-xl transition-all hover:-translate-y-1 hover:shadow-[0_8px_25px_rgba(37,211,102,0.4)]">
             <MessageCircle className="w-4 h-4" /> ORDER ON WHATSAPP
@@ -912,7 +912,7 @@ function OrderSuccess({ orderId, paymentMethod, onClose }: { orderId: string; pa
         className="text-[#FEF3DF]/70 mt-2 text-sm">
         {paymentMethod === "ikhokha"
           ? "Please complete payment in the iKhokha tab, then confirm on WhatsApp."
-          : "Khatija will confirm your order on WhatsApp shortly!"}
+          : "We will confirm your order on WhatsApp shortly!"}
       </motion.p>
       <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.8 }}
         className="bg-[#2E7D32]/15 border border-[#2E7D32] rounded-xl p-4 mt-4 inline-block">
