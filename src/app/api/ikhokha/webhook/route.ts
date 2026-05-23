@@ -32,7 +32,8 @@ export async function POST(request: NextRequest) {
     const body = await request.text();
     const bodyJson = JSON.parse(body);
 
-    // 3. Verify signature
+    // 3. Verify signature — use the full path as registered in the callback URL
+    // iKhokha signs the webhook using the path portion of the callbackUrl we provided
     const callbackPath = "/api/ikhokha/webhook";
     if (!verifySignature(callbackPath, body, ikSign || "", IKHOKHA_APP_SECRET)) {
       console.warn("[iKhokha Webhook] Invalid signature");

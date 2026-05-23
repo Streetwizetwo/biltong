@@ -3,9 +3,9 @@ import CryptoJS from "crypto-js";
 
 const IKHOKHA_APP_ID = process.env.IKHOKHA_APP_ID || "IK4NR697EBXR1519PNFXVUOWORWHL20P";
 const IKHOKHA_APP_SECRET = process.env.IKHOKHA_APP_SECRET || "YtG6KMhiBewvS6o0E6xU1ev7dgkD8qEW";
-const IKHOKHA_API_BASE = "https://api.ikhokha.com/public-api/v1/api";
 
 // Generate HMAC-SHA256 signature as per iKhokha docs
+// The path must be the FULL path from the domain: /public-api/v1/api/payment
 function generateSignature(path: string, body: string, secret: string): string {
   const payload = (path + body)
     .replace(/[\\\"']/g, "\\$&")
@@ -30,7 +30,10 @@ export async function POST(request: NextRequest) {
     // Determine the base URL for callbacks
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `https://${request.headers.get("host")}`;
 
-    const endpoint = "/api/payment";
+    // Full API path for signature - must match the URL path after the domain
+    const apiPath = "/public-api/v1/api/payment";
+    const apiUrl = `https://api.ikhokha.com${apiPath}`;
+
     const requestBody = {
       entityID: IKHOKHA_APP_ID,
       externalEntityID: "biltong-and-bytes",
@@ -49,11 +52,12 @@ export async function POST(request: NextRequest) {
     };
 
     const bodyString = JSON.stringify(requestBody);
-    const signature = generateSignature(endpoint, bodyString, IKHOKHA_APP_SECRET);
+    const signature = generateSignature(apiPath, bodyString, IKHOKHA_APP_SECRET);
 
     console.log(`[iKhokha] Creating payment for ${orderId}, amount: R${amount} (${amountInCents} cents)`);
+    console.log(`[iKhokha] Signature generated for path: ${apiPath}`);
 
-    const response = await fetch(`${IKHOKHA_API_BASE}${endpoint}`, {
+    const response = await fetch(apiUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -64,6 +68,8 @@ export async function POST(request: NextRequest) {
     });
 
     const data = await response.json();
+
+    console.log(`[iKhokha] API Response:`, JSON.stringify(data));
 
     if (!response.ok || data.responseCode !== "00") {
       console.error("[iKhokha] Payment creation failed:", data);
