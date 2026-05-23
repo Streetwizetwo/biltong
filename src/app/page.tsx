@@ -331,7 +331,7 @@ function Hero() {
     <section ref={ref} className="relative min-h-screen flex items-center justify-center overflow-hidden">
       <motion.div style={{ scale: bgScale, opacity: bgOpacity }} className="absolute inset-0 z-[-2]">
         <div className="w-full h-full bg-cover bg-center" style={{
-          backgroundImage: "url('https://biltongfix.com/cdn/shop/files/BB3C71EA-1B1C-4169-B5C0-194B75A869E5.jpg?crop=center&height=4149&v=1770634369&width=4149')",
+          backgroundImage: "url('/images/hero-bg.png')",
           filter: "saturate(0.8)",
         }} />
       </motion.div>
@@ -383,10 +383,10 @@ function PhotoStrip() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const images = [
-    { src: "https://media.istockphoto.com/id/452965315/photo/biltong.jpg?s=612x612&w=0&k=20&c=POTlYIb-yTiu4ZFkCiL2rDugtle335UrbMH18qgimgA=", alt: "Biltong" },
-    { src: "https://i0.wp.com/www.biltongblog.com/wp-content/uploads/2016/12/P1150800.jpg", alt: "Hanging" },
-    { src: "https://img.freepik.com/free-photo/sliced-stick-biltong-snack-rosemary-seasoning-wooden-surface_181624-12920.jpg", alt: "Sliced" },
-    { src: "https://boerie.co/cdn/shop/files/Chilli_Biltong_03_1024x1024@2x.jpg?v=1746100500", alt: "Chilli" },
+    { src: "/images/biltong-classic.png", alt: "Biltong" },
+    { src: "/images/biltong-hanging.png", alt: "Hanging" },
+    { src: "/images/biltong-sliced.png", alt: "Sliced" },
+    { src: "/images/biltong-chilli.png", alt: "Chilli" },
   ];
 
   return (
@@ -602,7 +602,7 @@ function StorySection() {
 
         <motion.div variants={scaleIn} initial="hidden" whileInView="visible" viewport={{ once: true }}
           className="bg-gradient-to-br from-[#160A03]/90 to-[#080301]/95 p-5 md:p-8 rounded-2xl border border-[#E5B83C]/25">
-          <img src="https://github.com/Streetwizetwo/biltong/blob/main/ChatGPT%20Image%20May%2019,%202026,%2009_45_16%20PM.png?raw=true"
+          <img src="/images/our-story.png"
             alt="Fresh Biltong" className="w-full rounded-xl" />
           <h3 className="text-[#E5B83C] mt-4 font-['Cormorant_Garamond'] text-2xl font-bold">Wet, Tender &amp; Aromatic</h3>
           <p className="text-sm text-[#FEF3DF]/60 mt-1">Traditional · Chilli · Honey Glazed</p>

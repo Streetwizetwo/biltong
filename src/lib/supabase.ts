@@ -105,7 +105,7 @@ export const PRODUCTS = [
     weight: "50g",
     grams: 50,
     price: 35,
-    img: "https://t4.ftcdn.net/jpg/00/41/14/91/360_F_41149170_hkxBmCVDZgbokGTiw5MjRV0nMfOzLv3t.jpg",
+    img: "/images/taster-50g.png",
     description: "Perfect bite-sized sample of our premium wet biltong",
   },
   {
@@ -114,7 +114,7 @@ export const PRODUCTS = [
     weight: "150g",
     grams: 150,
     price: 100,
-    img: "https://img.freepik.com/free-photo/sliced-stick-biltong-snack-rosemary-seasoning-wooden-surface_181624-12920.jpg",
+    img: "/images/snack-pack-150g.png",
     description: "Ideal for snacking — great for on-the-go cravings",
   },
   {
@@ -123,7 +123,7 @@ export const PRODUCTS = [
     weight: "500g",
     grams: 500,
     price: 300,
-    img: "https://www.biltongboyz.com/wp-content/uploads/2018/12/sliced-spicy-biltong.jpg",
+    img: "/images/family-batch-500g.png",
     description: "Share with the family — the crowd favourite size",
   },
   {
@@ -132,7 +132,7 @@ export const PRODUCTS = [
     weight: "1kg",
     grams: 1000,
     price: 550,
-    img: "https://boerie.co/cdn/shop/files/Chilli_Biltong_03_1024x1024@2x.jpg?v=1746100500",
+    img: "/images/feast-1kg.png",
     description: "The ultimate biltong experience — best value per gram",
   },
 ];
