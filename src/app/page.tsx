@@ -765,7 +765,7 @@ function HowToOrderSection() {
     { icon: Package, title: "Pick your Biltong", desc: "Choose size & flavor", num: "1" },
     { icon: ShoppingCart, title: "Add to Cart", desc: "Adjust quantity & mix", num: "2" },
     { icon: CreditCard, title: "Pay with iKhokha", desc: "Secure online payment", num: "3" },
-    { icon: Truck, title: "Collect or Delivery", desc: "R30 delivery (Stanger only)", num: "4" },
+    { icon: Truck, title: "Collect or Delivery", desc: "R40 delivery (Stanger only)", num: "4" },
   ];
 
   return (
@@ -927,7 +927,7 @@ function CartDrawer({ open, onClose, onCheckout }: { open: boolean; onClose: () 
             <div className="px-5 py-3 border-t border-white/10">
               <div className="flex gap-2 mb-2">
                 {[{ mode: "collect" as DeliveryMode, icon: MapPin, label: "COLLECT", sub: "Free" },
-                  { mode: "deliver" as DeliveryMode, icon: Truck, label: "DELIVER", sub: "R30" }].map(({ mode, icon: Icon, label, sub }) => (
+                  { mode: "deliver" as DeliveryMode, icon: Truck, label: "DELIVER", sub: "R40" }].map(({ mode, icon: Icon, label, sub }) => (
                   <motion.button key={mode} whileTap={{ scale: 0.97 }}
                     onClick={() => setDeliveryMode(mode)}
                     className={`flex-1 py-2.5 text-center cursor-pointer rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
@@ -958,7 +958,7 @@ function CartDrawer({ open, onClose, onCheckout }: { open: boolean; onClose: () 
                         </div>
                       )}
                     </div>
-                    <p className="text-[0.6rem] text-[#FEF3DF]/40 mt-1.5">Stanger delivery only · R30 fee</p>
+                    <p className="text-[0.6rem] text-[#FEF3DF]/40 mt-1.5">Stanger delivery only · R40 fee</p>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -1440,7 +1440,7 @@ function Footer() {
             </div>
             <div className="mt-1.5 flex items-center justify-center md:justify-start gap-1.5 text-[#FEF3DF]/40 text-xs">
               <Truck className="w-3.5 h-3.5" />
-              <span>Delivery: Stanger only · R30</span>
+              <span>Delivery: Stanger only · R40</span>
             </div>
           </div>
 
