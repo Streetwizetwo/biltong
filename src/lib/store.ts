@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { useSettingsStore } from "./settings-store";
 
 export interface CartItem {
   id: string;
@@ -121,7 +122,7 @@ export const useCartStore = create<CartStore>()(
 
       totalItems: () => get().items.reduce((s, i) => s + i.qty, 0),
       subtotal: () => get().items.reduce((s, i) => s + i.price * i.qty, 0),
-      deliveryFee: () => (get().deliveryMode === "deliver" ? 40 : 0),
+      deliveryFee: () => (get().deliveryMode === "deliver" ? (useSettingsStore.getState()?.deliveryFee || 40) : 0),
       total: () => get().subtotal() + get().deliveryFee(),
     }),
     {

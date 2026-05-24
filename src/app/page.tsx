@@ -45,6 +45,7 @@ import {
   useCartStore,
   type DeliveryMode,
 } from "@/lib/store";
+import { useSettingsStore } from "@/lib/settings-store";
 import {
   PRODUCTS,
   FLAVORS,
@@ -577,17 +578,20 @@ function ProductCard({ product, index, onAdd, cardRef }: { product: (typeof PROD
   const [qty, setQty] = useState(1);
   const [justAdded, setJustAdded] = useState(false);
   const addItem = useCartStore((s) => s.addItem);
+  const getPrice = useSettingsStore((s) => s.getPrice);
+
+  const currentPrice = getPrice(product.id, product.price);
 
   const isPopular = product.id === 2; // Family Batch is the most popular
   const isBestValue = product.id === 3; // 1kg is best value per gram
-  const pricePerGram = (product.price / product.grams).toFixed(2);
+  const pricePerGram = (currentPrice / product.grams).toFixed(2);
 
   const handleAdd = () => {
     addItem({
       name: `${product.name} ${product.weight}`,
       weight: product.weight,
       flavor: selectedFlavor,
-      price: product.price,
+      price: currentPrice,
       qty,
       img: product.img,
     });
@@ -640,7 +644,7 @@ function ProductCard({ product, index, onAdd, cardRef }: { product: (typeof PROD
       </h3>
       <p className="text-[0.65rem] md:text-xs text-[#FEF3DF]/50 mt-0.5">{product.description}</p>
 
-      <div className="font-['Bebas_Neue'] text-3xl md:text-4xl text-[#F8E5B0] mt-1.5">R{product.price}</div>
+      <div className="font-['Bebas_Neue'] text-3xl md:text-4xl text-[#F8E5B0] mt-1.5">R{currentPrice}</div>
 
       {/* Flavor Selector */}
       <div className="flex justify-center gap-1.5 mt-3 flex-wrap">
@@ -761,11 +765,12 @@ function StorySection() {
 // HOW TO ORDER SECTION
 // ============================================
 function HowToOrderSection() {
+  const deliveryFee = useSettingsStore((s) => s.deliveryFee);
   const steps = [
     { icon: Package, title: "Pick your Biltong", desc: "Choose size & flavor", num: "1" },
     { icon: ShoppingCart, title: "Add to Cart", desc: "Adjust quantity & mix", num: "2" },
     { icon: CreditCard, title: "Pay with iKhokha", desc: "Secure online payment", num: "3" },
-    { icon: Truck, title: "Collect or Delivery", desc: "R40 delivery (Stanger only)", num: "4" },
+    { icon: Truck, title: "Collect or Delivery", desc: `R${deliveryFee} delivery (Stanger only)`, num: "4" },
   ];
 
   return (
@@ -840,6 +845,7 @@ function CartDrawer({ open, onClose, onCheckout }: { open: boolean; onClose: () 
   const subtotal = useCartStore((s) => s.subtotal());
   const deliveryFee = useCartStore((s) => s.deliveryFee());
   const total = useCartStore((s) => s.total());
+  const settingsDeliveryFee = useSettingsStore((s) => s.deliveryFee);
   const [addressQuery, setAddressQuery] = useState(deliveryAddress);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const dragY = useMotionValue(0);
@@ -927,7 +933,7 @@ function CartDrawer({ open, onClose, onCheckout }: { open: boolean; onClose: () 
             <div className="px-5 py-3 border-t border-white/10">
               <div className="flex gap-2 mb-2">
                 {[{ mode: "collect" as DeliveryMode, icon: MapPin, label: "COLLECT", sub: "Free" },
-                  { mode: "deliver" as DeliveryMode, icon: Truck, label: "DELIVER", sub: "R40" }].map(({ mode, icon: Icon, label, sub }) => (
+                  { mode: "deliver" as DeliveryMode, icon: Truck, label: "DELIVER", sub: `R${settingsDeliveryFee}` }].map(({ mode, icon: Icon, label, sub }) => (
                   <motion.button key={mode} whileTap={{ scale: 0.97 }}
                     onClick={() => setDeliveryMode(mode)}
                     className={`flex-1 py-2.5 text-center cursor-pointer rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
@@ -958,7 +964,7 @@ function CartDrawer({ open, onClose, onCheckout }: { open: boolean; onClose: () 
                         </div>
                       )}
                     </div>
-                    <p className="text-[0.6rem] text-[#FEF3DF]/40 mt-1.5">Stanger delivery only · R40 fee</p>
+                    <p className="text-[0.6rem] text-[#FEF3DF]/40 mt-1.5">Stanger delivery only · R{settingsDeliveryFee} fee</p>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -1407,6 +1413,7 @@ function FloatingCartButton({ onClick, pulse }: { onClick: () => void; pulse?: b
 // FOOTER
 // ============================================
 function Footer() {
+  const deliveryFee = useSettingsStore((s) => s.deliveryFee);
   return (
     <footer className="py-10 md:py-14 px-4 md:px-[6%] relative z-20 border-t border-[#E5B83C]/10">
       <div className="max-w-[1200px] mx-auto">
@@ -1440,7 +1447,7 @@ function Footer() {
             </div>
             <div className="mt-1.5 flex items-center justify-center md:justify-start gap-1.5 text-[#FEF3DF]/40 text-xs">
               <Truck className="w-3.5 h-3.5" />
-              <span>Delivery: Stanger only · R40</span>
+              <span>Delivery: Stanger only · R{deliveryFee}</span>
             </div>
           </div>
 
@@ -1488,6 +1495,12 @@ export default function BiltongAndBytes() {
     const id = requestAnimationFrame(() => setMounted(true));
     return () => cancelAnimationFrame(id);
   }, []);
+
+  // Fetch settings from Supabase on mount
+  const fetchSettings = useSettingsStore((s) => s.fetchSettings);
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
 
   // Confetti is triggered via confettiKey increment from add-to-cart actions
   const [confettiKey, setConfettiKey] = useState(0);

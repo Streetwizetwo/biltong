@@ -24,9 +24,14 @@ import {
   ShoppingBag,
   CircleDollarSign,
   Loader2,
+  Settings,
+  ClipboardList,
+  Save,
+  DollarSign,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import { PRODUCTS } from "@/lib/supabase";
 
 // ============================================
 // TYPES
@@ -392,14 +397,185 @@ function OrderRow({
 }
 
 // ============================================
+// SETTINGS PANEL
+// ============================================
+function SettingsPanel() {
+  const [deliveryFee, setDeliveryFee] = useState(40);
+  const [productPrices, setProductPrices] = useState<Record<string, number>>({
+    "0": 35, "1": 100, "2": 300, "3": 550,
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const authHeaders = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${ADMIN_PASS}`,
+  };
+
+  const fetchSettings = useCallback(async () => {
+    try {
+      const res = await fetch("/api/settings", { headers: authHeaders });
+      if (res.ok) {
+        const data = await res.json();
+        setDeliveryFee(data.deliveryFee ?? 40);
+        setProductPrices(data.productPrices ?? { "0": 35, "1": 100, "2": 300, "3": 550 });
+      }
+    } catch (err) {
+      console.error("Failed to fetch settings:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PUT",
+        headers: authHeaders,
+        body: JSON.stringify({ deliveryFee, productPrices }),
+      });
+
+      if (res.ok) {
+        toast.success("Settings saved successfully!", { icon: "✅" });
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to save settings");
+      }
+    } catch {
+      toast.error("Failed to save settings");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const updateProductPrice = (id: string, value: string) => {
+    const num = parseInt(value, 10);
+    if (!isNaN(num) && num >= 0) {
+      setProductPrices((prev) => ({ ...prev, [id]: num }));
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="text-center py-20">
+        <Loader2 className="w-8 h-8 text-[#E5B83C] animate-spin mx-auto mb-3" />
+        <p className="text-sm text-[#FEF3DF]/50">Loading settings...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Delivery Fee Card */}
+      <div className="bg-white/4 border border-white/8 rounded-xl p-5">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-[#E5B83C]/10 border border-[#E5B83C]/30 rounded-lg flex items-center justify-center">
+            <Truck className="w-5 h-5 text-[#E5B83C]" />
+          </div>
+          <div>
+            <h3 className="font-['Cormorant_Garamond'] text-lg text-[#FEF3DF]">Delivery Fee</h3>
+            <p className="text-[0.6rem] text-[#FEF3DF]/40 tracking-wider uppercase">Stanger delivery area</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-[#FEF3DF]/60 text-sm font-bold">R</span>
+          <input
+            type="number"
+            value={deliveryFee}
+            onChange={(e) => {
+              const val = parseInt(e.target.value, 10);
+              if (!isNaN(val) && val >= 0) setDeliveryFee(val);
+            }}
+            min={0}
+            className="flex-1 bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-3 text-[#FEF3DF] text-lg font-['Bebas_Neue'] tracking-wider focus:outline-none focus:border-[#E5B83C] transition-all"
+          />
+        </div>
+      </div>
+
+      {/* Product Prices */}
+      <div>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-[#E5B83C]/10 border border-[#E5B83C]/30 rounded-lg flex items-center justify-center">
+            <DollarSign className="w-5 h-5 text-[#E5B83C]" />
+          </div>
+          <div>
+            <h3 className="font-['Cormorant_Garamond'] text-lg text-[#FEF3DF]">Product Prices</h3>
+            <p className="text-[0.6rem] text-[#FEF3DF]/40 tracking-wider uppercase">Update menu pricing</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {PRODUCTS.map((product) => (
+            <div
+              key={product.id}
+              className="bg-white/4 border border-white/8 rounded-xl p-4 flex items-center gap-4"
+            >
+              <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
+                <img
+                  src={product.img}
+                  alt={product.name}
+                  className="w-full h-full object-cover brightness-[0.7]"
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-['Cormorant_Garamond'] text-sm font-bold text-[#FEF3DF] truncate">
+                  {product.name}
+                </p>
+                <p className="text-[0.6rem] text-[#FEF3DF]/40">{product.weight}</p>
+              </div>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <span className="text-[#FEF3DF]/60 text-xs font-bold">R</span>
+                <input
+                  type="number"
+                  value={productPrices[String(product.id)] ?? product.price}
+                  onChange={(e) => updateProductPrice(String(product.id), e.target.value)}
+                  min={0}
+                  className="w-20 bg-white/8 border border-[#E5B83C]/30 rounded-lg px-2.5 py-2 text-[#FEF3DF] text-sm font-['Bebas_Neue'] tracking-wider focus:outline-none focus:border-[#E5B83C] transition-all text-right"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Save Button */}
+      <motion.button
+        whileTap={{ scale: 0.97 }}
+        onClick={handleSave}
+        disabled={saving}
+        className={`w-full py-3.5 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-sm flex items-center justify-center gap-2 ${
+          saving
+            ? "bg-[#E5B83C]/50 text-[#0A0301]/70 cursor-not-allowed"
+            : "bg-[#E5B83C] text-[#0A0301] hover:bg-[#E5B83C]/90"
+        }`}
+      >
+        {saving ? (
+          <><Loader2 className="w-4 h-4 animate-spin" /> SAVING...</>
+        ) : (
+          <><Save className="w-4 h-4" /> SAVE SETTINGS</>
+        )}
+      </motion.button>
+    </div>
+  );
+}
+
+// ============================================
 // DASHBOARD
 // ============================================
+type DashboardTab = "orders" | "settings";
+
 function Dashboard({ onLogout }: { onLogout: () => void }) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState<DashboardTab>("orders");
 
   const authHeaders = {
     "Content-Type": "application/json",
@@ -514,86 +690,135 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 py-5 space-y-5">
-        {/* Stats */}
-        <StatsCards orders={orders} />
-
-        {/* Filters */}
-        <div className="space-y-3">
-          {/* Search */}
-          <div className="relative">
-            <Search className="w-4 h-4 text-[#FEF3DF]/30 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search orders by ID, name, or phone..."
-              className="w-full bg-white/6 border border-[#E5B83C]/20 rounded-xl pl-10 pr-4 py-2.5 text-[#FEF3DF] text-sm placeholder:text-[#FEF3DF]/25 focus:outline-none focus:border-[#E5B83C] transition-all"
-            />
-          </div>
-
-          {/* Status Tabs */}
-          <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
-            {(["all", "new", "payment_initiated", "confirmed", "fulfilled", "payment_failed"] as StatusFilter[]).map(
-              (status) => {
-                const conf = STATUS_CONFIG[status];
-                const count = filterCounts[status] || 0;
-                const isActive = statusFilter === status;
-                return (
-                  <button
-                    key={status}
-                    onClick={() => setStatusFilter(status)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all whitespace-nowrap ${
-                      isActive
-                        ? status === "all"
-                          ? "bg-[#E5B83C] text-[#0A0301]"
-                          : `${conf.bg} ${conf.color} border`
-                        : "bg-white/5 text-[#FEF3DF]/50 hover:bg-white/10"
-                    }`}
-                  >
-                    {conf && <conf.icon className="w-3 h-3" />}
-                    {status === "all" ? "All" : conf?.label}
-                    <span className={`text-[0.6rem] ${isActive ? "opacity-80" : "opacity-50"}`}>({count})</span>
-                  </button>
-                );
-              }
-            )}
-          </div>
+      {/* Tab Navigation */}
+      <div className="max-w-4xl mx-auto px-4 pt-4">
+        <div className="flex gap-1 bg-white/5 rounded-xl p-1">
+          <button
+            onClick={() => setActiveTab("orders")}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-xs font-semibold tracking-wider uppercase cursor-pointer transition-all ${
+              activeTab === "orders"
+                ? "bg-[#E5B83C] text-[#0A0301]"
+                : "text-[#FEF3DF]/60 hover:text-[#FEF3DF] hover:bg-white/5"
+            }`}
+          >
+            <ClipboardList className="w-4 h-4" /> Orders
+          </button>
+          <button
+            onClick={() => setActiveTab("settings")}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-xs font-semibold tracking-wider uppercase cursor-pointer transition-all ${
+              activeTab === "settings"
+                ? "bg-[#E5B83C] text-[#0A0301]"
+                : "text-[#FEF3DF]/60 hover:text-[#FEF3DF] hover:bg-white/5"
+            }`}
+          >
+            <Settings className="w-4 h-4" /> Settings
+          </button>
         </div>
+      </div>
 
-        {/* Orders List */}
-        {loading ? (
-          <div className="text-center py-20">
-            <Loader2 className="w-8 h-8 text-[#E5B83C] animate-spin mx-auto mb-3" />
-            <p className="text-sm text-[#FEF3DF]/50">Loading orders...</p>
-          </div>
-        ) : orders.length === 0 ? (
-          <div className="text-center py-20">
-            <Package className="w-12 h-12 text-[#FEF3DF]/15 mx-auto mb-3" />
-            <p className="text-[#FEF3DF]/40 text-sm">No orders found</p>
-            <p className="text-[#FEF3DF]/25 text-xs mt-1">
-              {statusFilter !== "all" || searchQuery
-                ? "Try changing your filters"
-                : "Orders will appear here when customers place them"}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            <p className="text-[0.6rem] text-[#FEF3DF]/30 tracking-wider uppercase">
-              {orders.length} order{orders.length !== 1 ? "s" : ""} · Auto-refreshes every 30s
-            </p>
-            <AnimatePresence mode="popLayout">
-              {orders.map((order) => (
-                <OrderRow
-                  key={order.order_id}
-                  order={order}
-                  onUpdateStatus={handleUpdateStatus}
-                  onDelete={handleDelete}
-                />
-              ))}
-            </AnimatePresence>
-          </div>
-        )}
+      <main className="max-w-4xl mx-auto px-4 py-5 space-y-5">
+        <AnimatePresence mode="wait">
+          {activeTab === "settings" ? (
+            <motion.div
+              key="settings"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              <SettingsPanel />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="orders"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-5"
+            >
+              {/* Stats */}
+              <StatsCards orders={orders} />
+
+              {/* Filters */}
+              <div className="space-y-3">
+                {/* Search */}
+                <div className="relative">
+                  <Search className="w-4 h-4 text-[#FEF3DF]/30 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search orders by ID, name, or phone..."
+                    className="w-full bg-white/6 border border-[#E5B83C]/20 rounded-xl pl-10 pr-4 py-2.5 text-[#FEF3DF] text-sm placeholder:text-[#FEF3DF]/25 focus:outline-none focus:border-[#E5B83C] transition-all"
+                  />
+                </div>
+
+                {/* Status Tabs */}
+                <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+                  {(["all", "new", "payment_initiated", "confirmed", "fulfilled", "payment_failed"] as StatusFilter[]).map(
+                    (status) => {
+                      const conf = STATUS_CONFIG[status];
+                      const count = filterCounts[status] || 0;
+                      const isActive = statusFilter === status;
+                      return (
+                        <button
+                          key={status}
+                          onClick={() => setStatusFilter(status)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all whitespace-nowrap ${
+                            isActive
+                              ? status === "all"
+                                ? "bg-[#E5B83C] text-[#0A0301]"
+                                : `${conf.bg} ${conf.color} border`
+                              : "bg-white/5 text-[#FEF3DF]/50 hover:bg-white/10"
+                          }`}
+                        >
+                          {conf && <conf.icon className="w-3 h-3" />}
+                          {status === "all" ? "All" : conf?.label}
+                          <span className={`text-[0.6rem] ${isActive ? "opacity-80" : "opacity-50"}`}>({count})</span>
+                        </button>
+                      );
+                    }
+                  )}
+                </div>
+              </div>
+
+              {/* Orders List */}
+              {loading ? (
+                <div className="text-center py-20">
+                  <Loader2 className="w-8 h-8 text-[#E5B83C] animate-spin mx-auto mb-3" />
+                  <p className="text-sm text-[#FEF3DF]/50">Loading orders...</p>
+                </div>
+              ) : orders.length === 0 ? (
+                <div className="text-center py-20">
+                  <Package className="w-12 h-12 text-[#FEF3DF]/15 mx-auto mb-3" />
+                  <p className="text-[#FEF3DF]/40 text-sm">No orders found</p>
+                  <p className="text-[#FEF3DF]/25 text-xs mt-1">
+                    {statusFilter !== "all" || searchQuery
+                      ? "Try changing your filters"
+                      : "Orders will appear here when customers place them"}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-[0.6rem] text-[#FEF3DF]/30 tracking-wider uppercase">
+                    {orders.length} order{orders.length !== 1 ? "s" : ""} · Auto-refreshes every 30s
+                  </p>
+                  <AnimatePresence mode="popLayout">
+                    {orders.map((order) => (
+                      <OrderRow
+                        key={order.order_id}
+                        order={order}
+                        onUpdateStatus={handleUpdateStatus}
+                        onDelete={handleDelete}
+                      />
+                    ))}
+                  </AnimatePresence>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
     </div>
   );
