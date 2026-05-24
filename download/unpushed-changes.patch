@@ -1,0 +1,167 @@
+diff --git a/src/app/api/ikhokha/create-payment/route.ts b/src/app/api/ikhokha/create-payment/route.ts
+index 3596a10..56a23b1 100755
+--- a/src/app/api/ikhokha/create-payment/route.ts
++++ b/src/app/api/ikhokha/create-payment/route.ts
+@@ -3,6 +3,7 @@ import CryptoJS from "crypto-js";
+ 
+ const IKHOKHA_APP_ID = process.env.IKHOKHA_APP_ID || "";
+ const IKHOKHA_APP_SECRET = process.env.IKHOKHA_APP_SECRET || "";
++const HAS_IKHOKHA_CREDS = !!(IKHOKHA_APP_ID && IKHOKHA_APP_SECRET);
+ 
+ // Generate HMAC-SHA256 signature as per iKhokha docs
+ // The path must be the FULL path from the domain: /public-api/v1/api/payment
+@@ -24,6 +25,16 @@ export async function POST(request: NextRequest) {
+       );
+     }
+ 
++    // If no API credentials configured, return early so frontend uses static URL with amount
++    if (!HAS_IKHOKHA_CREDS) {
++      console.warn("[iKhokha] No API credentials configured, returning no-api mode");
++      return NextResponse.json({
++        success: false,
++        noApi: true,
++        message: "iKhokha API credentials not configured. Use static payment URL with amount.",
++      });
++    }
++
+     // Amount in cents (R100.00 = 10000)
+     const amountInCents = Math.round(amount * 100);
+ 
+diff --git a/src/app/page.tsx b/src/app/page.tsx
+index 011a167..9107267 100755
+--- a/src/app/page.tsx
++++ b/src/app/page.tsx
+@@ -765,7 +765,7 @@ function HowToOrderSection() {
+     { icon: Package, title: "Pick your Biltong", desc: "Choose size & flavor", num: "1" },
+     { icon: ShoppingCart, title: "Add to Cart", desc: "Adjust quantity & mix", num: "2" },
+     { icon: CreditCard, title: "Pay with iKhokha", desc: "Secure online payment", num: "3" },
+-    { icon: Truck, title: "Collect or Delivery", desc: "R30 delivery (Stanger only)", num: "4" },
++    { icon: Truck, title: "Collect or Delivery", desc: "R40 delivery (Stanger only)", num: "4" },
+   ];
+ 
+   return (
+@@ -927,7 +927,7 @@ function CartDrawer({ open, onClose, onCheckout }: { open: boolean; onClose: ()
+             <div className="px-5 py-3 border-t border-white/10">
+               <div className="flex gap-2 mb-2">
+                 {[{ mode: "collect" as DeliveryMode, icon: MapPin, label: "COLLECT", sub: "Free" },
+-                  { mode: "deliver" as DeliveryMode, icon: Truck, label: "DELIVER", sub: "R30" }].map(({ mode, icon: Icon, label, sub }) => (
++                  { mode: "deliver" as DeliveryMode, icon: Truck, label: "DELIVER", sub: "R40" }].map(({ mode, icon: Icon, label, sub }) => (
+                   <motion.button key={mode} whileTap={{ scale: 0.97 }}
+                     onClick={() => setDeliveryMode(mode)}
+                     className={`flex-1 py-2.5 text-center cursor-pointer rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
+@@ -958,7 +958,7 @@ function CartDrawer({ open, onClose, onCheckout }: { open: boolean; onClose: ()
+                         </div>
+                       )}
+                     </div>
+-                    <p className="text-[0.6rem] text-[#FEF3DF]/40 mt-1.5">Stanger delivery only · R30 fee</p>
++                    <p className="text-[0.6rem] text-[#FEF3DF]/40 mt-1.5">Stanger delivery only · R40 fee</p>
+                   </motion.div>
+                 )}
+               </AnimatePresence>
+@@ -1177,7 +1177,7 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
+       const paymentData = await res.json();
+ 
+       if (res.ok && paymentData.success && paymentData.paylinkUrl) {
+-        // Open the iKhokha payment page with the exact amount pre-filled
++        // API created a proper paylink with exact amount
+         setPaylinkUrl(paymentData.paylinkUrl);
+         window.open(paymentData.paylinkUrl, "_blank");
+         toast.info("iKhokha payment page opened! Complete payment, then confirm below.", { icon: "💳", duration: 5000 });
+@@ -1191,20 +1191,24 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
+           });
+         } catch { /* non-critical */ }
+       } else {
+-        // Fallback: open the static iKhokha link if API fails
+-        console.warn("iKhokha API failed, falling back to static URL");
+-        window.open(IKHOKHA_PAYMENT_URL, "_blank");
+-        toast.info("Pay on iKhokha (enter amount manually), then confirm below.", { icon: "💳", duration: 5000 });
++        // Fallback: open static iKhokha link WITH amount pre-filled
++        console.warn("iKhokha API failed or not configured, using static URL with amount");
++        const amountUrl = `${IKHOKHA_PAYMENT_URL}?amount=${total.toFixed(2)}`;
++        setPaylinkUrl(amountUrl);
++        window.open(amountUrl, "_blank");
++        toast.info(`iKhokha opened with R${total.toFixed(2)}. Complete payment, then confirm below.`, { icon: "💳", duration: 5000 });
+       }
+ 
+       setIkhokhaStep(true);
+     } catch {
+-      // Fallback to static URL on any error
++      // Fallback to static URL with amount on any error
+       const orderData = await saveOrder("ikhokha");
+       setLastPaymentMethod("ikhokha");
+       setPendingIkhokhaOrder(orderData as unknown as Record<string, unknown>);
+-      window.open(IKHOKHA_PAYMENT_URL, "_blank");
+-      toast.info("Pay on iKhokha (enter amount manually), then confirm below.", { icon: "💳", duration: 5000 });
++      const amountUrl = `${IKHOKHA_PAYMENT_URL}?amount=${total.toFixed(2)}`;
++      setPaylinkUrl(amountUrl);
++      window.open(amountUrl, "_blank");
++      toast.info(`iKhokha opened with R${total.toFixed(2)}. Complete payment, then confirm below.`, { icon: "💳", duration: 5000 });
+       setIkhokhaStep(true);
+     } finally {
+       setIkhokhaLoading(false);
+@@ -1436,7 +1440,7 @@ function Footer() {
+             </div>
+             <div className="mt-1.5 flex items-center justify-center md:justify-start gap-1.5 text-[#FEF3DF]/40 text-xs">
+               <Truck className="w-3.5 h-3.5" />
+-              <span>Delivery: Stanger area · R30</span>
++              <span>Delivery: Stanger only · R40</span>
+             </div>
+           </div>
+ 
+@@ -1445,7 +1449,7 @@ function Footer() {
+             <p className="text-[0.6rem] tracking-[0.25em] uppercase text-[#E5B83C]/60 mb-3">Delivery Zone</p>
+             <div className="bg-[#0E0500]/60 rounded-xl p-3 border border-[#E5B83C]/10">
+               <p className="text-[#FEF3DF]/50 text-xs leading-relaxed">
+-                We deliver across Stanger and surrounding areas including Kearsney, Glendale, Shakaskraal &amp; Sugar Valley.
++                We deliver within Stanger town only. No outlying areas.
+               </p>
+               <p className="text-[#FEF3DF]/30 text-[0.6rem] mt-2">Collect for free in Stanger town</p>
+             </div>
+diff --git a/src/lib/store.ts b/src/lib/store.ts
+index 17ffb9d..bff4eaf 100755
+--- a/src/lib/store.ts
++++ b/src/lib/store.ts
+@@ -121,7 +121,7 @@ export const useCartStore = create<CartStore>()(
+ 
+       totalItems: () => get().items.reduce((s, i) => s + i.qty, 0),
+       subtotal: () => get().items.reduce((s, i) => s + i.price * i.qty, 0),
+-      deliveryFee: () => (get().deliveryMode === "deliver" ? 30 : 0),
++      deliveryFee: () => (get().deliveryMode === "deliver" ? 40 : 0),
+       total: () => get().subtotal() + get().deliveryFee(),
+     }),
+     {
+diff --git a/src/lib/supabase.ts b/src/lib/supabase.ts
+index 627b372..f06eb1b 100755
+--- a/src/lib/supabase.ts
++++ b/src/lib/supabase.ts
+@@ -59,7 +59,7 @@ export function buildWhatsAppMessage(orderData: OrderData): string {
+ 
+   if (orderData.payment_method === "ikhokha") {
+     msg += `\n\n💳 Payment: iKhokha (pending)`;
+-    msg += `\n🔗 Pay here: ${IKHOKHA_PAYMENT_URL}`;
++    msg += `\n🔗 Pay here: ${IKHOKHA_PAYMENT_URL}?amount=${orderData.total.toFixed(2)}`;
+     msg += `\n📌 Reference: ${orderData.order_id}`;
+   } else {
+     msg += `\n\n💵 Payment: Cash/Card on ${
+@@ -83,9 +83,6 @@ export const STANGER_ADDRESSES = [
+   "Hibiscus Street, Stanger",
+   "Acacia Road, Stanger",
+   "Umvoti Drive, Stanger",
+-  "Shakaskraal Road, Stanger",
+-  "Glendale, Stanger",
+-  "Kearsney, Stanger",
+   "Mandini Road, Stanger",
+   "Blake Street, Stanger",
+   "Campbell Road, Stanger",
+@@ -93,7 +90,6 @@ export const STANGER_ADDRESSES = [
+   "Commercial Road, Stanger",
+   "Durban Road, Stanger",
+   "Stanger Manor",
+-  "Sugar Valley, Stanger",
+   "Newtown, Stanger",
+   "The Ridge, Stanger",
+ ];
+diff --git a/upload/pasted_image_1779628364201.png b/upload/pasted_image_1779628364201.png
+new file mode 100755
+index 0000000..b1e2c3d
+Binary files /dev/null and b/upload/pasted_image_1779628364201.png differ
