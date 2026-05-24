@@ -975,6 +975,13 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
 
   const handleYoco = async () => {
     if (!validate()) return;
+
+    // Verify public key is available
+    if (!YOCO_PUBLIC_KEY) {
+      toast.error("Card payment is not configured. Please use iKhokha or WhatsApp instead.");
+      return;
+    }
+
     setYocoLoading(true);
 
     try {
