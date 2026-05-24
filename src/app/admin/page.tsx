@@ -603,12 +603,15 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
 // MAIN PAGE
 // ============================================
 export default function AdminPage() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    if (typeof window !== "undefined") {
+      return sessionStorage.getItem("bb_admin_auth") === "true";
+    }
+    return false;
+  });
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const auth = sessionStorage.getItem("bb_admin_auth");
-    if (auth === "true") setIsAuthenticated(true);
     setMounted(true);
   }, []);
 

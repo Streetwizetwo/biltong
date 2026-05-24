@@ -45,6 +45,11 @@
 
 :root {
   --radius: 0.625rem;
+  --bb-dark-bg: #0A0301;
+  --bb-cream: #FEF3DF;
+  --bb-card-dark: #0E0500;
+  --bb-gold: #E5B83C;
+
   --background: #0A0301;
   --foreground: #FEF3DF;
   --card: #0E0500;
@@ -78,6 +83,132 @@
   --sidebar-ring: #E5B83C;
 }
 
+/* Light mode theme overrides */
+[data-theme="light"] {
+  --bb-dark-bg: #FEF3DF;
+  --bb-cream: #0A0301;
+  --bb-card-dark: #F8E5B0;
+  --background: #FEF3DF;
+  --foreground: #0A0301;
+  --card: #F8E5B0;
+  --card-foreground: #0A0301;
+  --popover: #F8E5B0;
+  --popover-foreground: #0A0301;
+  --primary: #E5B83C;
+  --primary-foreground: #0A0301;
+  --secondary: #F0D89A;
+  --secondary-foreground: #0A0301;
+  --muted: #E8D5A0;
+  --muted-foreground: #0A030180;
+  --accent: #E07A2C;
+  --accent-foreground: #0A0301;
+  --destructive: #B23A1A;
+  --border: #0A030120;
+  --input: #0A030130;
+  --ring: #E5B83C;
+  --sidebar: #FEF3DF;
+  --sidebar-foreground: #0A0301;
+  --sidebar-primary: #E5B83C;
+  --sidebar-primary-foreground: #0A0301;
+  --sidebar-accent: #F0D89A;
+  --sidebar-accent-foreground: #0A0301;
+  --sidebar-border: #0A030120;
+  --sidebar-ring: #E5B83C;
+}
+
+/* Light mode specific overrides - using broad selectors to avoid complex CSS class escaping */
+[data-theme="light"] body {
+  background-color: #FEF3DF !important;
+  color: #0A0301 !important;
+}
+
+/* Invert dark backgrounds to light in light mode */
+[data-theme="light"] [class*="bg-[#0A0301]"],
+[data-theme="light"] [class*="bg-[#0E0500]"],
+[data-theme="light"] [class*="bg-[#1E0A02]"],
+[data-theme="light"] [class*="bg-[#2A1508]"],
+[data-theme="light"] [class*="bg-[#140A04]"],
+[data-theme="light"] [class*="bg-[#160A03]"],
+[data-theme="light"] [class*="bg-[#0C0502]"],
+[data-theme="light"] [class*="bg-[#080301]"],
+[data-theme="light"] [class*="bg-[#1A0A04]"] {
+  background-color: #F8E5B0 !important;
+}
+
+[data-theme="light"] [class*="bg-[#0A0301]/"] {
+  background-color: rgba(254,243,223,0.95) !important;
+}
+
+[data-theme="light"] [class*="bg-[#0E0500]/"] {
+  background-color: rgba(248,229,176,0.95) !important;
+}
+
+/* Invert cream text to dark text in light mode */
+[data-theme="light"] [class*="text-[#FEF3DF]"] {
+  color: #0A0301 !important;
+}
+
+/* Invert white opacity text/border to dark in light mode */
+[data-theme="light"] [class*="text-white/"] {
+  color: rgba(10,3,1,0.6) !important;
+}
+
+[data-theme="light"] [class*="border-white/"] {
+  border-color: rgba(10,3,1,0.1) !important;
+}
+
+/* Invert black overlays to lighter overlays */
+[data-theme="light"] [class*="bg-black/"] {
+  background-color: rgba(10,3,1,0.3) !important;
+}
+
+/* Invert bg-white opacity */
+[data-theme="light"] [class*="bg-white/"] {
+  background-color: rgba(10,3,1,0.06) !important;
+}
+
+/* Fix brightness filters for light mode images */
+[data-theme="light"] [class*="brightness-"] {
+  filter: brightness(0.85) saturate(0.9) !important;
+}
+
+/* Fix gradients in light mode */
+[data-theme="light"] [class*="from-[#0A0301]"] {
+  --tw-gradient-from: #FEF3DF !important;
+}
+
+[data-theme="light"] [class*="to-[#0A0301]"] {
+  --tw-gradient-to: #FEF3DF !important;
+}
+
+[data-theme="light"] [class*="from-[#140A04]"],
+[data-theme="light"] [class*="from-[#160A03]"],
+[data-theme="light"] [class*="from-[#0C0502]"] {
+  --tw-gradient-from: #F8E5B0 !important;
+}
+
+[data-theme="light"] [class*="to-[#0C0502]"],
+[data-theme="light"] [class*="to-[#080301]"] {
+  --tw-gradient-to: #E8D5A0 !important;
+}
+
+/* Fix shadow in light mode */
+[data-theme="light"] [class*="shadow-black"] {
+  --tw-shadow-color: rgba(10,3,1,0.1) !important;
+}
+
+/* Shimmer animation for loading screen */
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Pulsing glow for product cards */
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(229, 184, 60, 0.1), 0 0 40px rgba(229, 184, 60, 0.05); }
+  50% { box-shadow: 0 0 30px rgba(229, 184, 60, 0.2), 0 0 60px rgba(229, 184, 60, 0.08); }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -102,6 +233,17 @@
   background: #E5B83C80;
 }
 
+/* Light mode scrollbar */
+[data-theme="light"] ::-webkit-scrollbar-track {
+  background: #FEF3DF;
+}
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: #E5B83C60;
+}
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: #E5B83C90;
+}
+
 /* Smooth scrolling */
 html {
   scroll-behavior: smooth;
@@ -123,4 +265,18 @@ body {
 ::selection {
   background: #E5B83C40;
   color: #FEF3DF;
+}
+
+[data-theme="light"] ::selection {
+  background: #E5B83C40;
+  color: #0A0301;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

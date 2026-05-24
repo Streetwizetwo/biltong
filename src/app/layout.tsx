@@ -16,7 +16,8 @@ export const metadata: Metadata = {
     "iKhokha",
   ],
   icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+    icon: "/favicon.png",
+    apple: "/apple-touch-icon.png",
   },
 };
 
@@ -32,6 +33,8 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,500;1,600&family=Syne:wght@400;500;600;700;800&family=Bebas+Neue&display=swap"
           rel="stylesheet"
         />
+        <meta name="theme-color" content="#0A0301" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
       </head>
       <body className="antialiased bg-[#0A0301] text-[#FEF3DF]">
         {children}

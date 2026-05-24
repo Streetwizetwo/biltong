@@ -37,6 +37,9 @@ import {
   Zap,
   Crown,
   TrendingUp,
+  Sun,
+  Moon,
+  CheckCircle2,
 } from "lucide-react";
 import {
   useCartStore,
@@ -85,6 +88,105 @@ const cartItemVariants = {
   center: { opacity: 1, x: 0, scale: 1 },
   exit: { opacity: 0, x: -80, scale: 0.9, transition: { duration: 0.25 } },
 };
+
+// ============================================
+// SECTION DIVIDER
+// ============================================
+function SectionDivider() {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      whileInView={{ opacity: 1 }}
+      viewport={{ once: true, margin: "-50px" }}
+      transition={{ duration: 0.8 }}
+      className="relative w-full h-12 md:h-16 flex items-center justify-center z-20 -my-2"
+    >
+      <svg
+        viewBox="0 0 1200 60"
+        className="w-full h-full"
+        preserveAspectRatio="none"
+      >
+        <motion.path
+          d="M0,30 Q150,0 300,30 T600,30 T900,30 T1200,30"
+          fill="none"
+          stroke="#E5B83C"
+          strokeWidth="1.5"
+          strokeOpacity="0.2"
+          initial={{ pathLength: 0, opacity: 0 }}
+          whileInView={{ pathLength: 1, opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 1.2, ease: "easeInOut" }}
+        />
+        <motion.path
+          d="M0,35 Q150,55 300,35 T600,35 T900,35 T1200,35"
+          fill="none"
+          stroke="#E5B83C"
+          strokeWidth="1"
+          strokeOpacity="0.1"
+          initial={{ pathLength: 0, opacity: 0 }}
+          whileInView={{ pathLength: 1, opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 1.4, ease: "easeInOut", delay: 0.2 }}
+        />
+      </svg>
+    </motion.div>
+  );
+}
+
+// ============================================
+// STICKY ORDER BAR (Mobile only)
+// ============================================
+function StickyOrderBar() {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const handler = () => setVisible(window.scrollY > window.innerHeight * 0.7);
+    window.addEventListener("scroll", handler, { passive: true });
+    return () => window.removeEventListener("scroll", handler);
+  }, []);
+
+  return (
+    <AnimatePresence>
+      {visible && (
+        <motion.a
+          href="#products"
+          initial={{ y: 80, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 80, opacity: 0 }}
+          transition={{ type: "spring", damping: 25, stiffness: 300 }}
+          className="md:hidden fixed bottom-[72px] left-0 right-0 z-[50] bg-[#0A0301]/95 backdrop-blur-md border-t border-[#E5B83C]/30 py-2.5 px-4 flex items-center justify-center gap-2 no-underline"
+        >
+          <Zap className="w-3.5 h-3.5 text-[#E5B83C]" />
+          <span className="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-[#E5B83C]">
+            VIEW MENU · ORDER NOW
+          </span>
+        </motion.a>
+      )}
+    </AnimatePresence>
+  );
+}
+
+// ============================================
+// FLY-TO-CART ANIMATION
+// ============================================
+function FlyToCart({ from, to, onComplete }: { from: DOMRect; to: DOMRect; onComplete: () => void }) {
+  const startX = from.left + from.width / 2;
+  const startY = from.top + from.height / 2;
+  const endX = to.left + to.width / 2;
+  const endY = to.top + to.height / 2;
+
+  return (
+    <motion.div
+      initial={{ x: startX - 14, y: startY - 14, scale: 1, opacity: 1 }}
+      animate={{ x: endX - 14, y: endY - 14, scale: 0.4, opacity: 0.6 }}
+      transition={{ duration: 0.5, ease: "easeInOut" }}
+      onAnimationComplete={onComplete}
+      className="fixed z-[9998] w-7 h-7 rounded-full bg-[#E5B83C] flex items-center justify-center text-xs pointer-events-none"
+    >
+      🥩
+    </motion.div>
+  );
+}
 
 // ============================================
 // CONFETTI PARTICLE SYSTEM
@@ -194,16 +296,35 @@ function SmokeCanvas() {
 // ============================================
 // NAVBAR
 // ============================================
-function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
+function Navbar({ onCartOpen, cartRef }: { onCartOpen: () => void; cartRef: React.RefObject<HTMLButtonElement | null> }) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const totalItems = useCartStore((s) => s.totalItems());
+  const [isLight, setIsLight] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("bb-theme") === "light";
+    }
+    return false;
+  });
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 50);
     window.addEventListener("scroll", handler, { passive: true });
     return () => window.removeEventListener("scroll", handler);
   }, []);
+
+  useEffect(() => {
+    if (isLight) {
+      document.documentElement.setAttribute("data-theme", "light");
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const next = !isLight;
+    setIsLight(next);
+    document.documentElement.setAttribute("data-theme", next ? "light" : "dark");
+    localStorage.setItem("bb-theme", next ? "light" : "dark");
+  };
 
   const navLinks = [
     { href: "#products", label: "MENU", icon: Package },
@@ -242,7 +363,27 @@ function Navbar({ onCartOpen }: { onCartOpen: () => void }) {
         <div className="flex items-center gap-2">
           <motion.button
             whileTap={{ scale: 0.9 }}
+            onClick={toggleTheme}
+            className="border border-[#E5B83C]/30 text-[#E5B83C] p-2 cursor-pointer rounded-xl transition-all hover:bg-[#E5B83C]/10 hover:border-[#E5B83C]/60"
+            aria-label="Toggle theme"
+          >
+            <AnimatePresence mode="wait">
+              {isLight ? (
+                <motion.div key="moon" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.2 }}>
+                  <Moon className="w-4 h-4" />
+                </motion.div>
+              ) : (
+                <motion.div key="sun" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.2 }}>
+                  <Sun className="w-4 h-4" />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.button>
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            ref={cartRef}
             onClick={onCartOpen}
+            id="cart-button"
             className="relative border border-[#E5B83C]/40 text-[#E5B83C] px-3 py-2 md:px-4 font-bold text-[0.7rem] tracking-[0.15em] cursor-pointer transition-all hover:bg-[#E5B83C]/10 hover:border-[#E5B83C] rounded-xl flex items-center gap-1.5"
           >
             <ShoppingCart className="w-4 h-4" />
@@ -431,7 +572,7 @@ function FlavorIcon({ flavor }: { flavor: string }) {
 // ============================================
 // PRODUCT CARD — Exciting mobile version
 // ============================================
-function ProductCard({ product, index, onAdd }: { product: (typeof PRODUCTS)[0]; index: number; onAdd?: () => void }) {
+function ProductCard({ product, index, onAdd, cardRef }: { product: (typeof PRODUCTS)[0]; index: number; onAdd?: () => void; cardRef?: React.RefObject<HTMLDivElement | null> }) {
   const [selectedFlavor, setSelectedFlavor] = useState(FLAVORS[0]);
   const [qty, setQty] = useState(1);
   const [justAdded, setJustAdded] = useState(false);
@@ -459,11 +600,15 @@ function ProductCard({ product, index, onAdd }: { product: (typeof PRODUCTS)[0];
 
   return (
     <motion.div
+      ref={cardRef}
       variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-30px" }}
       custom={index * 0.1}
-      className="bg-gradient-to-br from-[#140A04]/90 to-[#0C0502]/95 backdrop-blur-sm p-4 md:p-6 text-center rounded-2xl border border-[#E5B83C]/15 hover:border-[#E5B83C]/40 transition-all relative overflow-hidden group"
+      className="bg-gradient-to-br from-[#140A04]/90 to-[#0C0502]/95 backdrop-blur-sm p-4 md:p-6 text-center rounded-2xl border border-[#E5B83C]/15 hover:border-[#E5B83C]/60 transition-all relative overflow-hidden group hover:shadow-[0_0_30px_rgba(229,184,60,0.15),0_0_60px_rgba(229,184,60,0.05)]"
     >
       {/* Badges */}
+      {/* Inner radial gradient glow on hover */}
+      <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+        style={{ background: "radial-gradient(circle at 50% 50%, rgba(229,184,60,0.08) 0%, transparent 70%)" }} />
       <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5">
         {isPopular && (
           <span className="bg-[#E07A2C] text-white text-[0.55rem] px-2.5 py-1 rounded-full font-bold tracking-wider uppercase flex items-center gap-1">
@@ -548,7 +693,7 @@ function ProductCard({ product, index, onAdd }: { product: (typeof PRODUCTS)[0];
 // ============================================
 // PRODUCTS SECTION
 // ============================================
-function ProductsSection({ onItemAdd }: { onItemAdd?: () => void }) {
+function ProductsSection({ onItemAdd, productRefs }: { onItemAdd?: () => void; productRefs?: React.RefObject<(HTMLDivElement | null)[]> }) {
   return (
     <section id="products" className="py-16 md:py-24 px-4 md:px-[6%] relative z-20">
       <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} className="text-center">
@@ -561,7 +706,7 @@ function ProductsSection({ onItemAdd }: { onItemAdd?: () => void }) {
       <motion.div variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-30px" }}
         className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 max-w-[1400px] mx-auto">
         {PRODUCTS.map((prod, i) => (
-          <ProductCard key={prod.id} product={prod} index={i} onAdd={onItemAdd} />
+          <ProductCard key={prod.id} product={prod} index={i} onAdd={onItemAdd} cardRef={productRefs ? { current: productRefs.current?.[i] ?? null } as React.RefObject<HTMLDivElement | null> : undefined} />
         ))}
       </motion.div>
     </section>
@@ -851,6 +996,13 @@ function CartDrawer({ open, onClose, onCheckout }: { open: boolean; onClose: () 
 // ORDER SUCCESS SCREEN
 // ============================================
 function OrderSuccess({ orderId, paymentMethod, onClose }: { orderId: string; paymentMethod: string; onClose: () => void }) {
+  const steps = [
+    { icon: Package, label: "Order Placed", active: true },
+    { icon: CheckCircle2, label: "Confirmed", active: false },
+    { icon: Flame, label: "Preparing", active: false },
+    { icon: Package, label: "Ready", active: false },
+  ];
+
   return (
     <div className="text-center py-8 px-4">
       <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", damping: 15, stiffness: 200, delay: 0.2 }}>
@@ -864,12 +1016,46 @@ function OrderSuccess({ orderId, paymentMethod, onClose }: { orderId: string; pa
           ? "Please complete payment in the iKhokha tab, then confirm on WhatsApp."
           : "We will confirm your order on WhatsApp shortly!"}
       </motion.p>
-      <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.8 }}
-        className="bg-[#2E7D32]/15 border border-[#2E7D32] rounded-xl p-4 mt-4 inline-block">
+
+      {/* Order Tracker */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }}
+        className="mt-6 px-2">
+        <div className="flex items-center justify-between max-w-[320px] mx-auto">
+          {steps.map((step, i) => (
+            <div key={step.label} className="flex items-center">
+              <div className="flex flex-col items-center">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.8 + i * 0.15, type: "spring" }}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all ${
+                    step.active
+                      ? "bg-[#E5B83C] border-[#E5B83C] text-[#0A0301]"
+                      : "bg-transparent border-[#E5B83C]/25 text-[#E5B83C]/30"
+                  }`}
+                >
+                  <step.icon className="w-4.5 h-4.5" />
+                </motion.div>
+                <span className={`text-[0.55rem] mt-1.5 tracking-wider uppercase font-semibold ${
+                  step.active ? "text-[#E5B83C]" : "text-[#FEF3DF]/30"
+                }`}>{step.label}</span>
+              </div>
+              {i < steps.length - 1 && (
+                <div className={`w-6 md:w-10 h-0.5 mx-0.5 -mt-5 ${
+                  i < 0 ? "bg-[#E5B83C]" : "bg-[#E5B83C]/20"
+                }`} />
+              )}
+            </div>
+          ))}
+        </div>
+      </motion.div>
+
+      <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 1.2 }}
+        className="bg-[#2E7D32]/15 border border-[#2E7D32] rounded-xl p-4 mt-5 inline-block">
         <p className="text-[0.6rem] tracking-[0.15em] uppercase text-[#FEF3DF]/70">Order Reference</p>
         <p className="font-['Bebas_Neue'] text-2xl text-[#2E7D32] tracking-[0.1em]">{orderId}</p>
       </motion.div>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1 }}>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.4 }}>
         <button onClick={onClose}
           className="mt-6 px-6 py-3 bg-[#E5B83C] text-[#0A0301] font-bold tracking-[0.1em] uppercase rounded-xl cursor-pointer text-sm">
           DONE
@@ -1187,7 +1373,7 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
 // ============================================
 // FLOATING CART BUTTON
 // ============================================
-function FloatingCartButton({ onClick }: { onClick: () => void }) {
+function FloatingCartButton({ onClick, pulse }: { onClick: () => void; pulse?: boolean }) {
   const totalItems = useCartStore((s) => s.totalItems());
   return (
     <AnimatePresence>
@@ -1196,7 +1382,11 @@ function FloatingCartButton({ onClick }: { onClick: () => void }) {
           initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }}
           whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
           onClick={onClick}
-          className="fixed bottom-6 right-5 bg-[#25D366] w-14 h-14 rounded-full flex items-center justify-center cursor-pointer z-[300] shadow-[0_4px_20px_rgba(37,211,102,0.4)]"
+          className={`fixed bottom-6 right-5 w-14 h-14 rounded-full flex items-center justify-center cursor-pointer z-[300] transition-all ${
+            pulse
+              ? "bg-[#E5B83C] shadow-[0_0_25px_rgba(229,184,60,0.5)]"
+              : "bg-[#25D366] shadow-[0_4px_20px_rgba(37,211,102,0.4)]"
+          }`}
         >
           <ShoppingCart className="w-6 h-6 text-white" />
           <motion.span key={totalItems} initial={{ scale: 1.5 }} animate={{ scale: 1 }}
@@ -1214,9 +1404,64 @@ function FloatingCartButton({ onClick }: { onClick: () => void }) {
 // ============================================
 function Footer() {
   return (
-    <footer className="py-8 text-center text-[#FEF3DF]/30 text-xs relative z-20 border-t border-white/5">
-      <p className="font-['Bebas_Neue'] text-lg tracking-[0.15em] text-[#E5B83C]/30 mb-2">BILTONG &amp; BYTES</p>
-      <p>&copy; 2025 Biltong &amp; Bytes · Handmade in Stanger, KZN · Halaal Certified</p>
+    <footer className="py-10 md:py-14 px-4 md:px-[6%] relative z-20 border-t border-[#E5B83C]/10">
+      <div className="max-w-[1200px] mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
+          {/* Brand Column */}
+          <div className="text-center md:text-left">
+            <p className="font-['Bebas_Neue'] text-xl tracking-[0.2em] text-[#E5B83C] mb-2">
+              🥩 BILTONG<span className="text-[#E07A2C]">&amp;</span>BYTES
+            </p>
+            <p className="text-[0.65rem] tracking-[0.15em] uppercase text-[#FEF3DF]/40">Premium Halaal Biltong · Est. 2024</p>
+            <div className="mt-4 flex items-center justify-center md:justify-start gap-2">
+              <Leaf className="w-4 h-4 text-[#2E7D32]" />
+              <span className="text-[#2E7D32] text-xs font-semibold">100% Halaal Certified</span>
+            </div>
+          </div>
+
+          {/* Contact Column */}
+          <div className="text-center md:text-left">
+            <p className="text-[0.6rem] tracking-[0.25em] uppercase text-[#E5B83C]/60 mb-3">Get In Touch</p>
+            <a
+              href={`https://wa.me/${WHATSAPP_NUMBER}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 bg-[#25D366]/15 border border-[#25D366]/30 text-[#25D366] px-4 py-2.5 rounded-xl text-xs font-bold tracking-wider uppercase no-underline transition-all hover:bg-[#25D366]/25"
+            >
+              <MessageCircle className="w-4 h-4" /> WhatsApp Us
+            </a>
+            <div className="mt-3 flex items-center justify-center md:justify-start gap-1.5 text-[#FEF3DF]/40 text-xs">
+              <MapPin className="w-3.5 h-3.5" />
+              <span>Stanger, KwaZulu-Natal</span>
+            </div>
+            <div className="mt-1.5 flex items-center justify-center md:justify-start gap-1.5 text-[#FEF3DF]/40 text-xs">
+              <Truck className="w-3.5 h-3.5" />
+              <span>Delivery: Stanger area · R30</span>
+            </div>
+          </div>
+
+          {/* Info Column */}
+          <div className="text-center md:text-left">
+            <p className="text-[0.6rem] tracking-[0.25em] uppercase text-[#E5B83C]/60 mb-3">Delivery Zone</p>
+            <div className="bg-[#0E0500]/60 rounded-xl p-3 border border-[#E5B83C]/10">
+              <p className="text-[#FEF3DF]/50 text-xs leading-relaxed">
+                We deliver across Stanger and surrounding areas including Kearsney, Glendale, Shakaskraal &amp; Sugar Valley.
+              </p>
+              <p className="text-[#FEF3DF]/30 text-[0.6rem] mt-2">Collect for free in Stanger town</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom bar */}
+        <div className="mt-8 pt-5 border-t border-[#E5B83C]/8 flex flex-col md:flex-row items-center justify-between gap-2">
+          <p className="text-[#FEF3DF]/25 text-[0.65rem]">
+            &copy; 2025 Biltong &amp; Bytes · Made with ❤️ in Stanger
+          </p>
+          <p className="text-[#FEF3DF]/20 text-[0.55rem] tracking-wider uppercase">
+            Premium Halaal Biltong · Hand-Cured with Love
+          </p>
+        </div>
+      </div>
     </footer>
   );
 }
@@ -1230,6 +1475,10 @@ export default function BiltongAndBytes() {
   const [checkoutResetKey, setCheckoutResetKey] = useState(0);
   const [confettiActive, setConfettiActive] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const cartRef = useRef<HTMLButtonElement>(null);
+  const productRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [flyAnimation, setFlyAnimation] = useState<{ from: DOMRect; to: DOMRect } | null>(null);
+  const [cartPulse, setCartPulse] = useState(false);
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setMounted(true));
@@ -1250,15 +1499,44 @@ export default function BiltongAndBytes() {
   }, []);
   const handleCheckoutClose = useCallback(() => setCheckoutOpen(false), []);
 
+  const handleItemAdd = useCallback(() => {
+    triggerConfetti();
+    // Fly-to-cart animation
+    const cardEl = productRefs.current?.find((el) => el !== null);
+    const cartBtn = cartRef.current;
+    if (cardEl && cartBtn) {
+      const from = cardEl.getBoundingClientRect();
+      const to = cartBtn.getBoundingClientRect();
+      setFlyAnimation({ from, to });
+    }
+    // Cart pulse
+    setCartPulse(true);
+    setTimeout(() => setCartPulse(false), 600);
+  }, [triggerConfetti]);
+
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-[#0A0301] flex items-center justify-center">
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
-          <div className="text-4xl mb-3">🥩</div>
-          <div className="font-['Bebas_Neue'] text-3xl tracking-[0.2em] text-[#E5B83C]">BILTONG<span className="text-[#E07A2C]">&amp;</span>BYTES</div>
-          <motion.div animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1.5, repeat: Infinity }}
-            className="text-[#FEF3DF]/40 text-xs mt-3 tracking-widest uppercase">Loading...</motion.div>
+      <div className="min-h-screen bg-[#0A0301] flex flex-col items-center justify-center">
+        <motion.div
+          animate={{ scale: [1, 1.2, 1], rotate: [0, 10, -10, 0] }}
+          transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+          className="text-6xl md:text-7xl mb-4"
+        >
+          🥩
         </motion.div>
+        <div className="font-['Bebas_Neue'] text-3xl md:text-4xl tracking-[0.2em] relative overflow-hidden">
+          <span className="bg-gradient-to-r from-[#E5B83C] via-[#F8E5B0] to-[#E5B83C] bg-clip-text text-transparent bg-[length:200%_100%] animate-[shimmer_2s_linear_infinite]">
+            BILTONG<span className="text-[#E07A2C]">&amp;</span>BYTES
+          </span>
+        </div>
+        <div className="w-32 h-1 mt-6 bg-[#E5B83C]/20 rounded-full overflow-hidden">
+          <motion.div
+            initial={{ x: "-100%" }}
+            animate={{ x: "100%" }}
+            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+            className="h-full w-1/2 bg-[#E5B83C] rounded-full"
+          />
+        </div>
       </div>
     );
   }
@@ -1267,15 +1545,25 @@ export default function BiltongAndBytes() {
     <div className="min-h-screen bg-[#0A0301] text-[#FEF3DF] font-['Syne',sans-serif] overflow-x-hidden">
       <SmokeCanvas />
       <Confetti confettiKey={confettiKey} />
-      <Navbar onCartOpen={handleCartOpen} />
+      <Navbar onCartOpen={handleCartOpen} cartRef={cartRef} />
       <Hero />
       <PhotoStrip />
-      <ProductsSection onItemAdd={triggerConfetti} />
+      <SectionDivider />
+      <ProductsSection onItemAdd={handleItemAdd} productRefs={productRefs} />
+      <SectionDivider />
       <StorySection />
+      <SectionDivider />
       <HowToOrderSection />
+      <SectionDivider />
       <ContactSection />
       <Footer />
-      <FloatingCartButton onClick={handleCartOpen} />
+      <StickyOrderBar />
+      <FloatingCartButton onClick={handleCartOpen} pulse={cartPulse} />
+      <AnimatePresence>
+        {flyAnimation && (
+          <FlyToCart from={flyAnimation.from} to={flyAnimation.to} onComplete={() => setFlyAnimation(null)} />
+        )}
+      </AnimatePresence>
       <CartDrawer open={cartOpen} onClose={handleCartClose} onCheckout={handleCheckout} />
       <CheckoutModal open={checkoutOpen} onClose={handleCheckoutClose} resetKey={checkoutResetKey} />
     </div>
