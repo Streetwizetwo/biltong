@@ -1436,7 +1436,7 @@ function Footer() {
             </div>
             <div className="mt-1.5 flex items-center justify-center md:justify-start gap-1.5 text-[#FEF3DF]/40 text-xs">
               <Truck className="w-3.5 h-3.5" />
-              <span>Delivery: Stanger area · R30</span>
+              <span>Delivery: Stanger only · R30</span>
             </div>
           </div>
 
@@ -1445,7 +1445,7 @@ function Footer() {
             <p className="text-[0.6rem] tracking-[0.25em] uppercase text-[#E5B83C]/60 mb-3">Delivery Zone</p>
             <div className="bg-[#0E0500]/60 rounded-xl p-3 border border-[#E5B83C]/10">
               <p className="text-[#FEF3DF]/50 text-xs leading-relaxed">
-                We deliver across Stanger and surrounding areas including Kearsney, Glendale, Shakaskraal &amp; Sugar Valley.
+                We deliver within Stanger town only. No outlying areas.
               </p>
               <p className="text-[#FEF3DF]/30 text-[0.6rem] mt-2">Collect for free in Stanger town</p>
             </div>

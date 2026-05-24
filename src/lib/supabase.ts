@@ -83,9 +83,6 @@ export const STANGER_ADDRESSES = [
   "Hibiscus Street, Stanger",
   "Acacia Road, Stanger",
   "Umvoti Drive, Stanger",
-  "Shakaskraal Road, Stanger",
-  "Glendale, Stanger",
-  "Kearsney, Stanger",
   "Mandini Road, Stanger",
   "Blake Street, Stanger",
   "Campbell Road, Stanger",
@@ -93,7 +90,6 @@ export const STANGER_ADDRESSES = [
   "Commercial Road, Stanger",
   "Durban Road, Stanger",
   "Stanger Manor",
-  "Sugar Valley, Stanger",
   "Newtown, Stanger",
   "The Ridge, Stanger",
 ];
