@@ -76,7 +76,7 @@ const PAYMENT_STATUS_CONFIG: Record<string, { label: string; color: string }> = 
 // ============================================
 // ADMIN PASSWORD
 // ============================================
-const ADMIN_PASS = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "";
+const ADMIN_PASS = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "Yumna@786";
 
 // ============================================
 // LOGIN SCREEN
