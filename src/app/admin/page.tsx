@@ -400,9 +400,9 @@ function OrderRow({
 // SETTINGS PANEL
 // ============================================
 function SettingsPanel() {
-  const [deliveryFee, setDeliveryFee] = useState(40);
-  const [productPrices, setProductPrices] = useState<Record<string, number>>({
-    "0": 35, "1": 100, "2": 300, "3": 550,
+  const [deliveryFeeInput, setDeliveryFeeInput] = useState("40");
+  const [productPriceInputs, setProductPriceInputs] = useState<Record<string, string>>({
+    "0": "35", "1": "100", "2": "300", "3": "550",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -417,8 +417,9 @@ function SettingsPanel() {
       const res = await fetch("/api/settings", { headers: authHeaders });
       if (res.ok) {
         const data = await res.json();
-        setDeliveryFee(data.deliveryFee ?? 40);
-        setProductPrices(data.productPrices ?? { "0": 35, "1": 100, "2": 300, "3": 550 });
+        setDeliveryFeeInput(String(data.deliveryFee ?? 40));
+        const prices = data.productPrices ?? { "0": 35, "1": 100, "2": 300, "3": 550 };
+        setProductPriceInputs(Object.fromEntries(Object.entries(prices).map(([k, v]) => [k, String(v)])));
       }
     } catch (err) {
       console.error("Failed to fetch settings:", err);
@@ -434,6 +435,12 @@ function SettingsPanel() {
   const handleSave = async () => {
     setSaving(true);
     try {
+      const deliveryFee = parseInt(deliveryFeeInput, 10) || 0;
+      const productPrices: Record<string, number> = {};
+      for (const [id, val] of Object.entries(productPriceInputs)) {
+        productPrices[id] = parseInt(val, 10) || 0;
+      }
+
       const res = await fetch("/api/settings", {
         method: "PUT",
         headers: authHeaders,
@@ -454,9 +461,9 @@ function SettingsPanel() {
   };
 
   const updateProductPrice = (id: string, value: string) => {
-    const num = parseInt(value, 10);
-    if (!isNaN(num) && num >= 0) {
-      setProductPrices((prev) => ({ ...prev, [id]: num }));
+    // Allow empty string or digits only
+    if (value === "" || /^\d+$/.test(value)) {
+      setProductPriceInputs((prev) => ({ ...prev, [id]: value }));
     }
   };
 
@@ -485,13 +492,13 @@ function SettingsPanel() {
         <div className="flex items-center gap-3">
           <span className="text-[#FEF3DF]/60 text-sm font-bold">R</span>
           <input
-            type="number"
-            value={deliveryFee}
+            type="text"
+            inputMode="numeric"
+            value={deliveryFeeInput}
             onChange={(e) => {
-              const val = parseInt(e.target.value, 10);
-              if (!isNaN(val) && val >= 0) setDeliveryFee(val);
+              const val = e.target.value;
+              if (val === "" || /^\d+$/.test(val)) setDeliveryFeeInput(val);
             }}
-            min={0}
             className="flex-1 bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-3 text-[#FEF3DF] text-lg font-['Bebas_Neue'] tracking-wider focus:outline-none focus:border-[#E5B83C] transition-all"
           />
         </div>
@@ -531,10 +538,10 @@ function SettingsPanel() {
               <div className="flex items-center gap-1 flex-shrink-0">
                 <span className="text-[#FEF3DF]/60 text-xs font-bold">R</span>
                 <input
-                  type="number"
-                  value={productPrices[String(product.id)] ?? product.price}
+                  type="text"
+                  inputMode="numeric"
+                  value={productPriceInputs[String(product.id)] ?? String(product.price)}
                   onChange={(e) => updateProductPrice(String(product.id), e.target.value)}
-                  min={0}
                   className="w-20 bg-white/8 border border-[#E5B83C]/30 rounded-lg px-2.5 py-2 text-[#FEF3DF] text-sm font-['Bebas_Neue'] tracking-wider focus:outline-none focus:border-[#E5B83C] transition-all text-right"
                 />
               </div>
