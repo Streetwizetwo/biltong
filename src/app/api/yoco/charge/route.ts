@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Yoco] Creating charge for ${orderId}, amount: R${amount} (${amountInCents} cents)`);
 
-    const response = await fetch("https://api.yoco.com/v1/charges", {
+    const response = await fetch("https://online.yoco.com/v1/charges", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

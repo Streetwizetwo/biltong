@@ -620,7 +620,7 @@ function HowToOrderSection() {
   const steps = [
     { icon: Package, title: "Pick your Biltong", desc: "Choose size & flavor", num: "1" },
     { icon: ShoppingCart, title: "Add to Cart", desc: "Adjust quantity & mix", num: "2" },
-    { icon: CreditCard, title: "Pay with iKhokha", desc: "Secure online payment", num: "3" },
+    { icon: CreditCard, title: "Pay with Card", desc: "Secure online payment", num: "3" },
     { icon: Truck, title: "Collect or Delivery", desc: "R30 delivery (Stanger only)", num: "4" },
   ];
 
@@ -931,7 +931,7 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
         delivery_mode: deliveryMode,
         delivery_address: deliveryMode === "deliver" ? deliveryAddress : null,
         payment_method: paymentMethod,
-        payment_status: paymentMethod === "ikhokha" ? "pending" : "cash_on_delivery",
+        payment_status: (paymentMethod === "ikhokha" || paymentMethod === "yoco") ? "pending" : "cash_on_delivery",
         order_status: "new",
       };
 

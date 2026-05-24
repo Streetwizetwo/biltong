@@ -64,6 +64,9 @@ export function buildWhatsAppMessage(orderData: OrderData): string {
     msg += `\n\n💳 Payment: iKhokha (pending)`;
     msg += `\n🔗 Pay here: ${IKHOKHA_PAYMENT_URL}`;
     msg += `\n📌 Reference: ${orderData.order_id}`;
+  } else if (orderData.payment_method === "yoco") {
+    msg += `\n\n💳 Payment: Yoco Card Payment (pending)`;
+    msg += `\n📌 Reference: ${orderData.order_id}`;
   } else {
     msg += `\n\n💵 Payment: Cash/Card on ${
       orderData.delivery_mode === "deliver" ? "delivery" : "collection"
