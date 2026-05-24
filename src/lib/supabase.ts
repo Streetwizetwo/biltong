@@ -137,4 +137,4 @@ export const PRODUCTS = [
   },
 ];
 
-export const FLAVORS = ["Traditional", "Chilli", "Honey Glazed"];
+export const FLAVORS = ["Traditional", "Chilli", "Hot Honey Glazed"];

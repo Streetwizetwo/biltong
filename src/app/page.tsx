@@ -423,7 +423,7 @@ function PhotoStrip() {
 function FlavorIcon({ flavor }: { flavor: string }) {
   switch (flavor) {
     case "Chilli": return <Flame className="w-3.5 h-3.5" />;
-    case "Honey Glazed": return <Droplets className="w-3.5 h-3.5" />;
+    case "Hot Honey Glazed": return <Droplets className="w-3.5 h-3.5" />;
     default: return <Leaf className="w-3.5 h-3.5" />;
   }
 }
@@ -605,7 +605,7 @@ function StorySection() {
           <img src="/images/our-story.png"
             alt="Fresh Biltong" className="w-full rounded-xl" />
           <h3 className="text-[#E5B83C] mt-4 font-['Cormorant_Garamond'] text-2xl font-bold">Wet, Tender &amp; Aromatic</h3>
-          <p className="text-sm text-[#FEF3DF]/60 mt-1">Traditional · Chilli · Honey Glazed</p>
+          <p className="text-sm text-[#FEF3DF]/60 mt-1">Traditional · Chilli · Hot Honey Glazed</p>
         </motion.div>
       </div>
     </section>
