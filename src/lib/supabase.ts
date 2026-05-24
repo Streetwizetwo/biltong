@@ -6,11 +6,6 @@ export const SUPABASE_URL = "https://fltjcycovhslqupmalfj.supabase.co";
 export const IKHOKHA_PAYMENT_URL =
   "https://pay.ikhokha.com/biltongandbytes/mpr/online";
 
-// Public key is safe to hardcode — it's exposed in the browser anyway.
-// The secret key must ONLY live server-side (in the API route via env var).
-export const YOCO_PUBLIC_KEY =
-  process.env.NEXT_PUBLIC_YOCO_PUBLIC_KEY || "pk_live_9964eeacyWNq5Xw576a4";
-
 export const WHATSAPP_NUMBER = "27636402722";
 
 export interface OrderData {
@@ -65,9 +60,6 @@ export function buildWhatsAppMessage(orderData: OrderData): string {
   if (orderData.payment_method === "ikhokha") {
     msg += `\n\n💳 Payment: iKhokha (pending)`;
     msg += `\n🔗 Pay here: ${IKHOKHA_PAYMENT_URL}`;
-    msg += `\n📌 Reference: ${orderData.order_id}`;
-  } else if (orderData.payment_method === "yoco") {
-    msg += `\n\n💳 Payment: Yoco Card Payment (pending)`;
     msg += `\n📌 Reference: ${orderData.order_id}`;
   } else {
     msg += `\n\n💵 Payment: Cash/Card on ${

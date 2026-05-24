@@ -47,7 +47,6 @@ import {
   FLAVORS,
   STANGER_ADDRESSES,
   IKHOKHA_PAYMENT_URL,
-  YOCO_PUBLIC_KEY,
   WHATSAPP_NUMBER,
   generateOrderId,
   buildWhatsAppMessage,
@@ -620,7 +619,7 @@ function HowToOrderSection() {
   const steps = [
     { icon: Package, title: "Pick your Biltong", desc: "Choose size & flavor", num: "1" },
     { icon: ShoppingCart, title: "Add to Cart", desc: "Adjust quantity & mix", num: "2" },
-    { icon: CreditCard, title: "Pay with Card", desc: "Secure online payment", num: "3" },
+    { icon: CreditCard, title: "Pay with iKhokha", desc: "Secure online payment", num: "3" },
     { icon: Truck, title: "Collect or Delivery", desc: "R30 delivery (Stanger only)", num: "4" },
   ];
 
@@ -863,8 +862,6 @@ function OrderSuccess({ orderId, paymentMethod, onClose }: { orderId: string; pa
         className="text-[#FEF3DF]/70 mt-2 text-sm">
         {paymentMethod === "ikhokha"
           ? "Please complete payment in the iKhokha tab, then confirm on WhatsApp."
-          : paymentMethod === "yoco"
-          ? "Payment confirmed! Your order is being processed."
           : "We will confirm your order on WhatsApp shortly!"}
       </motion.p>
       <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.8 }}
@@ -907,7 +904,6 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
   const [savingStatus, setSavingStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [ikhokhaStep, setIkhokhaStep] = useState(false);
   const [ikhokhaLoading, setIkhokhaLoading] = useState(false);
-  const [yocoLoading, setYocoLoading] = useState(false);
   const [paylinkUrl, setPaylinkUrl] = useState<string | null>(null);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [lastPaymentMethod, setLastPaymentMethod] = useState("cash");
@@ -931,7 +927,7 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
         delivery_mode: deliveryMode,
         delivery_address: deliveryMode === "deliver" ? deliveryAddress : null,
         payment_method: paymentMethod,
-        payment_status: (paymentMethod === "ikhokha" || paymentMethod === "yoco") ? "pending" : "cash_on_delivery",
+        payment_status: paymentMethod === "ikhokha" ? "pending" : "cash_on_delivery",
         order_status: "new",
       };
 
@@ -971,104 +967,6 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, "_blank");
     toast.success(`Order ${orderData.order_id} sent!`, { icon: "🥩" });
     setOrderSuccess(true);
-  };
-
-  const handleYoco = async () => {
-    if (!validate()) return;
-
-    // Verify public key is available
-    if (!YOCO_PUBLIC_KEY) {
-      toast.error("Card payment is not configured. Please use iKhokha or WhatsApp instead.");
-      return;
-    }
-
-    setYocoLoading(true);
-
-    try {
-      // Check if Yoco SDK is loaded
-      const yocoSDK = (window as Record<string, unknown>).YocoSDK;
-      if (!yocoSDK) {
-        toast.error("Payment system loading, please try again in a moment");
-        setYocoLoading(false);
-        return;
-      }
-
-      const orderData = await saveOrder("yoco");
-      setLastPaymentMethod("yoco");
-
-      // Initialize Yoco SDK
-      const yoco = new (yocoSDK as new (args: { publicKey: string }) => { showPopup: (args: Record<string, unknown>) => void })({
-        publicKey: YOCO_PUBLIC_KEY,
-      });
-
-      // Open Yoco payment popup
-      (yoco as { showPopup: (args: Record<string, unknown>) => void }).showPopup({
-        amountInCents: Math.round(total * 100),
-        currency: "ZAR",
-        name: "Biltong & Bytes",
-        description: `Order ${orderData.order_id}`,
-        metadata: {
-          orderId: orderData.order_id,
-          customerName: name,
-          customerPhone: phone,
-        },
-        callback: async function(result: { id: string; errorMessage?: string }) {
-          if (result.errorMessage) {
-            // Payment failed or cancelled
-            console.error("[Yoco] Popup error:", result.errorMessage);
-            toast.error(result.errorMessage);
-            setYocoLoading(false);
-            return;
-          }
-
-          // We got a token — charge it server-side
-          try {
-            const chargeRes = await fetch("/api/yoco/charge", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                token: result.id,
-                amount: total,
-                orderId: orderData.order_id,
-                customerName: name,
-                customerEmail: email,
-              }),
-            });
-
-            const chargeData = await chargeRes.json();
-
-            if (chargeRes.ok && chargeData.success) {
-              // Payment successful!
-              toast.success("Payment successful! 🎉", { icon: "💳" });
-
-              // Update order status to paid
-              try {
-                await fetch("/api/orders", {
-                  method: "PATCH",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ order_id: orderData.order_id, order_status: "confirmed" }),
-                });
-              } catch { /* non-critical */ }
-
-              // Send WhatsApp confirmation
-              const msg = buildWhatsAppMessage(orderData) + "\n\n✅ Payment completed via Yoco (card)!";
-              window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, "_blank");
-
-              setOrderSuccess(true);
-            } else {
-              toast.error(chargeData.details || "Payment failed. Please try again.");
-            }
-          } catch {
-            toast.error("Payment processing failed. Please try again.");
-          }
-
-          setYocoLoading(false);
-        },
-      });
-    } catch {
-      toast.error("Something went wrong. Please try again.");
-      setYocoLoading(false);
-    }
   };
 
   const handleIkhokha = async () => {
@@ -1244,18 +1142,9 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
                   {/* Payment Buttons */}
                   {!ikhokhaStep ? (
                     <>
-                      <motion.button whileTap={{ scale: 0.97 }} onClick={handleYoco} disabled={yocoLoading}
-                        className={`w-full bg-[#1DB954] text-white py-3.5 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-sm mb-3 hover:shadow-[0_8px_25px_rgba(29,185,84,0.4)] flex items-center justify-center gap-2 ${yocoLoading ? 'opacity-60 cursor-not-allowed' : ''}`}>
-                        {yocoLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />} {yocoLoading ? 'PROCESSING...' : 'PAY WITH CARD (Yoco)'}
-                      </motion.button>
-                      <div className="flex items-center gap-3 my-1">
-                        <div className="flex-1 h-px bg-white/15" />
-                        <span className="text-[0.55rem] text-white/40 uppercase tracking-[0.1em]">or</span>
-                        <div className="flex-1 h-px bg-white/15" />
-                      </div>
                       <motion.button whileTap={{ scale: 0.97 }} onClick={handleIkhokha} disabled={ikhokhaLoading}
-                        className={`w-full border-2 border-[#E5B83C] text-[#E5B83C] py-3 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-xs mb-2 hover:bg-[#E5B83C]/15 flex items-center justify-center gap-2 ${ikhokhaLoading ? 'opacity-60 cursor-not-allowed' : ''}`}>
-                        {ikhokhaLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CreditCard className="w-3.5 h-3.5" />} {ikhokhaLoading ? 'CREATING...' : 'PAY WITH IKHOKHA'}
+                        className={`w-full bg-[#1DB954] text-white py-3.5 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-sm mb-3 hover:shadow-[0_8px_25px_rgba(29,185,84,0.4)] flex items-center justify-center gap-2 ${ikhokhaLoading ? 'opacity-60 cursor-not-allowed' : ''}`}>
+                        {ikhokhaLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />} {ikhokhaLoading ? 'CREATING PAYMENT...' : 'PAY WITH IKHOKHA'}
                       </motion.button>
                       <div className="flex items-center gap-3 my-1">
                         <div className="flex-1 h-px bg-white/15" />
@@ -1263,7 +1152,7 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
                         <div className="flex-1 h-px bg-white/15" />
                       </div>
                       <motion.button whileTap={{ scale: 0.97 }} onClick={handleWhatsAppCash}
-                        className="w-full bg-[#B23A1A] text-white py-3 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-xs mb-3 hover:bg-[#B23A1A]/80 flex items-center justify-center gap-2">
+                        className="w-full bg-[#25D366] text-white py-3 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-xs mb-3 hover:shadow-[0_8px_25px_rgba(37,211,102,0.4)] flex items-center justify-center gap-2">
                         <MessageCircle className="w-3.5 h-3.5" /> WHATSAPP (Cash/Card)
                       </motion.button>
                     </>
@@ -1282,8 +1171,7 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
                   <button onClick={handleClose}
                     className="w-full text-white/40 py-3 cursor-pointer text-sm hover:text-white transition-colors bg-transparent border-none">Cancel</button>
                   <p className="text-[0.6rem] text-white/35 text-center mt-2 leading-relaxed">
-                    Yoco: Card payment popup right here — fast & secure.
-                    <br />iKhokha: Opens payment link in a new tab.
+                    iKhokha: Secure card payment in a new tab.
                     <br />WhatsApp: For cash or card on collection/delivery.
                   </p>
                 </>
