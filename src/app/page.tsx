@@ -1177,7 +1177,7 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
       const paymentData = await res.json();
 
       if (res.ok && paymentData.success && paymentData.paylinkUrl) {
-        // Open the iKhokha payment page with the exact amount pre-filled
+        // API created a proper paylink with exact amount
         setPaylinkUrl(paymentData.paylinkUrl);
         window.open(paymentData.paylinkUrl, "_blank");
         toast.info("iKhokha payment page opened! Complete payment, then confirm below.", { icon: "💳", duration: 5000 });
@@ -1191,20 +1191,24 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
           });
         } catch { /* non-critical */ }
       } else {
-        // Fallback: open the static iKhokha link if API fails
-        console.warn("iKhokha API failed, falling back to static URL");
-        window.open(IKHOKHA_PAYMENT_URL, "_blank");
-        toast.info("Pay on iKhokha (enter amount manually), then confirm below.", { icon: "💳", duration: 5000 });
+        // Fallback: open static iKhokha link WITH amount pre-filled
+        console.warn("iKhokha API failed or not configured, using static URL with amount");
+        const amountUrl = `${IKHOKHA_PAYMENT_URL}?amount=${total.toFixed(2)}`;
+        setPaylinkUrl(amountUrl);
+        window.open(amountUrl, "_blank");
+        toast.info(`iKhokha opened with R${total.toFixed(2)}. Complete payment, then confirm below.`, { icon: "💳", duration: 5000 });
       }
 
       setIkhokhaStep(true);
     } catch {
-      // Fallback to static URL on any error
+      // Fallback to static URL with amount on any error
       const orderData = await saveOrder("ikhokha");
       setLastPaymentMethod("ikhokha");
       setPendingIkhokhaOrder(orderData as unknown as Record<string, unknown>);
-      window.open(IKHOKHA_PAYMENT_URL, "_blank");
-      toast.info("Pay on iKhokha (enter amount manually), then confirm below.", { icon: "💳", duration: 5000 });
+      const amountUrl = `${IKHOKHA_PAYMENT_URL}?amount=${total.toFixed(2)}`;
+      setPaylinkUrl(amountUrl);
+      window.open(amountUrl, "_blank");
+      toast.info(`iKhokha opened with R${total.toFixed(2)}. Complete payment, then confirm below.`, { icon: "💳", duration: 5000 });
       setIkhokhaStep(true);
     } finally {
       setIkhokhaLoading(false);

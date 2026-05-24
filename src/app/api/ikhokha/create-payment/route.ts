@@ -3,6 +3,7 @@ import CryptoJS from "crypto-js";
 
 const IKHOKHA_APP_ID = process.env.IKHOKHA_APP_ID || "";
 const IKHOKHA_APP_SECRET = process.env.IKHOKHA_APP_SECRET || "";
+const HAS_IKHOKHA_CREDS = !!(IKHOKHA_APP_ID && IKHOKHA_APP_SECRET);
 
 // Generate HMAC-SHA256 signature as per iKhokha docs
 // The path must be the FULL path from the domain: /public-api/v1/api/payment
@@ -22,6 +23,16 @@ export async function POST(request: NextRequest) {
         { error: "Missing required fields: amount, orderId" },
         { status: 400 }
       );
+    }
+
+    // If no API credentials configured, return early so frontend uses static URL with amount
+    if (!HAS_IKHOKHA_CREDS) {
+      console.warn("[iKhokha] No API credentials configured, returning no-api mode");
+      return NextResponse.json({
+        success: false,
+        noApi: true,
+        message: "iKhokha API credentials not configured. Use static payment URL with amount.",
+      });
     }
 
     // Amount in cents (R100.00 = 10000)
