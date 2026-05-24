@@ -76,7 +76,7 @@ const PAYMENT_STATUS_CONFIG: Record<string, { label: string; color: string }> = 
 // ============================================
 // ADMIN PASSWORD
 // ============================================
-const ADMIN_PASS = "Yumna@786";
+const ADMIN_PASS = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "";
 
 // ============================================
 // LOGIN SCREEN
@@ -311,12 +311,12 @@ function OrderRow({
                 <div>
                   <p className="text-[0.55rem] text-[#FEF3DF]/40 uppercase tracking-wider mb-1">Payment</p>
                   <div className="flex items-center gap-1.5">
-                    {order.payment_method === "ikhokha" ? (
+                    {order.payment_method === "ikhokha" || order.payment_method === "yoco" ? (
                       <CreditCard className="w-3.5 h-3.5 text-amber-400" />
                     ) : (
                       <Banknote className="w-3.5 h-3.5 text-green-400" />
                     )}
-                    <span className="text-xs text-[#FEF3DF] capitalize">{order.payment_method === "ikhokha" ? "iKhokha" : "Cash/Card"}</span>
+                    <span className="text-xs text-[#FEF3DF] capitalize">{order.payment_method === "ikhokha" ? "iKhokha" : order.payment_method === "yoco" ? "Yoco" : "Cash/Card"}</span>
                   </div>
                 </div>
                 <div>
@@ -329,7 +329,7 @@ function OrderRow({
               <div className="flex flex-wrap gap-2 pt-2">
                 {order.order_status === "new" && (
                   <button
-                    onClick={() => onUpdateStatus(order.order_id, "confirmed", order.payment_method === "ikhokha" ? "paid" : undefined)}
+                    onClick={() => onUpdateStatus(order.order_id, "confirmed", order.payment_method === "ikhokha" || order.payment_method === "yoco" ? "paid" : undefined)}
                     className="flex items-center gap-1.5 px-3 py-2 bg-green-500/15 border border-green-500/30 text-green-400 rounded-lg text-xs font-semibold cursor-pointer hover:bg-green-500/25 transition-colors"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" /> Confirm Order

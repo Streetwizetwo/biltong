@@ -6,6 +6,9 @@ export const SUPABASE_URL = "https://fltjcycovhslqupmalfj.supabase.co";
 export const IKHOKHA_PAYMENT_URL =
   "https://pay.ikhokha.com/biltongandbytes/mpr/online";
 
+export const YOCO_PUBLIC_KEY =
+  process.env.NEXT_PUBLIC_YOCO_PUBLIC_KEY || "";
+
 export const WHATSAPP_NUMBER = "27636402722";
 
 export interface OrderData {

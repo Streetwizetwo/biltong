@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import CryptoJS from "crypto-js";
 
-const IKHOKHA_APP_ID = process.env.IKHOKHA_APP_ID || "IK4NR697EBXR1519PNFXVUOWORWHL20P";
-const IKHOKHA_APP_SECRET = process.env.IKHOKHA_APP_SECRET || "YtG6KMhiBewvS6o0E6xU1ev7dgkD8qEW";
+const IKHOKHA_APP_ID = process.env.IKHOKHA_APP_ID || "";
+const IKHOKHA_APP_SECRET = process.env.IKHOKHA_APP_SECRET || "";
 
 // Generate HMAC-SHA256 signature as per iKhokha docs
 // The path must be the FULL path from the domain: /public-api/v1/api/payment
