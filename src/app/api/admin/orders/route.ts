@@ -1,19 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { verifyAdminAuth } from "../auth/route";
 
 const SUPABASE_URL = "https://fltjcycovhslqupmalfj.supabase.co";
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZsdGpjeWNvdmhzbHF1cG1hbGZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyOTc0OTksImV4cCI6MjA5NDg3MzQ5OX0.nBWxfRfxWGEwE2EU8Me4q8DnD_9EGc-LN0MfCsag-YU";
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "Yumna@786";
-
-function checkAuth(request: NextRequest): boolean {
-  const authHeader = request.headers.get("authorization");
-  return authHeader === `Bearer ${ADMIN_PASSWORD}`;
-}
-
 export async function GET(request: NextRequest) {
   try {
-    if (!checkAuth(request)) {
+    if (!verifyAdminAuth(request)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -62,7 +56,7 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    if (!checkAuth(request)) {
+    if (!verifyAdminAuth(request)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -121,7 +115,7 @@ export async function PATCH(request: NextRequest) {
 // This avoids RLS issues with DELETE operations on the anon key
 export async function DELETE(request: NextRequest) {
   try {
-    if (!checkAuth(request)) {
+    if (!verifyAdminAuth(request)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

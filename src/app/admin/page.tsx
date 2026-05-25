@@ -79,28 +79,78 @@ const PAYMENT_STATUS_CONFIG: Record<string, { label: string; color: string }> = 
 };
 
 // ============================================
-// ADMIN PASSWORD
+// SESSION TOKEN MANAGEMENT
 // ============================================
-const ADMIN_PASS = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "Yumna@786";
+// Password is NEVER stored client-side or sent on API calls.
+// Login goes through /api/admin/auth which returns a signed token.
+const TOKEN_KEY = "bb_admin_token";
+const TOKEN_EXPIRY_KEY = "bb_admin_token_expiry";
+
+function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  const token = sessionStorage.getItem(TOKEN_KEY);
+  const expiry = sessionStorage.getItem(TOKEN_EXPIRY_KEY);
+  if (!token || !expiry) return null;
+  // Check if token has expired
+  if (Date.now() > parseInt(expiry, 10)) {
+    sessionStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(TOKEN_EXPIRY_KEY);
+    return null;
+  }
+  return token;
+}
+
+function setToken(token: string, expiresAt: number): void {
+  sessionStorage.setItem(TOKEN_KEY, token);
+  sessionStorage.setItem(TOKEN_EXPIRY_KEY, String(expiresAt));
+}
+
+function clearToken(): void {
+  sessionStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(TOKEN_EXPIRY_KEY);
+}
 
 // ============================================
 // LOGIN SCREEN
 // ============================================
-function LoginScreen({ onLogin }: { onLogin: () => void }) {
+function LoginScreen({ onLogin }: { onLogin: (token: string, expiresAt: number) => void }) {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [shaking, setShaking] = useState(false);
+  const [loggingIn, setLoggingIn] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === ADMIN_PASS) {
-      sessionStorage.setItem("bb_admin_auth", "true");
-      onLogin();
-    } else {
-      setError("Wrong password. Try again.");
-      setShaking(true);
-      setTimeout(() => setShaking(false), 500);
+    setLoggingIn(true);
+    setError("");
+
+    try {
+      // Send password to server for verification — password never stored client-side
+      const res = await fetch("/api/admin/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success && data.token) {
+        setToken(data.token, data.expiresAt);
+        onLogin(data.token, data.expiresAt);
+      } else if (res.status === 429) {
+        setError(data.error || "Too many attempts. Please wait.");
+        setShaking(true);
+        setTimeout(() => setShaking(false), 500);
+      } else {
+        setError(data.error || "Wrong password. Try again.");
+        setShaking(true);
+        setTimeout(() => setShaking(false), 500);
+      }
+    } catch {
+      setError("Connection error. Please try again.");
+    } finally {
+      setLoggingIn(false);
     }
   };
 
@@ -147,9 +197,13 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
 
           <button
             type="submit"
-            className="w-full bg-[#E5B83C] text-[#0A0301] py-3.5 font-bold tracking-[0.1em] uppercase cursor-pointer rounded-xl text-sm hover:bg-[#E5B83C]/90 transition-all"
+            disabled={loggingIn}
+            className={`w-full py-3.5 font-bold tracking-[0.1em] uppercase cursor-pointer rounded-xl text-sm transition-all flex items-center justify-center gap-2 ${
+              loggingIn ? "bg-[#E5B83C]/50 text-[#0A0301]/70 cursor-not-allowed" : "bg-[#E5B83C] text-[#0A0301] hover:bg-[#E5B83C]/90"
+            }`}
           >
-            LOGIN
+            {loggingIn ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+            {loggingIn ? "VERIFYING..." : "LOGIN"}
           </button>
         </form>
       </motion.div>
@@ -399,7 +453,7 @@ function OrderRow({
 // ============================================
 // SETTINGS PANEL
 // ============================================
-function SettingsPanel() {
+function SettingsPanel({ authToken }: { authToken: string }) {
   const [deliveryFeeInput, setDeliveryFeeInput] = useState("40");
   const [productPriceInputs, setProductPriceInputs] = useState<Record<string, string>>({
     "0": "35", "1": "100", "2": "300", "3": "550",
@@ -409,7 +463,7 @@ function SettingsPanel() {
 
   const authHeaders = {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${ADMIN_PASS}`,
+    Authorization: `Bearer ${authToken}`,
   };
 
   const fetchSettings = useCallback(async () => {
@@ -576,7 +630,7 @@ function SettingsPanel() {
 // ============================================
 type DashboardTab = "orders" | "settings";
 
-function Dashboard({ onLogout }: { onLogout: () => void }) {
+function Dashboard({ onLogout, authToken }: { onLogout: () => void; authToken: string }) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -586,7 +640,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
 
   const authHeaders = {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${ADMIN_PASS}`,
+    Authorization: `Bearer ${authToken}`,
   };
 
   const fetchOrders = useCallback(async (showRefresh = false) => {
@@ -688,7 +742,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
               <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
             </button>
             <button
-              onClick={() => { sessionStorage.removeItem("bb_admin_auth"); onLogout(); }}
+              onClick={() => { clearToken(); onLogout(); }}
               className="flex items-center gap-1.5 px-3 py-2 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg text-xs cursor-pointer hover:bg-red-500/20 transition-colors"
             >
               <LogOut className="w-3.5 h-3.5" /> Logout
@@ -733,7 +787,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
             >
-              <SettingsPanel />
+              <SettingsPanel authToken={authToken} />
             </motion.div>
           ) : (
             <motion.div
@@ -835,11 +889,11 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
 // MAIN PAGE
 // ============================================
 export default function AdminPage() {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+  const [authToken, setAuthToken] = useState<string | null>(() => {
     if (typeof window !== "undefined") {
-      return sessionStorage.getItem("bb_admin_auth") === "true";
+      return getToken();
     }
-    return false;
+    return null;
   });
   const [mounted, setMounted] = useState(false);
 
@@ -855,9 +909,9 @@ export default function AdminPage() {
     );
   }
 
-  if (!isAuthenticated) {
-    return <LoginScreen onLogin={() => setIsAuthenticated(true)} />;
+  if (!authToken) {
+    return <LoginScreen onLogin={(token, _expiresAt) => setAuthToken(token)} />;
   }
 
-  return <Dashboard onLogout={() => setIsAuthenticated(false)} />;
+  return <Dashboard onLogout={() => setAuthToken(null)} authToken={authToken} />;
 }
