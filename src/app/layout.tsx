@@ -19,6 +19,22 @@ export const metadata: Metadata = {
     icon: "/favicon.png",
     apple: "/apple-touch-icon.png",
   },
+  openGraph: {
+    title: "Biltong & Bytes — Premium Halaal Biltong | Stanger KZN",
+    description:
+      "Premium wet biltong, hand-cured Halaal, made with love in Stanger KZN. Order online with iKhokha or WhatsApp delivery.",
+    images: ["/images/og-image.png"],
+    type: "website",
+    locale: "en_ZA",
+    siteName: "Biltong & Bytes",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Biltong & Bytes — Premium Halaal Biltong | Stanger KZN",
+    description:
+      "Premium wet biltong, hand-cured Halaal, made with love in Stanger KZN.",
+    images: ["/images/og-image.png"],
+  },
 };
 
 export default function RootLayout({
