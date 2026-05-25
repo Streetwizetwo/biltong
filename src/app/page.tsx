@@ -473,7 +473,7 @@ function Hero() {
     <section ref={ref} className="relative min-h-screen flex items-center justify-center overflow-hidden">
       <motion.div style={{ scale: bgScale, opacity: bgOpacity }} className="absolute inset-0 z-[-2]">
         <div className="w-full h-full bg-cover bg-center" style={{
-          backgroundImage: "url('/images/hero-bg.png')",
+          backgroundImage: "url('/images/hero-bg.jpeg')",
           filter: "saturate(0.8)",
         }} />
       </motion.div>
@@ -525,10 +525,10 @@ function PhotoStrip() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const images = [
-    { src: "/images/biltong-classic.png", alt: "Biltong" },
-    { src: "/images/biltong-hanging.png", alt: "Hanging" },
-    { src: "/images/biltong-sliced.png", alt: "Sliced" },
-    { src: "/images/biltong-chilli.png", alt: "Chilli" },
+    { src: "/images/hero-bg.jpeg", alt: "Biltong" },
+    { src: "/images/biltong-hanging-2.jpeg", alt: "Hanging" },
+    { src: "/images/biltong-sliced-2.jpeg", alt: "Sliced" },
+    { src: "/images/snack-pack-150g.webp", alt: "Chilli" },
   ];
 
   return (
