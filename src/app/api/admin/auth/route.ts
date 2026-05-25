@@ -1,5 +1,11 @@
 // Admin authentication module — server-side only
-// Provides: signed session tokens, rate limiting, auth verification
+// Provides: httpOnly cookie sessions, rate limiting, auth verification
+//
+// Security model:
+//   - Login → server sets httpOnly, Secure, SameSite=Strict cookie
+//   - Cookie is NEVER accessible to JavaScript (defeats XSS token theft)
+//   - All admin API routes read the cookie server-side via verifyAdminAuth()
+//   - Logout → server clears the cookie
 
 import { NextRequest, NextResponse } from "next/server";
 import CryptoJS from "crypto-js";
@@ -16,6 +22,8 @@ const TOKEN_SECRET = process.env.ADMIN_TOKEN_SECRET || "BB-KZN-SigKey-2025-x9kQm
 const TOKEN_EXPIRY_MS = 4 * 60 * 60 * 1000; // 4 hours
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+
+const COOKIE_NAME = "bb_admin_session";
 
 // ============================================
 // RATE LIMITING (in-memory, resets on deploy)
@@ -124,24 +132,57 @@ function verifyToken(token: string, ip: string): boolean {
 }
 
 // ============================================
+// COOKIE HELPERS
+// ============================================
+function buildCookieOptions(expiresAt: number) {
+  return {
+    httpOnly: true,
+    secure: true,
+    sameSite: "strict" as const,
+    path: "/",
+    expires: new Date(expiresAt),
+  };
+}
+
+function clearCookieOptions() {
+  return {
+    httpOnly: true,
+    secure: true,
+    sameSite: "strict" as const,
+    path: "/",
+    maxAge: 0,
+  };
+}
+
+// ============================================
 // EXPORTED AUTH VERIFIER (for other API routes)
 // ============================================
+// Reads the session token from the httpOnly cookie
 export function verifyAdminAuth(request: NextRequest): boolean {
-  const authHeader = request.headers.get("authorization");
-  if (!authHeader) return false;
+  const cookieToken = request.cookies.get(COOKIE_NAME)?.value;
 
-  // Support both: "Bearer <token>" (new) and "Bearer <password>" (legacy fallback)
-  const token = authHeader.replace("Bearer ", "");
-  const ip = getClientIP(request);
-
-  // Try session token first (preferred)
-  if (token.includes(".") && verifyToken(token, ip)) {
-    return true;
+  if (cookieToken) {
+    const ip = getClientIP(request);
+    if (verifyToken(cookieToken, ip)) {
+      return true;
+    }
   }
 
-  // Legacy fallback: direct password (for backwards compat during transition)
-  if (token === ADMIN_PASSWORD) {
-    return true;
+  // Legacy fallback: Bearer token in Authorization header
+  // (for any remaining clients during transition)
+  const authHeader = request.headers.get("authorization");
+  if (authHeader) {
+    const token = authHeader.replace("Bearer ", "");
+    const ip = getClientIP(request);
+
+    if (token.includes(".") && verifyToken(token, ip)) {
+      return true;
+    }
+
+    // Direct password fallback (being phased out)
+    if (token === ADMIN_PASSWORD) {
+      return true;
+    }
   }
 
   return false;
@@ -193,19 +234,24 @@ export async function POST(request: NextRequest) {
     clearFailedAttempts(ip);
 
     const now = Date.now();
+    const expiresAt = now + TOKEN_EXPIRY_MS;
     const token = signToken({
       ip,
       issuedAt: now,
-      expiresAt: now + TOKEN_EXPIRY_MS,
+      expiresAt,
     });
 
     console.log(`[Admin Auth] Successful login from ${ip}`);
 
-    return NextResponse.json({
+    // Set httpOnly cookie — JavaScript can NEVER read this
+    const response = NextResponse.json({
       success: true,
-      token,
-      expiresAt: now + TOKEN_EXPIRY_MS,
+      expiresAt,
     });
+
+    response.cookies.set(COOKIE_NAME, token, buildCookieOptions(expiresAt));
+
+    return response;
   } catch (error) {
     console.error("[Admin Auth] Login error:", error);
     return NextResponse.json(
@@ -218,24 +264,41 @@ export async function POST(request: NextRequest) {
 // ============================================
 // VERIFY ENDPOINT: GET /api/admin/auth
 // ============================================
+// Checks if the httpOnly cookie is still valid
 export async function GET(request: NextRequest) {
+  const cookieToken = request.cookies.get(COOKIE_NAME)?.value;
+
+  if (cookieToken) {
+    const ip = getClientIP(request);
+    if (verifyToken(cookieToken, ip)) {
+      return NextResponse.json({ valid: true });
+    }
+  }
+
+  // Legacy Bearer fallback
   const authHeader = request.headers.get("authorization");
+  if (authHeader) {
+    const token = authHeader.replace("Bearer ", "");
+    const ip = getClientIP(request);
 
-  if (!authHeader) {
-    return NextResponse.json({ valid: false }, { status: 401 });
-  }
+    if (token.includes(".") && verifyToken(token, ip)) {
+      return NextResponse.json({ valid: true });
+    }
 
-  const token = authHeader.replace("Bearer ", "");
-  const ip = getClientIP(request);
-
-  if (token.includes(".") && verifyToken(token, ip)) {
-    return NextResponse.json({ valid: true });
-  }
-
-  // Legacy password fallback
-  if (token === ADMIN_PASSWORD) {
-    return NextResponse.json({ valid: true });
+    if (token === ADMIN_PASSWORD) {
+      return NextResponse.json({ valid: true });
+    }
   }
 
   return NextResponse.json({ valid: false }, { status: 401 });
+}
+
+// ============================================
+// LOGOUT ENDPOINT: DELETE /api/admin/auth
+// ============================================
+// Clears the httpOnly cookie
+export async function DELETE() {
+  const response = NextResponse.json({ success: true });
+  response.cookies.set(COOKIE_NAME, "", clearCookieOptions());
+  return response;
 }

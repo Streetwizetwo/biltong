@@ -18,9 +18,7 @@ import {
   ChevronDown,
   ChevronUp,
   Trash2,
-  ArrowRight,
   LogOut,
-  TrendingUp,
   ShoppingBag,
   CircleDollarSign,
   Loader2,
@@ -79,41 +77,31 @@ const PAYMENT_STATUS_CONFIG: Record<string, { label: string; color: string }> = 
 };
 
 // ============================================
-// SESSION TOKEN MANAGEMENT
+// AUTH HELPERS (cookie-based, no token storage)
 // ============================================
-// Password is NEVER stored client-side or sent on API calls.
-// Login goes through /api/admin/auth which returns a signed token.
-const TOKEN_KEY = "bb_admin_token";
-const TOKEN_EXPIRY_KEY = "bb_admin_token_expiry";
+// The session token is stored in an httpOnly cookie set by the server.
+// JavaScript can NEVER read it — defeats XSS token theft.
+// All API calls include credentials: "include" so the cookie is sent.
 
-function getToken(): string | null {
-  if (typeof window === "undefined") return null;
-  const token = sessionStorage.getItem(TOKEN_KEY);
-  const expiry = sessionStorage.getItem(TOKEN_EXPIRY_KEY);
-  if (!token || !expiry) return null;
-  // Check if token has expired
-  if (Date.now() > parseInt(expiry, 10)) {
-    sessionStorage.removeItem(TOKEN_KEY);
-    sessionStorage.removeItem(TOKEN_EXPIRY_KEY);
-    return null;
+async function checkAuth(): Promise<boolean> {
+  try {
+    const res = await fetch("/api/admin/auth", { method: "GET", credentials: "include" });
+    if (!res.ok) return false;
+    const data = await res.json();
+    return data.valid === true;
+  } catch {
+    return false;
   }
-  return token;
 }
 
-function setToken(token: string, expiresAt: number): void {
-  sessionStorage.setItem(TOKEN_KEY, token);
-  sessionStorage.setItem(TOKEN_EXPIRY_KEY, String(expiresAt));
-}
-
-function clearToken(): void {
-  sessionStorage.removeItem(TOKEN_KEY);
-  sessionStorage.removeItem(TOKEN_EXPIRY_KEY);
+async function logout(): Promise<void> {
+  await fetch("/api/admin/auth", { method: "DELETE", credentials: "include" });
 }
 
 // ============================================
 // LOGIN SCREEN
 // ============================================
-function LoginScreen({ onLogin }: { onLogin: (token: string, expiresAt: number) => void }) {
+function LoginScreen({ onLogin }: { onLogin: () => void }) {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
@@ -126,18 +114,19 @@ function LoginScreen({ onLogin }: { onLogin: (token: string, expiresAt: number) 
     setError("");
 
     try {
-      // Send password to server for verification — password never stored client-side
+      // Send password to server — server sets httpOnly cookie on success
       const res = await fetch("/api/admin/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ password }),
       });
 
       const data = await res.json();
 
-      if (res.ok && data.success && data.token) {
-        setToken(data.token, data.expiresAt);
-        onLogin(data.token, data.expiresAt);
+      if (res.ok && data.success) {
+        // Cookie is set by the server — no token to store in JS
+        onLogin();
       } else if (res.status === 429) {
         setError(data.error || "Too many attempts. Please wait.");
         setShaking(true);
@@ -453,7 +442,7 @@ function OrderRow({
 // ============================================
 // SETTINGS PANEL
 // ============================================
-function SettingsPanel({ authToken }: { authToken: string }) {
+function SettingsPanel() {
   const [deliveryFeeInput, setDeliveryFeeInput] = useState("40");
   const [productPriceInputs, setProductPriceInputs] = useState<Record<string, string>>({
     "0": "35", "1": "100", "2": "300", "3": "550",
@@ -461,14 +450,9 @@ function SettingsPanel({ authToken }: { authToken: string }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const authHeaders = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${authToken}`,
-  };
-
   const fetchSettings = useCallback(async () => {
     try {
-      const res = await fetch("/api/settings", { headers: authHeaders });
+      const res = await fetch("/api/settings", { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
         setDeliveryFeeInput(String(data.deliveryFee ?? 40));
@@ -497,7 +481,8 @@ function SettingsPanel({ authToken }: { authToken: string }) {
 
       const res = await fetch("/api/settings", {
         method: "PUT",
-        headers: authHeaders,
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ deliveryFee, productPrices }),
       });
 
@@ -630,18 +615,13 @@ function SettingsPanel({ authToken }: { authToken: string }) {
 // ============================================
 type DashboardTab = "orders" | "settings";
 
-function Dashboard({ onLogout, authToken }: { onLogout: () => void; authToken: string }) {
+function Dashboard({ onLogout }: { onLogout: () => void }) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<DashboardTab>("orders");
-
-  const authHeaders = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${authToken}`,
-  };
 
   const fetchOrders = useCallback(async (showRefresh = false) => {
     if (showRefresh) setRefreshing(true);
@@ -651,7 +631,7 @@ function Dashboard({ onLogout, authToken }: { onLogout: () => void; authToken: s
       if (searchQuery.trim()) params.set("search", searchQuery.trim());
 
       const res = await fetch(`/api/admin/orders?${params.toString()}`, {
-        headers: authHeaders,
+        credentials: "include",
       });
 
       if (res.status === 401) {
@@ -683,7 +663,8 @@ function Dashboard({ onLogout, authToken }: { onLogout: () => void; authToken: s
     try {
       const res = await fetch("/api/admin/orders", {
         method: "PATCH",
-        headers: authHeaders,
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ orderId, orderStatus, paymentStatus }),
       });
 
@@ -702,7 +683,7 @@ function Dashboard({ onLogout, authToken }: { onLogout: () => void; authToken: s
     try {
       const res = await fetch(`/api/admin/orders?orderId=${orderId}`, {
         method: "DELETE",
-        headers: authHeaders,
+        credentials: "include",
       });
 
       if (res.ok) {
@@ -725,6 +706,11 @@ function Dashboard({ onLogout, authToken }: { onLogout: () => void; authToken: s
     payment_failed: orders.filter((o) => o.order_status === "payment_failed").length,
   };
 
+  const handleLogout = async () => {
+    await logout();
+    onLogout();
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0A0301] via-[#1A0A04] to-[#0A0301]">
       {/* Header */}
@@ -742,7 +728,7 @@ function Dashboard({ onLogout, authToken }: { onLogout: () => void; authToken: s
               <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
             </button>
             <button
-              onClick={() => { clearToken(); onLogout(); }}
+              onClick={handleLogout}
               className="flex items-center gap-1.5 px-3 py-2 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg text-xs cursor-pointer hover:bg-red-500/20 transition-colors"
             >
               <LogOut className="w-3.5 h-3.5" /> Logout
@@ -787,7 +773,7 @@ function Dashboard({ onLogout, authToken }: { onLogout: () => void; authToken: s
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
             >
-              <SettingsPanel authToken={authToken} />
+              <SettingsPanel />
             </motion.div>
           ) : (
             <motion.div
@@ -889,19 +875,24 @@ function Dashboard({ onLogout, authToken }: { onLogout: () => void; authToken: s
 // MAIN PAGE
 // ============================================
 export default function AdminPage() {
-  const [authToken, setAuthToken] = useState<string | null>(() => {
-    if (typeof window !== "undefined") {
-      return getToken();
-    }
-    return null;
-  });
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [checking, setChecking] = useState(true);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  if (!mounted) {
+  // On mount, check if we have a valid session cookie
+  useEffect(() => {
+    if (!mounted) return;
+    checkAuth().then((valid) => {
+      setIsAuthenticated(valid);
+      setChecking(false);
+    });
+  }, [mounted]);
+
+  if (!mounted || checking) {
     return (
       <div className="min-h-screen bg-[#0A0301] flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-[#E5B83C] animate-spin" />
@@ -909,9 +900,9 @@ export default function AdminPage() {
     );
   }
 
-  if (!authToken) {
-    return <LoginScreen onLogin={(token, _expiresAt) => setAuthToken(token)} />;
+  if (!isAuthenticated) {
+    return <LoginScreen onLogin={() => setIsAuthenticated(true)} />;
   }
 
-  return <Dashboard onLogout={() => setAuthToken(null)} authToken={authToken} />;
+  return <Dashboard onLogout={() => setIsAuthenticated(false)} />;
 }
