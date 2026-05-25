@@ -101,7 +101,7 @@ export const PRODUCTS = [
     weight: "50g",
     grams: 50,
     price: 35,
-    img: "/images/taster-50g.png",
+    img: "/images/taster-50g.webp",
     description: "Perfect bite-sized sample of our premium wet biltong",
   },
   {
@@ -110,7 +110,7 @@ export const PRODUCTS = [
     weight: "150g",
     grams: 150,
     price: 100,
-    img: "/images/snack-pack-150g.png",
+    img: "/images/snack-pack-150g.webp",
     description: "Ideal for snacking — great for on-the-go cravings",
   },
   {
@@ -119,7 +119,7 @@ export const PRODUCTS = [
     weight: "500g",
     grams: 500,
     price: 300,
-    img: "/images/family-batch-500g.png",
+    img: "/images/family-batch-500g.webp",
     description: "Share with the family — the crowd favourite size",
   },
   {
@@ -128,7 +128,7 @@ export const PRODUCTS = [
     weight: "1kg",
     grams: 1000,
     price: 550,
-    img: "/images/feast-1kg.png",
+    img: "/images/feast-1kg.jpeg",
     description: "The ultimate biltong experience — best value per gram",
   },
 ];
