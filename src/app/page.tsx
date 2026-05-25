@@ -528,7 +528,7 @@ function PhotoStrip() {
     { src: "/images/hero-bg.jpeg", alt: "Biltong" },
     { src: "/images/biltong-hanging-2.jpeg", alt: "Hanging" },
     { src: "/images/biltong-sliced-2.jpeg", alt: "Sliced" },
-    { src: "/images/snack-pack-150g.webp", alt: "Chilli" },
+    { src: "/images/snack-pack-150g.jpeg", alt: "Chilli" },
   ];
 
   return (
