@@ -1,7 +1,8 @@
 "use client";
 
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, StateStorage } from "zustand/middleware";
+import { hashCartData, verifyCartIntegrity } from "./cart-hash";
 import { useSettingsStore } from "./settings-store";
 
 export interface CartItem {
@@ -50,6 +51,55 @@ interface CartStore {
 
 const generateCartItemId = (name: string, flavor: string) =>
   `${name}-${flavor}`.replace(/\s+/g, "-").toLowerCase();
+
+// ============================================
+// HASHED LOCAL STORAGE — prevents tampering
+// ============================================
+// We wrap localStorage so that every write also stores a hash,
+// and every read verifies the hash. If someone edits the cart
+// in DevTools (e.g. changes a price), the hash won't match
+// and the cart is reset to empty.
+
+const CART_STORAGE_KEY = "biltong-cart";
+const CART_HASH_KEY = "biltong-cart-sig";
+
+const hashedStorage: StateStorage = {
+  getItem: (name: string): string | null => {
+    if (typeof window === "undefined") return null;
+
+    const data = localStorage.getItem(name);
+    if (!data) return null;
+
+    // Verify integrity
+    const storedHash = localStorage.getItem(CART_HASH_KEY);
+    if (!verifyCartIntegrity(data, storedHash || undefined)) {
+      // Tampered! Clear everything and return null (cart resets)
+      console.warn("[Cart] Integrity check failed — cart data was tampered. Resetting.");
+      localStorage.removeItem(CART_STORAGE_KEY);
+      localStorage.removeItem(CART_HASH_KEY);
+      localStorage.removeItem("biltong_orders");
+      return null;
+    }
+
+    return data;
+  },
+
+  setItem: (name: string, value: string): void => {
+    if (typeof window === "undefined") return;
+
+    localStorage.setItem(name, value);
+    // Compute and store integrity hash
+    const hash = hashCartData(value);
+    localStorage.setItem(CART_HASH_KEY, hash);
+  },
+
+  removeItem: (name: string): void => {
+    if (typeof window === "undefined") return;
+
+    localStorage.removeItem(name);
+    localStorage.removeItem(CART_HASH_KEY);
+  },
+};
 
 export const useCartStore = create<CartStore>()(
   persist(
@@ -126,7 +176,8 @@ export const useCartStore = create<CartStore>()(
       total: () => get().subtotal() + get().deliveryFee(),
     }),
     {
-      name: "biltong-cart",
+      name: CART_STORAGE_KEY,
+      storage: hashedStorage,
       partialize: (state) => ({
         items: state.items,
         deliveryMode: state.deliveryMode,

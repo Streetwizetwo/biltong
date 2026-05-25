@@ -4,9 +4,111 @@ const SUPABASE_URL = "https://fltjcycovhslqupmalfj.supabase.co";
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZsdGpjeWNvdmhzbHF1cG1hbGZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyOTc0OTksImV4cCI6MjA5NDg3MzQ5OX0.nBWxfRfxWGEwE2EU8Me4q8DnD_9EGc-LN0MfCsag-YU";
 
+// Default product prices (fallback if settings table doesn't exist)
+const DEFAULT_PRICES: Record<string, number> = {
+  "The Taster": 35,
+  "Snack Pack": 100,
+  "Family Batch": 300,
+  "The Feast": 550,
+};
+
+const DEFAULT_DELIVERY_FEE = 40;
+
+/**
+ * Fetch live product prices and delivery fee from the settings table.
+ * Falls back to hardcoded defaults if Supabase is unreachable.
+ */
+async function getLivePrices(): Promise<{
+  productPrices: Record<string, number>;
+  deliveryFee: number;
+}> {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/settings?id=eq.1&select=delivery_fee,product_prices`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+      }
+    );
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.length > 0) {
+        const row = data[0];
+        // product_prices is keyed by product ID: { "0": 35, "1": 100, ... }
+        // We need to map these to product names for validation
+        const priceById: Record<string, number> = row.product_prices || {};
+        const productPrices: Record<string, number> = {
+          "The Taster": priceById["0"] ?? DEFAULT_PRICES["The Taster"],
+          "Snack Pack": priceById["1"] ?? DEFAULT_PRICES["Snack Pack"],
+          "Family Batch": priceById["2"] ?? DEFAULT_PRICES["Family Batch"],
+          "The Feast": priceById["3"] ?? DEFAULT_PRICES["The Feast"],
+        };
+        return {
+          productPrices,
+          deliveryFee: row.delivery_fee ?? DEFAULT_DELIVERY_FEE,
+        };
+      }
+    }
+  } catch {
+    // Fall through to defaults
+  }
+
+  return { productPrices: DEFAULT_PRICES, deliveryFee: DEFAULT_DELIVERY_FEE };
+}
+
 export async function POST(request: NextRequest) {
   try {
     const orderData = await request.json();
+
+    // ============================================
+    // SERVER-SIDE PRICE VERIFICATION
+    // Recalculate prices from live settings to prevent
+    // clients from submitting tampered cart data.
+    // ============================================
+    const { productPrices, deliveryFee } = await getLivePrices();
+
+    // Recalculate subtotal from items using server-side prices
+    let verifiedSubtotal = 0;
+    for (const item of orderData.items) {
+      const serverPrice = productPrices[item.name];
+      if (serverPrice == null) {
+        return NextResponse.json(
+          { error: `Unknown product: ${item.name}` },
+          { status: 400 }
+        );
+      }
+      // Use the SERVER price, not the client-submitted price
+      item.price = serverPrice;
+      verifiedSubtotal += serverPrice * item.qty;
+    }
+
+    // Verify delivery fee
+    const verifiedDeliveryFee =
+      orderData.delivery_mode === "deliver" ? deliveryFee : 0;
+
+    // Recompute total
+    const verifiedTotal = verifiedSubtotal + verifiedDeliveryFee;
+
+    // Override client-submitted values with verified values
+    orderData.subtotal = verifiedSubtotal;
+    orderData.delivery_fee = verifiedDeliveryFee;
+    orderData.total = verifiedTotal;
+
+    // Log if there was a discrepancy (potential tampering)
+    if (
+      Math.abs(verifiedTotal - (orderData.total || 0)) > 1 ||
+      Math.abs(verifiedSubtotal - (orderData.subtotal || 0)) > 1
+    ) {
+      console.warn(
+        `[Order] Price discrepancy detected for ${orderData.order_id}. ` +
+        `Client total: R${orderData.total}, Server total: R${verifiedTotal}. ` +
+        `Using server-verified prices.`
+      );
+    }
 
     const response = await fetch(`${SUPABASE_URL}/rest/v1/orders`, {
       method: "POST",
@@ -24,9 +126,9 @@ export async function POST(request: NextRequest) {
           customer_email: orderData.customer_email || null,
           items: orderData.items,
           items_summary: orderData.items_summary,
-          subtotal: orderData.subtotal,
-          delivery_fee: orderData.delivery_fee,
-          total: orderData.total,
+          subtotal: verifiedSubtotal,
+          delivery_fee: verifiedDeliveryFee,
+          total: verifiedTotal,
           delivery_mode: orderData.delivery_mode,
           delivery_address: orderData.delivery_address || null,
           payment_method: orderData.payment_method,

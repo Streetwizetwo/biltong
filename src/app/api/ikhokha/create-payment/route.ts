@@ -25,6 +25,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate the amount is reasonable (R1 - R100,000) to prevent obvious tampering
+    if (amount < 1 || amount > 100000) {
+      console.warn(`[iKhokha] Suspicious amount: R${amount} for order ${orderId}`);
+      return NextResponse.json(
+        { error: "Invalid payment amount" },
+        { status: 400 }
+      );
+    }
+
     // If no API credentials configured, return early so frontend uses static URL with amount
     if (!HAS_IKHOKHA_CREDS) {
       console.warn("[iKhokha] No API credentials configured, returning no-api mode");
