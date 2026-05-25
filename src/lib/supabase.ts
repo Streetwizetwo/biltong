@@ -110,7 +110,7 @@ export const PRODUCTS = [
     weight: "150g",
     grams: 150,
     price: 100,
-    img: "/images/snack-pack-150g.webp",
+    img: "/images/snack-pack-150g.jpeg",
     description: "Ideal for snacking — great for on-the-go cravings",
   },
   {
