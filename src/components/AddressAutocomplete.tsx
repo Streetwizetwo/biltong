@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { MapPin, Loader2, Search } from "lucide-react";
+import { MapPin, Loader2, Search, Package } from "lucide-react";
 import { STANGER_ADDRESSES, SA_CITIES } from "@/lib/supabase";
 
-// Structured address from Google Maps
+// Structured address from Courier Guy
 export interface StructuredAddress {
   street_address: string;
   local_area: string;
@@ -12,14 +12,27 @@ export interface StructuredAddress {
   zone: string;
   code: string;
   formatted: string;
+  lat?: number;
+  lng?: number;
 }
 
-// A prediction from Google Places or static fallback
+// A prediction from Courier Guy or static fallback
 interface AddressPrediction {
   place_id?: string;
+  name?: string;
+  type?: string;
   description: string;
   main_text?: string;
   secondary_text?: string;
+  structured?: {
+    street_address: string;
+    local_area: string;
+    city: string;
+    zone: string;
+    code: string;
+    lat?: number;
+    lng?: number;
+  };
 }
 
 interface AddressAutocompleteProps {
@@ -41,8 +54,7 @@ export function AddressAutocomplete({
   const [predictions, setPredictions] = useState<AddressPrediction[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [googleAvailable, setGoogleAvailable] = useState(true);
-  const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
+  const [courierGuyAvailable, setCourierGuyAvailable] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -69,7 +81,7 @@ export function AddressAutocomplete({
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // Static fallback suggestions
+  // Static fallback suggestions (Stanger + major SA cities)
   const staticSuggestions = useMemo(() => {
     if (query.length < 2) return [];
     const q = query.toLowerCase();
@@ -80,46 +92,42 @@ export function AddressAutocomplete({
       (a) => a.toLowerCase().includes(q) && !a.toLowerCase().includes("stanger")
     );
     return [
-      ...stanger.map((a) => ({ description: a, place_id: undefined })),
-      ...cities.map((a) => ({ description: a, place_id: undefined })),
+      ...stanger.map((a) => ({ description: a, place_id: undefined, name: a, type: "local" })),
+      ...cities.map((a) => ({ description: a, place_id: undefined, name: a, type: "city" })),
     ];
   }, [query]);
 
-  // Fetch Google Places autocomplete suggestions
-  const fetchPredictions = useCallback(
-    async (input: string) => {
-      if (fetchControllerRef.current) {
-        fetchControllerRef.current.abort();
+  // Fetch Courier Guy pickup points for address suggestions
+  const fetchPredictions = useCallback(async (input: string) => {
+    if (fetchControllerRef.current) {
+      fetchControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    fetchControllerRef.current = controller;
+
+    try {
+      const res = await fetch(
+        `/api/places/autocomplete?q=${encodeURIComponent(input)}`,
+        { signal: controller.signal }
+      );
+      const data = await res.json();
+
+      if (data.fallback) {
+        setCourierGuyAvailable(false);
+        setPredictions([]);
+        return;
       }
-      const controller = new AbortController();
-      fetchControllerRef.current = controller;
 
-      try {
-        const res = await fetch(
-          `/api/places/autocomplete?q=${encodeURIComponent(input)}`,
-          { signal: controller.signal }
-        );
-        const data = await res.json();
-
-        if (data.fallback) {
-          // Google Maps not configured — use static suggestions
-          setGoogleAvailable(false);
-          setPredictions([]);
-          return;
-        }
-
-        setGoogleAvailable(true);
-        setPredictions(data.predictions || []);
-      } catch (err: unknown) {
-        if (err instanceof Error && err.name !== "AbortError") {
-          console.warn("[AddressAutocomplete] Fetch error:", err);
-          setGoogleAvailable(false);
-          setPredictions([]);
-        }
+      setCourierGuyAvailable(true);
+      setPredictions(data.predictions || []);
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name !== "AbortError") {
+        console.warn("[AddressAutocomplete] Fetch error:", err);
+        setCourierGuyAvailable(false);
+        setPredictions([]);
       }
-    },
-    []
-  );
+    }
+  }, []);
 
   // Debounced input handler
   useEffect(() => {
@@ -130,7 +138,7 @@ export function AddressAutocomplete({
       return;
     }
 
-    if (googleAvailable) {
+    if (courierGuyAvailable) {
       setLoading(true);
       debounceRef.current = setTimeout(() => {
         fetchPredictions(query).finally(() => setLoading(false));
@@ -140,68 +148,69 @@ export function AddressAutocomplete({
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [query, googleAvailable, fetchPredictions]);
+  }, [query, courierGuyAvailable, fetchPredictions]);
 
   // Handle input change
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setQuery(val);
     setShowDropdown(true);
-    setSelectedPlaceId(null);
-    // Clear structured address since user is typing
     onStructuredAddress?.(null);
-    // Pass the raw text back
     onChange(val);
   };
-
-  // Fetch place details when a Google Place is selected
-  const fetchPlaceDetails = useCallback(
-    async (placeId: string, description: string) => {
-      try {
-        const res = await fetch(
-          `/api/places/details?place_id=${encodeURIComponent(placeId)}`
-        );
-        const data = await res.json();
-
-        if (data.structured) {
-          setQuery(data.formatted_address || description);
-          onChange(data.formatted_address || description, data.structured);
-          onStructuredAddress?.(data.structured);
-          return;
-        }
-      } catch (err) {
-        console.warn("[AddressAutocomplete] Details fetch error:", err);
-      }
-
-      // Fallback: just use the description
-      setQuery(description);
-      onChange(description);
-    },
-    [onChange, onStructuredAddress]
-  );
 
   // Handle suggestion selection
   const handleSelect = useCallback(
     (prediction: AddressPrediction) => {
       setShowDropdown(false);
-      setSelectedPlaceId(prediction.place_id || null);
 
-      if (prediction.place_id) {
-        // Google Place — fetch details for structured address
-        fetchPlaceDetails(prediction.place_id, prediction.description);
+      if (prediction.structured) {
+        // Courier Guy pickup point — we already have the structured address!
+        const s = prediction.structured;
+        const formatted = `${s.street_address}, ${s.local_area}, ${s.city}, ${s.zone}, ${s.code}`;
+        const structuredAddr: StructuredAddress = {
+          street_address: s.street_address,
+          local_area: s.local_area,
+          city: s.city,
+          zone: s.zone,
+          code: s.code,
+          formatted,
+          lat: s.lat,
+          lng: s.lng,
+        };
+        setQuery(formatted);
+        onChange(formatted, structuredAddr);
+        onStructuredAddress?.(structuredAddr);
       } else {
-        // Static suggestion — just set the text
+        // Static suggestion (Stanger or SA city) — just set the text
         setQuery(prediction.description);
         onChange(prediction.description);
       }
     },
-    [fetchPlaceDetails, onChange]
+    [onChange, onStructuredAddress]
   );
 
   // Determine which suggestions to show
-  const displayPredictions = googleAvailable
+  const displayPredictions = courierGuyAvailable
     ? predictions
     : staticSuggestions;
+
+  // Type icon for pickup point
+  const getTypeIcon = (type?: string) => {
+    switch (type) {
+      case "locker":
+        return "📦";
+      case "counter":
+        return "🏪";
+      case "point":
+        return "📍";
+      case "local":
+      case "city":
+        return null;
+      default:
+        return "📍";
+    }
+  };
 
   return (
     <div className="relative">
@@ -229,36 +238,43 @@ export function AddressAutocomplete({
       {showDropdown && displayPredictions.length > 0 && query.length >= 2 && (
         <div
           ref={dropdownRef}
-          className="absolute top-full left-0 right-0 bg-[#2A1508] rounded-xl mt-1 max-h-[220px] overflow-y-auto z-50 shadow-2xl border border-[#E5B83C]/20"
+          className="absolute top-full left-0 right-0 bg-[#2A1508] rounded-xl mt-1 max-h-[260px] overflow-y-auto z-50 shadow-2xl border border-[#E5B83C]/20"
         >
-          {googleAvailable && (
-            <div className="px-4 py-2 border-b border-[#E5B83C]/10 flex items-center gap-1.5">
-              <span className="text-[0.55rem] text-[#E5B83C]/40 tracking-wider uppercase font-semibold">
-                Powered by Google Maps
+          {courierGuyAvailable && (
+            <div className="px-4 py-2 border-b border-[#E5B83C]/10 flex items-center gap-1.5 sticky top-0 bg-[#2A1508] z-10">
+              <Package className="w-3 h-3 text-[#E5B83C]/50" />
+              <span className="text-[0.55rem] text-[#E5B83C]/50 tracking-wider uppercase font-semibold">
+                Courier Guy Pickup Points — collect from any location below
               </span>
             </div>
           )}
-          {displayPredictions.map((pred, idx) => (
-            <button
-              key={pred.place_id || `static-${idx}`}
-              onClick={() => handleSelect(pred)}
-              className="w-full text-left px-4 py-2.5 text-sm text-[#FEF3DF] cursor-pointer border-b border-[#E5B83C]/5 hover:bg-[#E5B83C]/15 hover:text-[#F8E5B0] transition-colors last:border-b-0"
-            >
-              {pred.main_text && pred.secondary_text ? (
-                <span>
-                  <span className="font-semibold">{pred.main_text}</span>
-                  <span className="text-[#FEF3DF]/50 text-xs ml-1">
-                    {pred.secondary_text}
+          {displayPredictions.map((pred, idx) => {
+            const icon = getTypeIcon(pred.type);
+            return (
+              <button
+                key={pred.place_id || `static-${idx}`}
+                onClick={() => handleSelect(pred)}
+                className="w-full text-left px-4 py-2.5 text-sm text-[#FEF3DF] cursor-pointer border-b border-[#E5B83C]/5 hover:bg-[#E5B83C]/15 hover:text-[#F8E5B0] transition-colors last:border-b-0"
+              >
+                {pred.main_text && pred.secondary_text ? (
+                  <span className="flex items-start gap-2">
+                    {icon && <span className="text-xs mt-0.5">{icon}</span>}
+                    <span>
+                      <span className="font-semibold">{pred.main_text}</span>
+                      <span className="text-[#FEF3DF]/50 text-xs ml-1 block">
+                        {pred.secondary_text} {pred.type === "locker" ? "· Locker" : pred.type === "counter" ? "· Counter" : ""}
+                      </span>
+                    </span>
                   </span>
-                </span>
-              ) : (
-                <span className="flex items-center gap-2">
-                  <MapPin className="w-3 h-3 text-[#E5B83C]/50 flex-shrink-0" />
-                  {pred.description}
-                </span>
-              )}
-            </button>
-          ))}
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <MapPin className="w-3 h-3 text-[#E5B83C]/50 flex-shrink-0" />
+                    {pred.description}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       )}
 
@@ -269,19 +285,19 @@ export function AddressAutocomplete({
         !loading && (
           <div className="absolute top-full left-0 right-0 bg-[#2A1508] rounded-xl mt-1 z-50 shadow-2xl border border-[#E5B83C]/20 p-3">
             <p className="text-xs text-[#FEF3DF]/40 text-center">
-              {googleAvailable
-                ? "No addresses found. Try a different search."
+              {courierGuyAvailable
+                ? "No pickup points found. Try a different search, or type your full address below."
                 : "Type your full address (e.g. 12 Main Rd, Durban, KwaZulu-Natal)"}
             </p>
           </div>
         )}
 
-      {/* Address format hint */}
+      {/* Status indicator */}
       <p className="text-[0.6rem] text-[#FEF3DF]/35 mt-1.5 flex items-center gap-1.5">
-        {googleAvailable ? (
+        {courierGuyAvailable ? (
           <>
             <span className="inline-block w-1.5 h-1.5 bg-[#2E7D32] rounded-full" />
-            Google Maps address lookup active
+            Courier Guy address lookup active
           </>
         ) : (
           <>

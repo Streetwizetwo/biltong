@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// Google Places Autocomplete proxy
-// Keeps the API key server-side and restricts to SA addresses only
+// Courier Guy Pickup Points address search proxy
+// Uses the existing COURIER_GUY_API_KEY — no extra API key needed!
+// The /pickup-points?search= endpoint returns structured SA addresses
+// including street_address, local_area, city, zone, code, lat, lng
 
 export async function GET(request: NextRequest) {
   const query = request.nextUrl.searchParams.get("q");
@@ -9,44 +11,76 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ predictions: [] });
   }
 
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+  const apiKey = process.env.COURIER_GUY_API_KEY;
   if (!apiKey) {
-    // No API key configured — return empty so frontend falls back to static suggestions
     return NextResponse.json({
       predictions: [],
       fallback: true,
+      error: "COURIER_GUY_API_KEY not configured",
     });
   }
 
   try {
-    const url =
-      `https://maps.googleapis.com/maps/api/place/autocomplete/json?` +
-      `input=${encodeURIComponent(query)}` +
-      `&key=${apiKey}` +
-      `&components=country:za` +
-      `&types=address` +
-      `&language=en`;
+    const url = `https://api.portal.thecourierguy.co.za/v2/pickup-points?search=${encodeURIComponent(query)}`;
+    const res = await fetch(url, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+    });
 
-    const res = await fetch(url);
-    const data = await res.json();
-
-    if (data.status !== "OK" && data.status !== "ZERO_RESULTS") {
-      console.warn("[Places] API status:", data.status, data.error_message || "");
+    if (!res.ok) {
+      console.warn("[CourierGuy Places] API error:", res.status);
       return NextResponse.json({ predictions: [], fallback: true });
     }
 
-    const predictions = (data.predictions || []).map(
-      (p: { place_id: string; description: string; structured_formatting?: { main_text: string; secondary_text: string } }) => ({
-        place_id: p.place_id,
-        description: p.description,
-        main_text: p.structured_formatting?.main_text || p.description,
-        secondary_text: p.structured_formatting?.secondary_text || "",
+    const data = await res.json();
+    const pickupPoints = data.pickup_points || [];
+
+    // Map Courier Guy pickup points to our prediction format
+    // Each pickup point has a full structured address
+    const predictions = pickupPoints.map(
+      (point: {
+        pickup_point_id: string;
+        name: string;
+        type: string;
+        address: {
+          street_address: string;
+          local_area: string;
+          city: string;
+          zone: string;
+          code: string;
+          lat: number;
+          lng: number;
+        };
+      }) => ({
+        place_id: point.pickup_point_id,
+        name: point.name,
+        type: point.type, // "locker", "counter", or "point"
+        description: point.address
+          ? `${point.address.street_address}, ${point.address.local_area}, ${point.address.city}, ${point.address.zone}, ${point.address.code}`
+          : point.name,
+        main_text: point.address?.street_address || point.name,
+        secondary_text: point.address
+          ? `${point.address.local_area}, ${point.address.city}, ${point.address.zone}`
+          : "",
+        structured: point.address
+          ? {
+              street_address: point.address.street_address,
+              local_area: point.address.local_area,
+              city: point.address.city,
+              zone: point.address.zone,
+              code: point.address.code,
+              lat: point.address.lat,
+              lng: point.address.lng,
+            }
+          : null,
       })
     );
 
-    return NextResponse.json({ predictions });
+    return NextResponse.json({ predictions, source: "courier_guy" });
   } catch (error) {
-    console.error("[Places] Autocomplete error:", error);
+    console.error("[CourierGuy Places] Search error:", error);
     return NextResponse.json({ predictions: [], fallback: true });
   }
 }
