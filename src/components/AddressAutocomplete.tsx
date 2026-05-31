@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { MapPin, Loader2, Search, Package } from "lucide-react";
+import { MapPin, Loader2, Search, Navigation } from "lucide-react";
 import { STANGER_ADDRESSES, SA_CITIES } from "@/lib/supabase";
 
-// Structured address from Courier Guy
+// Structured address compatible with Courier Guy API
 export interface StructuredAddress {
   street_address: string;
   local_area: string;
@@ -16,23 +16,13 @@ export interface StructuredAddress {
   lng?: number;
 }
 
-// A prediction from Courier Guy or static fallback
+// A prediction from Google Maps or static fallback
 interface AddressPrediction {
-  place_id?: string;
-  name?: string;
-  type?: string;
+  place_id: string;
   description: string;
-  main_text?: string;
-  secondary_text?: string;
-  structured?: {
-    street_address: string;
-    local_area: string;
-    city: string;
-    zone: string;
-    code: string;
-    lat?: number;
-    lng?: number;
-  };
+  main_text: string;
+  secondary_text: string;
+  types?: string[];
 }
 
 interface AddressAutocompleteProps {
@@ -47,14 +37,15 @@ export function AddressAutocomplete({
   value,
   onChange,
   onStructuredAddress,
-  placeholder = "Start typing your address...",
+  placeholder = "Start typing your delivery address...",
   className = "",
 }: AddressAutocompleteProps) {
   const [query, setQuery] = useState(value);
   const [predictions, setPredictions] = useState<AddressPrediction[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [courierGuyAvailable, setCourierGuyAvailable] = useState(true);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [googleMapsAvailable, setGoogleMapsAvailable] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -92,12 +83,12 @@ export function AddressAutocomplete({
       (a) => a.toLowerCase().includes(q) && !a.toLowerCase().includes("stanger")
     );
     return [
-      ...stanger.map((a) => ({ description: a, place_id: undefined, name: a, type: "local" })),
-      ...cities.map((a) => ({ description: a, place_id: undefined, name: a, type: "city" })),
+      ...stanger.map((a) => ({ description: a, place_id: "", main_text: a, secondary_text: "Stanger, KZN" })),
+      ...cities.map((a) => ({ description: a, place_id: "", main_text: a, secondary_text: "" })),
     ];
   }, [query]);
 
-  // Fetch Courier Guy pickup points for address suggestions
+  // Fetch Google Maps autocomplete predictions
   const fetchPredictions = useCallback(async (input: string) => {
     if (fetchControllerRef.current) {
       fetchControllerRef.current.abort();
@@ -113,17 +104,17 @@ export function AddressAutocomplete({
       const data = await res.json();
 
       if (data.fallback) {
-        setCourierGuyAvailable(false);
+        setGoogleMapsAvailable(false);
         setPredictions([]);
         return;
       }
 
-      setCourierGuyAvailable(true);
+      setGoogleMapsAvailable(true);
       setPredictions(data.predictions || []);
     } catch (err: unknown) {
       if (err instanceof Error && err.name !== "AbortError") {
         console.warn("[AddressAutocomplete] Fetch error:", err);
-        setCourierGuyAvailable(false);
+        setGoogleMapsAvailable(false);
         setPredictions([]);
       }
     }
@@ -138,7 +129,7 @@ export function AddressAutocomplete({
       return;
     }
 
-    if (courierGuyAvailable) {
+    if (googleMapsAvailable) {
       setLoading(true);
       debounceRef.current = setTimeout(() => {
         fetchPredictions(query).finally(() => setLoading(false));
@@ -148,7 +139,7 @@ export function AddressAutocomplete({
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [query, courierGuyAvailable, fetchPredictions]);
+  }, [query, googleMapsAvailable, fetchPredictions]);
 
   // Handle input change
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -159,58 +150,61 @@ export function AddressAutocomplete({
     onChange(val);
   };
 
-  // Handle suggestion selection
+  // Handle suggestion selection — fetch full address details from Google
   const handleSelect = useCallback(
-    (prediction: AddressPrediction) => {
+    async (prediction: AddressPrediction) => {
       setShowDropdown(false);
 
-      if (prediction.structured) {
-        // Courier Guy pickup point — we already have the structured address!
-        const s = prediction.structured;
-        const formatted = `${s.street_address}, ${s.local_area}, ${s.city}, ${s.zone}, ${s.code}`;
-        const structuredAddr: StructuredAddress = {
-          street_address: s.street_address,
-          local_area: s.local_area,
-          city: s.city,
-          zone: s.zone,
-          code: s.code,
-          formatted,
-          lat: s.lat,
-          lng: s.lng,
-        };
-        setQuery(formatted);
-        onChange(formatted, structuredAddr);
-        onStructuredAddress?.(structuredAddr);
-      } else {
-        // Static suggestion (Stanger or SA city) — just set the text
+      // If no place_id (static suggestion), just set the text
+      if (!prediction.place_id) {
         setQuery(prediction.description);
         onChange(prediction.description);
+        return;
+      }
+
+      // Fetch structured address details from Google Maps
+      setDetailsLoading(true);
+      try {
+        const res = await fetch(
+          `/api/places/details?place_id=${encodeURIComponent(prediction.place_id)}`
+        );
+        const data = await res.json();
+
+        if (data.structured) {
+          const s = data.structured;
+          const structuredAddr: StructuredAddress = {
+            street_address: s.street_address,
+            local_area: s.local_area,
+            city: s.city,
+            zone: s.zone,
+            code: s.code,
+            formatted: s.formatted || data.formatted_address,
+            lat: s.lat,
+            lng: s.lng,
+          };
+          setQuery(structuredAddr.formatted);
+          onChange(structuredAddr.formatted, structuredAddr);
+          onStructuredAddress?.(structuredAddr);
+        } else {
+          // Fallback: use the description as-is
+          setQuery(prediction.description);
+          onChange(prediction.description);
+        }
+      } catch (err) {
+        console.warn("[AddressAutocomplete] Details fetch error:", err);
+        setQuery(prediction.description);
+        onChange(prediction.description);
+      } finally {
+        setDetailsLoading(false);
       }
     },
     [onChange, onStructuredAddress]
   );
 
   // Determine which suggestions to show
-  const displayPredictions = courierGuyAvailable
+  const displayPredictions = googleMapsAvailable
     ? predictions
     : staticSuggestions;
-
-  // Type icon for pickup point
-  const getTypeIcon = (type?: string) => {
-    switch (type) {
-      case "locker":
-        return "📦";
-      case "counter":
-        return "🏪";
-      case "point":
-        return "📍";
-      case "local":
-      case "city":
-        return null;
-      default:
-        return "📍";
-    }
-  };
 
   return (
     <div className="relative">
@@ -225,56 +219,64 @@ export function AddressAutocomplete({
           placeholder={placeholder}
           className={`w-full bg-white/8 border border-[#E5B83C]/30 rounded-xl pl-10 pr-10 py-3 text-[#FEF3DF] text-sm placeholder:text-[#FEF3DF]/25 focus:outline-none focus:border-[#E5B83C] focus:bg-white/12 transition-all ${className}`}
           autoComplete="off"
+          disabled={detailsLoading}
         />
-        {loading && (
+        {(loading || detailsLoading) && (
           <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#E5B83C]/60 animate-spin" />
         )}
-        {!loading && query.length >= 2 && (
+        {!loading && !detailsLoading && query.length >= 2 && (
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#E5B83C]/30" />
         )}
       </div>
 
+      {/* Loading address details overlay */}
+      {detailsLoading && (
+        <div className="absolute top-full left-0 right-0 bg-[#2A1508] rounded-xl mt-1 z-50 shadow-2xl border border-[#E5B83C]/20 p-3">
+          <div className="flex items-center justify-center gap-2">
+            <Loader2 className="w-4 h-4 text-[#E5B83C] animate-spin" />
+            <span className="text-xs text-[#FEF3DF]/60">Looking up address details...</span>
+          </div>
+        </div>
+      )}
+
       {/* Autocomplete Dropdown */}
-      {showDropdown && displayPredictions.length > 0 && query.length >= 2 && (
+      {showDropdown && displayPredictions.length > 0 && query.length >= 2 && !detailsLoading && (
         <div
           ref={dropdownRef}
           className="absolute top-full left-0 right-0 bg-[#2A1508] rounded-xl mt-1 max-h-[260px] overflow-y-auto z-50 shadow-2xl border border-[#E5B83C]/20"
         >
-          {courierGuyAvailable && (
+          {googleMapsAvailable && (
             <div className="px-4 py-2 border-b border-[#E5B83C]/10 flex items-center gap-1.5 sticky top-0 bg-[#2A1508] z-10">
-              <Package className="w-3 h-3 text-[#E5B83C]/50" />
+              <Navigation className="w-3 h-3 text-[#E5B83C]/50" />
               <span className="text-[0.55rem] text-[#E5B83C]/50 tracking-wider uppercase font-semibold">
-                Courier Guy Pickup Points — collect from any location below
+                SA Addresses — Powered by Google Maps
               </span>
             </div>
           )}
-          {displayPredictions.map((pred, idx) => {
-            const icon = getTypeIcon(pred.type);
-            return (
-              <button
-                key={pred.place_id || `static-${idx}`}
-                onClick={() => handleSelect(pred)}
-                className="w-full text-left px-4 py-2.5 text-sm text-[#FEF3DF] cursor-pointer border-b border-[#E5B83C]/5 hover:bg-[#E5B83C]/15 hover:text-[#F8E5B0] transition-colors last:border-b-0"
-              >
-                {pred.main_text && pred.secondary_text ? (
-                  <span className="flex items-start gap-2">
-                    {icon && <span className="text-xs mt-0.5">{icon}</span>}
-                    <span>
-                      <span className="font-semibold">{pred.main_text}</span>
-                      <span className="text-[#FEF3DF]/50 text-xs ml-1 block">
-                        {pred.secondary_text} {pred.type === "locker" ? "· Locker" : pred.type === "counter" ? "· Counter" : ""}
-                      </span>
+          {displayPredictions.map((pred, idx) => (
+            <button
+              key={pred.place_id || `static-${idx}`}
+              onClick={() => handleSelect(pred)}
+              className="w-full text-left px-4 py-2.5 text-sm text-[#FEF3DF] cursor-pointer border-b border-[#E5B83C]/5 hover:bg-[#E5B83C]/15 hover:text-[#F8E5B0] transition-colors last:border-b-0"
+            >
+              {pred.main_text && pred.secondary_text ? (
+                <span className="flex items-start gap-2">
+                  <MapPin className="w-3 h-3 text-[#E5B83C]/40 mt-0.5 flex-shrink-0" />
+                  <span>
+                    <span className="font-semibold">{pred.main_text}</span>
+                    <span className="text-[#FEF3DF]/50 text-xs ml-1 block">
+                      {pred.secondary_text}
                     </span>
                   </span>
-                ) : (
-                  <span className="flex items-center gap-2">
-                    <MapPin className="w-3 h-3 text-[#E5B83C]/50 flex-shrink-0" />
-                    {pred.description}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <MapPin className="w-3 h-3 text-[#E5B83C]/40 flex-shrink-0" />
+                  {pred.description}
+                </span>
+              )}
+            </button>
+          ))}
         </div>
       )}
 
@@ -282,11 +284,12 @@ export function AddressAutocomplete({
       {showDropdown &&
         query.length >= 2 &&
         displayPredictions.length === 0 &&
-        !loading && (
+        !loading &&
+        !detailsLoading && (
           <div className="absolute top-full left-0 right-0 bg-[#2A1508] rounded-xl mt-1 z-50 shadow-2xl border border-[#E5B83C]/20 p-3">
             <p className="text-xs text-[#FEF3DF]/40 text-center">
-              {courierGuyAvailable
-                ? "No pickup points found. Try a different search, or type your full address below."
+              {googleMapsAvailable
+                ? "No addresses found. Try a different search or type your full address."
                 : "Type your full address (e.g. 12 Main Rd, Durban, KwaZulu-Natal)"}
             </p>
           </div>
@@ -294,10 +297,10 @@ export function AddressAutocomplete({
 
       {/* Status indicator */}
       <p className="text-[0.6rem] text-[#FEF3DF]/35 mt-1.5 flex items-center gap-1.5">
-        {courierGuyAvailable ? (
+        {googleMapsAvailable ? (
           <>
             <span className="inline-block w-1.5 h-1.5 bg-[#2E7D32] rounded-full" />
-            Courier Guy address lookup active
+            Google Maps address lookup active
           </>
         ) : (
           <>
