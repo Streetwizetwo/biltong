@@ -1,447 +1,389 @@
-// ============================================
-// Courier Guy (Shiplogic) API Integration
-// ============================================
-// API Docs: https://www.shiplogic.com/tcg/api-docs
-// Sandbox: https://sandbox.shiplogic.com
-// Production: https://api.shiplogic.com
+// The Courier Guy / Shiplogic API integration
+// API Docs: https://shiplogic.com/api-docs
+// Base URL: https://api.portal.thecourierguy.co.za/v2/
 
-const COURIER_GUY_API_KEY = process.env.COURIER_GUY_API_KEY || "";
-const COURIER_GUY_ACCOUNT = process.env.COURIER_GUY_ACCOUNT || "";
+const TCG_BASE_URL = "https://api.portal.thecourierguy.co.za/v2";
 
-// Use sandbox in development, production in live
-const IS_PRODUCTION = process.env.NODE_ENV === "production";
-const BASE_URL = IS_PRODUCTION
-  ? "https://api.shiplogic.com"
-  : "https://sandbox.shiplogic.com";
+// Your business collection address in Stanger, KZN
+const COLLECTION_ADDRESS = {
+  contact_name: "Biltong & Bytes",
+  company: "Biltong & Bytes",
+  street_address: "27 King Street",
+  local_area: "Stanger",
+  city: "KwaDukuza",
+  zone: "KwaZulu-Natal",
+  country: "ZA",
+  code: "4450",
+};
+
+const COLLECTION_CONTACT = {
+  name: "Biltong & Bytes",
+  mobile_number: "+27636402722",
+  email: "orders@biltongandbytes.co.za",
+};
+
+function getApiKey(): string {
+  const key = process.env.COURIER_GUY_API_KEY;
+  if (!key) throw new Error("COURIER_GUY_API_KEY not configured");
+  return key;
+}
+
+async function tcgFetch(endpoint: string, options: RequestInit = {}): Promise<Response> {
+  const apiKey = getApiKey();
+  const url = `${TCG_BASE_URL}${endpoint}`;
+
+  const res = await fetch(url, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+      ...options.headers,
+    },
+  });
+
+  return res;
+}
 
 // ============================================
-// TYPES
+// RATE CHECKING
 // ============================================
 
-export interface ShippingRateRequest {
-  collection_address: {
-    type: "business" | "residential";
-    company?: string;
-    street_address: string;
-    suburb: string;
-    city: string;
-    province: string;
-    postal_code: string;
-    country: string; // "ZA"
+export interface CourierRate {
+  service_level: {
+    id: number;
+    code: string;
+    description: string;
   };
-  delivery_address: {
-    type: "business" | "residential";
-    company?: string;
-    street_address: string;
-    suburb: string;
-    city: string;
-    province: string;
-    postal_code: string;
-    country: string; // "ZA"
+  rate: number; // ZAR total including VAT
+  rate_excluding_vat: number;
+  base_rate: {
+    charge: number;
   };
-  parcels: Array<{
-    parcel_length: number; // cm
-    parcel_width: number;  // cm
-    parcel_height: number; // cm
-    parcel_weight: number; // kg
+  rate_adjustments: Array<{
+    id: number;
+    name: string;
+    charge: number;
+    charge_value: number;
   }>;
 }
 
-export interface ShippingRate {
-  service_name: string;
-  service_code: string;
-  total_price: number;     // in cents
-  estimated_delivery_days: number;
-  courier_name: string;
-  courier_code: string;
+export interface RatesResponse {
+  rates: {
+    message: string;
+    rates: CourierRate[];
+  };
 }
 
-export interface ShippingRateResponse {
-  rates: ShippingRate[];
-}
-
-export interface CreateShipmentRequest {
-  collection_address: ShippingRateRequest["collection_address"];
-  delivery_address: ShippingRateRequest["delivery_address"];
-  parcels: ShippingRateRequest["parcels"];
-  contact_name: string;
-  contact_phone: string;
-  contact_email?: string;
-  service_code: string;
-  reference: string; // order ID
-}
-
-export interface CreateShipmentResponse {
-  shipment_id: string;
-  tracking_number: string;
-  label_url?: string;
-}
-
-export interface TrackingEvent {
-  status: string;
-  description: string;
-  timestamp: string;
-  location?: string;
-}
-
-// ============================================
-// COLLECTION ADDRESS (your Stanger address)
-// ============================================
-
-export const COLLECTION_ADDRESS: ShippingRateRequest["collection_address"] = {
-  type: "business",
-  company: "Biltong & Bytes",
-  street_address: "King Street",
-  suburb: "Stanger",
-  city: "Stanger",
-  province: "KwaZulu-Natal",
-  postal_code: "4450",
-  country: "ZA",
-};
-
-// ============================================
-// PRODUCT PARCEL DIMENSIONS
-// ============================================
-// Approximate parcel sizes for each product
-// Biltong is relatively light but bulky in packaging
-
-export function getParcelSpecs(items: Array<{ name: string; qty: number }>) {
-  // Calculate total weight and estimate dimensions
-  // Product weights: Taster 50g, Snack Pack 150g, Family Batch 500g, Feast 1kg
+// Estimate parcel dimensions based on total weight
+// Biltong is relatively dense — typical packaging:
+// - 50g-150g: small padded bag (~20x15x5cm)
+// - 500g: medium box (~25x20x10cm)
+// - 1kg: larger box (~30x25x12cm)
+// Multi-item orders scale up proportionally
+function estimateParcel(items: { name: string; qty: number; weight_grams: number }[]) {
   let totalWeightKg = 0;
   let totalItems = 0;
 
   for (const item of items) {
+    totalWeightKg += (item.weight_grams / 1000) * item.qty;
     totalItems += item.qty;
-    if (item.name.includes("Taster")) totalWeightKg += 0.05 * item.qty;
-    else if (item.name.includes("Snack")) totalWeightKg += 0.15 * item.qty;
-    else if (item.name.includes("Family")) totalWeightKg += 0.5 * item.qty;
-    else if (item.name.includes("Feast")) totalWeightKg += 1.0 * item.qty;
-    else totalWeightKg += 0.3 * item.qty; // fallback
   }
 
-  // Determine parcel size based on total items and weight
-  // Use a single parcel for most orders, split for very large orders
-  if (totalWeightKg <= 2 && totalItems <= 5) {
-    // Small parcel (flyer bag)
-    return [{
-      parcel_length: 30,
-      parcel_width: 20,
-      parcel_height: 5,
-      parcel_weight: Math.max(totalWeightKg, 0.2),
-    }];
-  } else if (totalWeightKg <= 5) {
-    // Medium parcel
-    return [{
-      parcel_length: 40,
-      parcel_width: 30,
-      parcel_height: 15,
-      parcel_weight: totalWeightKg,
-    }];
-  } else if (totalWeightKg <= 10) {
-    // Large parcel
-    return [{
-      parcel_length: 50,
-      parcel_width: 40,
-      parcel_height: 20,
-      parcel_weight: totalWeightKg,
-    }];
-  } else {
-    // Split into multiple medium parcels
-    const parcels = [];
-    let remaining = totalWeightKg;
-    let remainingItems = totalItems;
-    while (remaining > 0) {
-      const parcelWeight = Math.min(remaining, 5);
-      remaining -= parcelWeight;
-      remainingItems -= Math.min(remainingItems, 5);
-      parcels.push({
-        parcel_length: 40,
-        parcel_width: 30,
-        parcel_height: 15,
-        parcel_weight: Math.max(parcelWeight, 0.2),
-      });
-    }
-    return parcels;
-  }
+  // Ensure minimum weight of 1kg for courier (they round up anyway)
+  totalWeightKg = Math.max(totalWeightKg, 1);
+
+  // Estimate dimensions based on weight
+  // Use volumetric weight formula: L x W x H / 4000 (SA courier standard)
+  // We want actual weight to be > volumetric weight to avoid surcharges
+  const volumeCm3 = totalWeightKg * 4000; // Target volumetric = actual
+
+  // Proportional box: 1.5:1:0.6 ratio (L:W:H)
+  const h = Math.cbrt(volumeCm3 / 0.9); // 0.9 = 1.5 * 1 * 0.6
+  const l = Math.ceil(h * 1.5);
+  const w = Math.ceil(h);
+  const height = Math.ceil(h * 0.6);
+
+  return {
+    submitted_length_cm: Math.max(l, 20),
+    submitted_width_cm: Math.max(w, 15),
+    submitted_height_cm: Math.max(height, 5),
+    submitted_weight_kg: Math.round(totalWeightKg * 100) / 100,
+    submitted_description: `Biltong order (${totalItems} item${totalItems !== 1 ? "s" : ""})`,
+    item_count: 1, // Single package for now
+  };
 }
 
-// ============================================
-// SA PROVINCE LOOKUP
-// ============================================
-
-export const SA_PROVINCES = [
-  "Eastern Cape",
-  "Free State",
-  "Gauteng",
-  "KwaZulu-Natal",
-  "Limpopo",
-  "Mpumalanga",
-  "North West",
-  "Northern Cape",
-  "Western Cape",
-] as const;
-
-// Common SA cities mapped to provinces
-const CITY_PROVINCE_MAP: Record<string, string> = {
-  "johannesburg": "Gauteng",
-  "joburg": "Gauteng",
-  "sandton": "Gauteng",
-  "pretoria": "Gauteng",
-  "centurion": "Gauteng",
-  "midrand": "Gauteng",
-  "randburg": "Gauteng",
-  "roodepoort": "Gauteng",
-  "benoni": "Gauteng",
-  "boksburg": "Gauteng",
-  "germiston": "Gauteng",
-  "springs": "Gauteng",
-  "vereeniging": "Gauteng",
-  "vanderbijlpark": "Gauteng",
-  "krugersdorp": "Gauteng",
-  "soweto": "Gauteng",
-  "durban": "KwaZulu-Natal",
-  "pietermaritzburg": "KwaZulu-Natal",
-  "ballito": "KwaZulu-Natal",
-  "umhlanga": "KwaZulu-Natal",
-  "pinetown": "KwaZulu-Natal",
-  "chatsworth": "KwaZulu-Natal",
-  "richards bay": "KwaZulu-Natal",
-  "richardsbay": "KwaZulu-Natal",
-  "stanger": "KwaZulu-Natal",
-  "kwaDukuza": "KwaZulu-Natal",
-  "newcastle": "KwaZulu-Natal",
-  "ladysmith": "KwaZulu-Natal",
-  "cape town": "Western Cape",
-  "capetown": "Western Cape",
-  "stellenbosch": "Western Cape",
-  "paarl": "Western Cape",
-  "somerset west": "Western Cape",
-  "bellville": "Western Cape",
-  "kuilsriver": "Western Cape",
-  "mitchells plain": "Western Cape",
-  "port elizabeth": "Eastern Cape",
-  "gqeberha": "Eastern Cape",
-  "east london": "Eastern Cape",
-  "bloemfontein": "Free State",
-  "kimberley": "Northern Cape",
-  "polokwane": "Limpopo",
-  "nelspruit": "Mpumalanga",
-  "mbombela": "Mpumalanga",
-  "rustenburg": "North West",
-  "mahikeng": "North West",
-  "potchefstroom": "North West",
-  "klerksdorp": "North West",
+// Product weight lookup
+const PRODUCT_WEIGHTS: Record<string, number> = {
+  "The Taster": 50,
+  "Snack Pack": 150,
+  "Family Batch": 500,
+  "The Feast": 1000,
 };
 
-export function lookupProvince(city: string): string {
-  const normalized = city.toLowerCase().trim();
-  return CITY_PROVINCE_MAP[normalized] || "KwaZulu-Natal"; // default to KZN
+export async function getShippingRates(
+  deliveryAddress: {
+    street_address: string;
+    local_area: string;
+    city: string;
+    zone: string;
+    code: string;
+  },
+  items: { name: string; qty: number }[]
+): Promise<CourierRate[]> {
+  const parcels = [
+    estimateParcel(
+      items.map((i) => ({
+        name: i.name,
+        qty: i.qty,
+        weight_grams: PRODUCT_WEIGHTS[i.name] || 150,
+      }))
+    ),
+  ];
+
+  // Calculate declared value for insurance (total order value)
+  const declaredValue = 0; // No insurance for now — keeps rates lower
+
+  const body = {
+    collection_address: COLLECTION_ADDRESS,
+    delivery_address: {
+      ...deliveryAddress,
+      country: "ZA",
+    },
+    parcels,
+    declared_value: declaredValue,
+  };
+
+  const res = await tcgFetch("/rates", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error("[CourierGuy] Rates API error:", res.status, errorText);
+    throw new Error(`Courier Guy API error: ${res.status}`);
+  }
+
+  const data: RatesResponse = await res.json();
+
+  if (data.rates?.message !== "Success" || !data.rates?.rates?.length) {
+    console.warn("[CourierGuy] No rates returned:", JSON.stringify(data));
+    return [];
+  }
+
+  return data.rates.rates;
 }
 
 // ============================================
-// CHECK IF ADDRESS IS IN STANGER
+// SHIPMENT CREATION
 // ============================================
 
+export interface CreateShipmentResult {
+  id: string;
+  short_tracking_reference: string;
+}
+
+export async function createShipment(params: {
+  deliveryAddress: {
+    street_address: string;
+    local_area: string;
+    city: string;
+    zone: string;
+    code: string;
+  };
+  deliveryContact: {
+    name: string;
+    mobile_number: string;
+    email: string;
+  };
+  items: { name: string; qty: number }[];
+  serviceLevelId: number;
+  customerReference: string;
+  specialInstructions?: string;
+}): Promise<CreateShipmentResult> {
+  const parcels = [
+    estimateParcel(
+      params.items.map((i) => ({
+        name: i.name,
+        qty: i.qty,
+        weight_grams: PRODUCT_WEIGHTS[i.name] || 150,
+      }))
+    ),
+  ];
+
+  const body = {
+    collection_address: COLLECTION_ADDRESS,
+    collection_contact: COLLECTION_CONTACT,
+    delivery_address: {
+      ...params.deliveryAddress,
+      country: "ZA",
+    },
+    delivery_contact: params.deliveryContact,
+    parcels,
+    service_level_id: params.serviceLevelId,
+    declared_value: 0,
+    customer_reference: params.customerReference,
+    special_instructions_collection: "",
+    special_instructions_delivery: params.specialInstructions || "",
+  };
+
+  const res = await tcgFetch("/shipments", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error("[CourierGuy] Shipment creation error:", res.status, errorText);
+    throw new Error(`Courier Guy shipment error: ${res.status}`);
+  }
+
+  const data = await res.json();
+  return {
+    id: data.id,
+    short_tracking_reference: data.short_tracking_reference,
+  };
+}
+
+// ============================================
+// TRACKING
+// ============================================
+
+export interface TrackingEvent {
+  status: string;
+  timestamp: string;
+  location: string;
+  details: string;
+}
+
+export async function trackShipment(shipmentId: string): Promise<TrackingEvent[]> {
+  const res = await tcgFetch(`/shipments/${shipmentId}/tracking`);
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error("[CourierGuy] Tracking error:", res.status, errorText);
+    throw new Error(`Courier Guy tracking error: ${res.status}`);
+  }
+
+  const data = await res.json();
+  return data.tracking_events || [];
+}
+
+export async function trackByReference(trackingRef: string): Promise<{
+  id: string;
+  short_tracking_reference: string;
+  status: string;
+  tracking_events: TrackingEvent[];
+} | null> {
+  const res = await tcgFetch(`/shipments?tracking_reference=${encodeURIComponent(trackingRef)}`);
+
+  if (!res.ok) {
+    console.error("[CourierGuy] Track by ref error:", res.status);
+    return null;
+  }
+
+  const data = await res.json();
+  return data.shipments?.[0] || null;
+}
+
+// ============================================
+// LABEL
+// ============================================
+
+export async function getShipmentLabel(shipmentId: string): Promise<string | null> {
+  const res = await tcgFetch(`/shipments/label?id=${shipmentId}`);
+
+  if (!res.ok) {
+    console.error("[CourierGuy] Label error:", res.status);
+    return null;
+  }
+
+  const data = await res.json();
+  return data.url || null;
+}
+
+// ============================================
+// STANGER DETECTION
+// ============================================
+
+// Check if an address is in Stanger/KwaDukuza
 export function isStangerAddress(address: string): boolean {
-  const normalized = address.toLowerCase().trim();
+  const lower = address.toLowerCase();
   return (
-    normalized.includes("stanger") ||
-    normalized.includes("kwadukuza") ||
-    normalized.includes("kwa dukuza")
+    lower.includes("stanger") ||
+    lower.includes("kwadukuza") ||
+    lower.includes("kwa dukuza")
   );
 }
 
-// ============================================
-// API CALLS
-// ============================================
-
-async function courierGuyFetch(path: string, options: RequestInit = {}) {
-  if (!COURIER_GUY_API_KEY) {
-    throw new Error("COURIER_GUY_API_KEY not configured");
-  }
-
-  const url = `${BASE_URL}${path}`;
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    "Authorization": `Bearer ${COURIER_GUY_API_KEY}`,
-    ...(options.headers as Record<string, string> || {}),
-  };
-
-  const response = await fetch(url, {
-    ...options,
-    headers,
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`[Courier Guy] API error ${response.status}:`, errorText);
-    throw new Error(`Courier Guy API error: ${response.status}`);
-  }
-
-  return response.json();
-}
-
-/**
- * Get shipping rates from The Courier Guy
- */
-export async function getShippingRates(
-  request: ShippingRateRequest
-): Promise<ShippingRate[]> {
-  try {
-    const data = await courierGuyFetch("/rates", {
-      method: "POST",
-      body: JSON.stringify(request),
-    });
-
-    // The API returns rates in various formats depending on the version
-    // Normalize to our ShippingRate[] format
-    if (Array.isArray(data)) {
-      return data.map(normalizeRate);
-    }
-    if (data.rates && Array.isArray(data.rates)) {
-      return data.rates.map(normalizeRate);
-    }
-    if (data.data && Array.isArray(data.data)) {
-      return data.data.map(normalizeRate);
-    }
-
-    console.warn("[Courier Guy] Unexpected rates response format:", JSON.stringify(data));
-    return [];
-  } catch (error) {
-    console.error("[Courier Guy] getShippingRates error:", error);
-    throw error;
-  }
-}
-
-/**
- * Create a shipment with The Courier Guy
- */
-export async function createShipment(
-  request: CreateShipmentRequest
-): Promise<CreateShipmentResponse> {
-  try {
-    const data = await courierGuyFetch("/shipments", {
-      method: "POST",
-      body: JSON.stringify(request),
-    });
-
-    return {
-      shipment_id: data.shipment_id || data.id || data.data?.shipment_id || "",
-      tracking_number: data.tracking_number || data.waybill_number || data.data?.tracking_number || "",
-      label_url: data.label_url || data.waybill_url || data.data?.label_url,
-    };
-  } catch (error) {
-    console.error("[Courier Guy] createShipment error:", error);
-    throw error;
-  }
-}
-
-/**
- * Track a shipment
- */
-export async function trackShipment(
-  trackingNumber: string
-): Promise<TrackingEvent[]> {
-  try {
-    const data = await courierGuyFetch(`/shipments/track?tracking_number=${encodeURIComponent(trackingNumber)}`);
-
-    if (Array.isArray(data)) return data;
-    if (data.events && Array.isArray(data.events)) return data.events;
-    if (data.data && Array.isArray(data.data)) return data.data;
-
-    return [];
-  } catch (error) {
-    console.error("[Courier Guy] trackShipment error:", error);
-    throw error;
-  }
-}
-
-// ============================================
-// NORMALIZE RATE RESPONSE
-// ============================================
-
-function normalizeRate(rate: Record<string, unknown>): ShippingRate {
-  return {
-    service_name: (rate.service_name as string) || (rate.service_type_name as string) || "Standard Delivery",
-    service_code: (rate.service_code as string) || (rate.service_type_code as string) || "STD",
-    total_price: typeof rate.total_price === "number"
-      ? rate.total_price
-      : typeof rate.price === "number"
-        ? rate.price
-        : typeof rate.price_in_cents === "number"
-          ? rate.price_in_cents
-          : Math.round((typeof rate.price_incl === "number" ? rate.price_incl : 0) * 100),
-    estimated_delivery_days: typeof rate.estimated_delivery_days === "number"
-      ? rate.estimated_delivery_days
-      : typeof rate.delivery_days === "number"
-        ? rate.delivery_days
-        : 2,
-    courier_name: (rate.courier_name as string) || "The Courier Guy",
-    courier_code: (rate.courier_code as string) || "tcg",
-  };
-}
-
-// ============================================
-// PARSE CUSTOMER ADDRESS
-// ============================================
-
-export function parseAddress(address: string): {
+// Parse a free-text SA address into structured format for the API
+// This is a best-effort parser — SA addresses vary widely
+export function parseSAAddress(address: string): {
   street_address: string;
-  suburb: string;
+  local_area: string;
   city: string;
-  province: string;
-  postal_code: string;
+  zone: string;
+  code: string;
 } {
-  // Try to parse "Street, Suburb, City" or similar formats
-  const parts = address.split(",").map((p) => p.trim()).filter(Boolean);
+  const parts = address.split(",").map((p) => p.trim());
+
+  // SA province mapping
+  const provinces: Record<string, string> = {
+    "kwazulu-natal": "KwaZulu-Natal",
+    "kzn": "KwaZulu-Natal",
+    gauteng: "Gauteng",
+    "western cape": "Western Cape",
+    "eastern cape": "Eastern Cape",
+    "free state": "Free State",
+    "mpumalanga": "Mpumalanga",
+    limpopo: "Limpopo",
+    "north west": "North West",
+    "northwest": "North West",
+    "northern cape": "Northern Cape",
+  };
 
   let street_address = "";
-  let suburb = "";
+  let local_area = "";
   let city = "";
-  let province = "";
-  let postal_code = "";
+  let zone = "";
+  let code = "";
 
-  if (parts.length >= 3) {
+  // Try to extract postal code (4 digits)
+  const postalMatch = address.match(/\b(\d{4})\b/);
+  if (postalMatch) {
+    code = postalMatch[1];
+  }
+
+  // Try to find province
+  for (const [key, value] of Object.entries(provinces)) {
+    if (address.toLowerCase().includes(key)) {
+      zone = value;
+      break;
+    }
+  }
+
+  // Simple parsing logic based on comma-separated parts
+  if (parts.length >= 4) {
+    // Format: "12 Main Rd, Suburb, City, Province, 2000"
     street_address = parts[0];
-    suburb = parts[1];
+    local_area = parts[1];
+    city = parts[2];
+    if (!zone) zone = parts[3];
+  } else if (parts.length === 3) {
+    street_address = parts[0];
+    local_area = parts[1];
     city = parts[2];
   } else if (parts.length === 2) {
     street_address = parts[0];
     city = parts[1];
   } else {
     street_address = address;
-    city = "";
+    city = "Unknown";
   }
 
-  province = lookupProvince(city);
-  postal_code = ""; // Customer would need to provide or we use a default
+  // Default zone to KZN if we can't determine
+  if (!zone) zone = "KwaZulu-Natal";
 
-  return { street_address, suburb, city, province, postal_code };
-}
-
-// ============================================
-// FALLBACK RATES
-// ============================================
-// If the API is down, use these reasonable fallback rates
-
-export function getFallbackRates(): ShippingRate[] {
-  return [
-    {
-      service_name: "Economy Delivery",
-      service_code: "ECO",
-      total_price: 9900, // R99.00 in cents
-      estimated_delivery_days: 3,
-      courier_name: "The Courier Guy",
-      courier_code: "tcg",
-    },
-    {
-      service_name: "Overnight Delivery",
-      service_code: "OVN",
-      total_price: 14900, // R149.00 in cents
-      estimated_delivery_days: 1,
-      courier_name: "The Courier Guy",
-      courier_code: "tcg",
-    },
-  ];
+  return { street_address, local_area, city, zone, code };
 }

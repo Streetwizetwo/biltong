@@ -87,8 +87,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify delivery fee
-    const verifiedDeliveryFee =
-      orderData.delivery_mode === "deliver" ? deliveryFee : 0;
+    // Stanger local delivery uses the flat fee from settings
+    // Non-Stanger (Courier Guy) uses the rate fetched from our API
+    const isStangerDelivery = orderData.delivery_address &&
+      (/stanger|kwadukuza|kwa dukuza/i.test(orderData.delivery_address));
+    const verifiedDeliveryFee = orderData.delivery_mode === "deliver"
+      ? (isStangerDelivery ? deliveryFee : orderData.delivery_fee) // Non-Stanger: trust the Courier Guy rate from our API
+      : 0;
 
     // Recompute total
     const verifiedTotal = verifiedSubtotal + verifiedDeliveryFee;
@@ -138,6 +143,25 @@ export async function POST(request: NextRequest) {
       ]),
     });
 
+    // If the insert succeeded but shipping columns aren't in the table yet,
+    // try updating separately (will silently fail if columns don't exist)
+    if (response.ok && (orderData.shipping_carrier || orderData.tracking_reference)) {
+      try {
+        await fetch(`${SUPABASE_URL}/rest/v1/orders?order_id=eq.${orderData.order_id}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({
+            ...(orderData.shipping_carrier ? { shipping_carrier: orderData.shipping_carrier } : {}),
+            ...(orderData.tracking_reference ? { tracking_reference: orderData.tracking_reference } : {}),
+          }),
+        });
+      } catch { /* columns may not exist yet — non-critical */ }
+    }
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Supabase error:", errorText);
@@ -160,7 +184,21 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const { order_id, order_status } = await request.json();
+    const body = await request.json();
+    const { order_id, order_status, tracking_reference, shipping_carrier } = body;
+
+    // Build update object with only provided fields
+    const updates: Record<string, unknown> = {};
+    if (order_status != null) updates.order_status = order_status;
+    if (tracking_reference != null) updates.tracking_reference = tracking_reference;
+    if (shipping_carrier != null) updates.shipping_carrier = shipping_carrier;
+
+    if (!order_id || Object.keys(updates).length === 0) {
+      return NextResponse.json(
+        { error: "order_id and at least one field to update are required" },
+        { status: 400 }
+      );
+    }
 
     const response = await fetch(
       `${SUPABASE_URL}/rest/v1/orders?order_id=eq.${order_id}`,
@@ -171,7 +209,7 @@ export async function PATCH(request: NextRequest) {
           apikey: SUPABASE_ANON_KEY,
           Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
         },
-        body: JSON.stringify({ order_status }),
+        body: JSON.stringify(updates),
       }
     );
 

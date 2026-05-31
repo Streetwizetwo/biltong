@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   getShippingRates,
-  getFallbackRates,
-  COLLECTION_ADDRESS,
-  getParcelSpecs,
-  parseAddress,
   isStangerAddress,
+  parseSAAddress,
 } from "@/lib/courier-guy";
+import type { ShippingRate } from "@/lib/store";
+
+// Stanger flat delivery fee
+const STANGER_DELIVERY_FEE = 40; // R40
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,117 +15,99 @@ export async function POST(request: NextRequest) {
 
     if (!address || typeof address !== "string") {
       return NextResponse.json(
-        { error: "Delivery address is required" },
+        { error: "Address is required" },
         { status: 400 }
       );
     }
 
-    // If Stanger address, return the flat R40 rate
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return NextResponse.json(
+        { error: "Items are required" },
+        { status: 400 }
+      );
+    }
+
+    // Check if address is in Stanger → R40 flat fee
     if (isStangerAddress(address)) {
-      const settingsFee = await getStangerDeliveryFee();
+      const stangerRate: ShippingRate = {
+        service_name: "Local Delivery (Stanger)",
+        service_code: "STANGER_LOCAL",
+        total_price: STANGER_DELIVERY_FEE * 100, // cents
+        estimated_delivery_days: 1,
+        courier_name: "Biltong & Bytes",
+        courier_code: "local",
+      };
+
       return NextResponse.json({
         isStanger: true,
-        rates: [
-          {
-            service_name: "Local Delivery (Stanger)",
-            service_code: "STANGER_LOCAL",
-            total_price: settingsFee * 100, // convert to cents
-            estimated_delivery_days: 1,
-            courier_name: "Biltong & Bytes",
-            courier_code: "local",
-          },
-        ],
+        rates: [stangerRate],
       });
     }
 
-    // Parse the customer address
-    const parsedAddress = parseAddress(address);
+    // Non-Stanger address → call Courier Guy API for live rates
+    const parsedAddress = parseSAAddress(address);
 
-    if (!parsedAddress.city) {
+    // Validate we have enough address info
+    if (!parsedAddress.city || parsedAddress.city === "Unknown") {
       return NextResponse.json(
-        { error: "Could not determine city from address. Please include city name." },
-        { status: 400 }
+        {
+          isStanger: false,
+          rates: [],
+          error: "Please provide a more detailed address including city and province",
+        },
+        { status: 200 } // Soft error — still 200 so UI can show the message
       );
     }
 
-    // Get parcel dimensions based on cart items
-    const parcels = getParcelSpecs(items || []);
-
-    // Build the rate request for Courier Guy
-    const rateRequest = {
-      collection_address: COLLECTION_ADDRESS,
-      delivery_address: {
-        type: "residential" as const,
-        street_address: parsedAddress.street_address,
-        suburb: parsedAddress.suburb || parsedAddress.city,
-        city: parsedAddress.city,
-        province: parsedAddress.province,
-        postal_code: parsedAddress.postal_code || "0000",
-        country: "ZA",
-      },
-      parcels,
-    };
-
-    try {
-      const rates = await getShippingRates(rateRequest);
-
-      if (rates.length === 0) {
-        // API returned no rates, use fallback
-        console.warn("[Shipping] No rates returned from Courier Guy, using fallback");
-        return NextResponse.json({
+    // Check if API key is configured
+    if (!process.env.COURIER_GUY_API_KEY) {
+      console.warn("[Shipping] COURIER_GUY_API_KEY not configured");
+      return NextResponse.json(
+        {
           isStanger: false,
-          rates: getFallbackRates(),
-          fallback: true,
-        });
-      }
-
-      return NextResponse.json({
-        isStanger: false,
-        rates,
-      });
-    } catch (apiError) {
-      // API failed entirely, return fallback rates
-      console.error("[Shipping] Courier Guy API error, using fallback:", apiError);
-      return NextResponse.json({
-        isStanger: false,
-        rates: getFallbackRates(),
-        fallback: true,
-      });
-    }
-  } catch (error) {
-    console.error("[Shipping] Rates error:", error);
-    return NextResponse.json(
-      { error: "Failed to get shipping rates" },
-      { status: 500 }
-    );
-  }
-}
-
-// Helper: fetch Stanger delivery fee from settings
-async function getStangerDeliveryFee(): Promise<number> {
-  try {
-    const SUPABASE_URL = "https://fltjcycovhslqupmalfj.supabase.co";
-    const SUPABASE_ANON_KEY =
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZsdGpjeWNvdmhzbHF1cG1hbGZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyOTc0OTksImV4cCI6MjA5NDg3MzQ5OX0.nBWxfRfxWGEwE2EU8Me4q8DnD_9EGc-LN0MfCsag-YU";
-
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/settings?id=eq.1&select=delivery_fee`,
-      {
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          rates: [],
+          error: "Courier integration not configured. Please contact us for delivery.",
         },
-      }
-    );
-
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.length > 0) {
-        return data[0].delivery_fee ?? 40;
-      }
+        { status: 200 }
+      );
     }
-  } catch {
-    // Fall through to default
+
+    const courierRates = await getShippingRates(parsedAddress, items);
+
+    if (!courierRates || courierRates.length === 0) {
+      return NextResponse.json({
+        isStanger: false,
+        rates: [],
+        error: "No shipping rates available for this address. Please check your address or contact us on WhatsApp.",
+      });
+    }
+
+    // Map Courier Guy rates to our ShippingRate format
+    const rates: ShippingRate[] = courierRates.map((rate) => ({
+      service_name: rate.service_level.description,
+      service_code: rate.service_level.code,
+      total_price: Math.round(rate.rate * 100), // Rands to cents
+      estimated_delivery_days:
+        rate.service_level.code === "ONX" ? 1 : // Overnight = 1 day
+        rate.service_level.code === "ECO" ? 3 : // Economy = 3 days
+        2, // Default 2 days
+      courier_name: "The Courier Guy",
+      courier_code: "tcg",
+    }));
+
+    return NextResponse.json({
+      isStanger: false,
+      rates,
+    });
+  } catch (error) {
+    console.error("[Shipping] Rate check error:", error);
+    return NextResponse.json(
+      {
+        isStanger: false,
+        rates: [],
+        error: "Failed to get shipping rates. Please try again or contact us on WhatsApp.",
+      },
+      { status: 200 } // Soft error for better UX
+    );
   }
-  return 40;
 }

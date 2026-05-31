@@ -68,3 +68,30 @@ Stage Summary:
 - iKhokha integration: opens payment link, then WhatsApp confirmation
 - WhatsApp Cash/Card flow: direct message via WhatsApp
 - Order status tracking: new → payment_initiated → paid → confirmed
+
+---
+Task ID: 5
+Agent: Main Agent
+Task: The Courier Guy (Shiplogic) API integration with dual delivery model
+
+Work Log:
+- Created .env.local with COURIER_GUY_API_KEY
+- Updated next.config.ts CSP to allow api.portal.thecourierguy.co.za
+- Created /src/lib/courier-guy.ts — full API library (rate checking, shipment creation, tracking, label, address parsing, Stanger detection)
+- Created /src/app/api/shipping/rates/route.ts — API route that returns R40 flat fee for Stanger addresses or live Courier Guy rates for non-Stanger
+- Created /src/app/api/shipping/create-shipment/route.ts — API route for creating shipments after payment
+- Created /src/app/api/shipping/track/route.ts — API route for shipment tracking by reference
+- Removed old /src/app/api/shipping/create/route.ts (stale file with wrong imports)
+- Updated /src/lib/supabase.ts — Added tracking_reference and shipping_carrier fields to OrderData, added SA_CITIES array for national delivery suggestions, updated WhatsApp message builder to include tracking info
+- Updated /src/lib/store.ts — Already had ShippingRate interface, isStangerDelivery, availableRates, selectedRate, ratesLoading, and deliveryFee() dual model (was already built in previous session)
+- Updated /src/app/page.tsx — Added createShipment callback, tracking state, auto-creates Courier Guy shipment on checkout for non-Stanger orders, updated OrderSuccess to show tracking reference, updated address suggestions to include SA cities, added Courier Guy note in checkout
+- Updated /src/app/api/orders/route.ts — Updated delivery fee verification for Stanger vs non-Stanger, added shipping_carrier and tracking_reference fields to Supabase insert, updated PATCH endpoint to support updating tracking info
+- Build succeeds ✓
+
+Stage Summary:
+- Dual delivery model: R40 flat fee for Stanger, live Courier Guy rates for rest of SA
+- 3 API routes: /api/shipping/rates, /api/shipping/create-shipment, /api/shipping/track
+- Shipment auto-created after successful payment for non-Stanger deliveries
+- Tracking reference shown on order success screen and in WhatsApp messages
+- Address autocomplete now includes major SA cities
+- ⚠️ User needs to add `tracking_reference` and `shipping_carrier` columns to Supabase orders table

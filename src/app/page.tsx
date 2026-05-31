@@ -51,6 +51,7 @@ import {
   PRODUCTS,
   FLAVORS,
   STANGER_ADDRESSES,
+  SA_CITIES,
   IKHOKHA_PAYMENT_URL,
   WHATSAPP_NUMBER,
   generateOrderId,
@@ -862,7 +863,14 @@ function CartDrawer({ open, onClose, onCheckout }: { open: boolean; onClose: () 
   const dragControls = useDragControls();
 
   const filteredAddresses = useMemo(
-    () => addressQuery.length >= 2 ? STANGER_ADDRESSES.filter((a) => a.toLowerCase().includes(addressQuery.toLowerCase())) : [],
+    () => {
+      if (addressQuery.length < 2) return [];
+      const q = addressQuery.toLowerCase();
+      // Show Stanger addresses first, then SA cities
+      const stanger = STANGER_ADDRESSES.filter((a) => a.toLowerCase().includes(q));
+      const cities = SA_CITIES.filter((a) => a.toLowerCase().includes(q) && !a.toLowerCase().includes("stanger"));
+      return [...stanger, ...cities];
+    },
     [addressQuery]
   );
 
@@ -1020,7 +1028,7 @@ function CartDrawer({ open, onClose, onCheckout }: { open: boolean; onClose: () 
             <div className="px-5 py-3 border-t border-white/10">
               <div className="flex gap-2 mb-2">
                 {[{ mode: "collect" as DeliveryMode, icon: MapPin, label: "COLLECT", sub: "Free · Stanger" },
-                  { mode: "deliver" as DeliveryMode, icon: Truck, label: "DELIVER", sub: `R${settingsDeliveryFee} Stanger · Nationwide` }].map(({ mode, icon: Icon, label, sub }) => (
+                  { mode: "deliver" as DeliveryMode, icon: Truck, label: "DELIVER", sub: `R${settingsDeliveryFee} Stanger · Courier Nationwide` }].map(({ mode, icon: Icon, label, sub }) => (
                   <motion.button key={mode} whileTap={{ scale: 0.97 }}
                     onClick={() => setDeliveryMode(mode)}
                     className={`flex-1 py-2.5 text-center cursor-pointer rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
@@ -1156,7 +1164,7 @@ function CartDrawer({ open, onClose, onCheckout }: { open: boolean; onClose: () 
 // ============================================
 // ORDER SUCCESS SCREEN
 // ============================================
-function OrderSuccess({ orderId, paymentMethod, onClose }: { orderId: string; paymentMethod: string; onClose: () => void }) {
+function OrderSuccess({ orderId, paymentMethod, trackingReference, onClose }: { orderId: string; paymentMethod: string; trackingReference?: string | null; onClose: () => void }) {
   const steps = [
     { icon: Package, label: "Order Placed", active: true },
     { icon: CheckCircle2, label: "Confirmed", active: false },
@@ -1216,6 +1224,16 @@ function OrderSuccess({ orderId, paymentMethod, onClose }: { orderId: string; pa
         <p className="text-[0.6rem] tracking-[0.15em] uppercase text-[#FEF3DF]/70">Order Reference</p>
         <p className="font-['Bebas_Neue'] text-2xl text-[#2E7D32] tracking-[0.1em]">{orderId}</p>
       </motion.div>
+
+      {/* Tracking Reference for Courier Guy shipments */}
+      {trackingReference && trackingReference !== "PENDING" && (
+        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 1.4 }}
+          className="bg-[#E5B83C]/10 border border-[#E5B83C]/30 rounded-xl p-3 mt-3 inline-block">
+          <p className="text-[0.6rem] tracking-[0.15em] uppercase text-[#FEF3DF]/70">Tracking Number</p>
+          <p className="font-['Bebas_Neue'] text-lg text-[#E5B83C] tracking-[0.1em]">{trackingReference}</p>
+          <p className="text-[0.55rem] text-[#FEF3DF]/40 mt-0.5">The Courier Guy · Track at thecourierguy.co.za</p>
+        </motion.div>
+      )}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.4 }}>
         <button onClick={onClose}
           className="mt-6 px-6 py-3 bg-[#E5B83C] text-[#0A0301] font-bold tracking-[0.1em] uppercase rounded-xl cursor-pointer text-sm">
@@ -1256,6 +1274,7 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
   const [paylinkUrl, setPaylinkUrl] = useState<string | null>(null);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [lastPaymentMethod, setLastPaymentMethod] = useState("cash");
+  const [trackingRef, setTrackingRef] = useState<string | null>(null);
 
   // Save order to Supabase via API
   const saveOrder = useCallback(
@@ -1264,6 +1283,14 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
       setOrderId(newOrderId);
       setCurrentOrderId(newOrderId);
       setSavingStatus("saving");
+
+      // Include shipping info for non-Stanger deliveries
+      const shippingCarrier = deliveryMode === "deliver" && !isStangerDelivery && selectedRate
+        ? selectedRate.courier_name
+        : null;
+      const trackingReference = deliveryMode === "deliver" && !isStangerDelivery
+        ? "PENDING" // Will be updated after shipment creation
+        : null;
 
       const orderData: OrderData = {
         order_id: newOrderId,
@@ -1278,6 +1305,8 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
         payment_method: paymentMethod,
         payment_status: paymentMethod === "ikhokha" ? "pending" : "cash_on_delivery",
         order_status: "new",
+        shipping_carrier: shippingCarrier,
+        tracking_reference: trackingReference,
       };
 
       setCustomerInfo(name, phone, email);
@@ -1298,8 +1327,58 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
       }
       return orderData;
     },
-    [name, phone, email, items, subtotal, deliveryFee, total, deliveryMode, deliveryAddress, setCustomerInfo, setCurrentOrderId]
+    [name, phone, email, items, subtotal, deliveryFee, total, deliveryMode, deliveryAddress, isStangerDelivery, selectedRate, setCustomerInfo, setCurrentOrderId]
   );
+
+  // Create Courier Guy shipment for non-Stanger deliveries
+  const createShipment = useCallback(async (orderId: string) => {
+    if (isStangerDelivery || deliveryMode !== "deliver" || !selectedRate) return;
+
+    try {
+      const res = await fetch("/api/shipping/create-shipment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderId,
+          deliveryAddress,
+          customerName: name,
+          customerPhone,
+          customerEmail: email,
+          items: items.map((i) => ({ name: i.name, qty: i.qty })),
+          serviceLevelCode: selectedRate.service_code,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.trackingReference) {
+          setTrackingRef(data.trackingReference);
+
+          // Update order in Supabase with tracking reference
+          try {
+            await fetch("/api/orders", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                order_id: orderId,
+                tracking_reference: data.trackingReference,
+                shipping_carrier: "The Courier Guy",
+              }),
+            });
+          } catch { /* non-critical */ }
+
+          // Also update the pending iKhokha order if it exists
+          const pending = useCartStore.getState().pendingIkhokhaOrder;
+          if (pending) {
+            (pending as Record<string, unknown>).tracking_reference = data.trackingReference;
+            (pending as Record<string, unknown>).shipping_carrier = "The Courier Guy";
+          }
+        }
+      }
+    } catch (err) {
+      console.error("[Checkout] Shipment creation failed (non-blocking):", err);
+    }
+  }, [isStangerDelivery, deliveryMode, selectedRate, deliveryAddress, name, customerPhone, email, items]);
 
   const validate = useCallback((): boolean => {
     if (!name.trim()) { toast.error("Please enter your name"); return false; }
@@ -1313,6 +1392,12 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
     if (!validate()) return;
     const orderData = await saveOrder("cash");
     setLastPaymentMethod("cash");
+
+    // Create Courier Guy shipment for non-Stanger deliveries (non-blocking)
+    if (!isStangerDelivery && deliveryMode === "deliver") {
+      createShipment(orderData.order_id);
+    }
+
     const msg = buildWhatsAppMessage(orderData);
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, "_blank");
     toast.success(`Order ${orderData.order_id} sent!`, { icon: "🥩" });
@@ -1383,6 +1468,12 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
     const pendingOrder = useCartStore.getState().pendingIkhokhaOrder;
     if (!pendingOrder) { toast.error("No pending order found"); return; }
     const orderData = pendingOrder as unknown as OrderData;
+
+    // Create Courier Guy shipment for non-Stanger deliveries (non-blocking)
+    if (!isStangerDelivery && deliveryMode === "deliver" && orderData.order_id) {
+      createShipment(orderData.order_id);
+    }
+
     const msg = buildWhatsAppMessage(orderData) + "\n\n✅ Payment completed via iKhokha!";
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, "_blank");
     toast.success("Confirmation sent!", { icon: "✅" });
@@ -1416,7 +1507,7 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
               <div className="flex justify-center mb-3"><div className="w-10 h-1.5 bg-[#E5B83C]/30 rounded-full" /></div>
 
               {orderSuccess ? (
-                <OrderSuccess orderId={orderId || ""} paymentMethod={lastPaymentMethod} onClose={handleClose} />
+                <OrderSuccess orderId={orderId || ""} paymentMethod={lastPaymentMethod} trackingReference={trackingRef} onClose={handleClose} />
               ) : (
                 <>
                   <h3 className="font-['Cormorant_Garamond'] text-2xl text-[#E5B83C] text-center mb-4">Complete Your Order</h3>
@@ -1527,6 +1618,9 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
                   <p className="text-[0.6rem] text-white/35 text-center mt-2 leading-relaxed">
                     iKhokha: Secure card payment in a new tab.
                     <br />WhatsApp: For cash or card on collection/delivery.
+                    {deliveryMode === "deliver" && !isStangerDelivery && (
+                      <><br />📦 Nationwide delivery via The Courier Guy</>
+                    )}
                   </p>
                 </>
               )}
