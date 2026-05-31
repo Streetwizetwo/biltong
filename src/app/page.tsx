@@ -879,6 +879,7 @@ function CartDrawer({ open, onClose, onCheckout }: { open: boolean; onClose: () 
   // Fetch shipping rates when delivery address changes
   const fetchRates = useCallback(async (address: string) => {
     if (!address || address.trim().length < 3) return;
+    if (items.length === 0) return; // Don't fetch rates without items
 
     setRatesLoading(true);
     setRatesFetched(false);
@@ -908,9 +909,14 @@ function CartDrawer({ open, onClose, onCheckout }: { open: boolean; onClose: () 
           setSelectedRate(sorted[0] || null);
         }
         setRatesFetched(true);
+      } else {
+        // Handle non-200 responses gracefully
+        console.warn("[Shipping] Rate fetch failed:", res.status);
+        setAvailableRates([]);
       }
     } catch (err) {
       console.error("Failed to fetch shipping rates:", err);
+      setAvailableRates([]);
     } finally {
       setRatesLoading(false);
     }

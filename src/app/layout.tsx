@@ -50,7 +50,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
         <meta name="theme-color" content="#0A0301" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body className="antialiased bg-[#0A0301] text-[#FEF3DF]">
         {children}

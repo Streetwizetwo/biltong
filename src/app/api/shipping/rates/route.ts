@@ -13,18 +13,34 @@ export async function POST(request: NextRequest) {
   try {
     const { address, items } = await request.json();
 
-    if (!address || typeof address !== "string") {
+    if (!address || typeof address !== "string" || address.trim().length < 3) {
       return NextResponse.json(
-        { error: "Address is required" },
-        { status: 400 }
+        { isStanger: false, rates: [], error: "Please enter a delivery address" },
+        { status: 200 } // Soft error — don't cause console 400s
       );
     }
 
     if (!items || !Array.isArray(items) || items.length === 0) {
-      return NextResponse.json(
-        { error: "Items are required" },
-        { status: 400 }
-      );
+      // If no items provided, still return a Stanger flat rate or default estimate
+      // This can happen when user is typing in the address field before adding items
+      if (isStangerAddress(address)) {
+        const stangerRate: ShippingRate = {
+          service_name: "Local Delivery (Stanger)",
+          service_code: "STANGER_LOCAL",
+          total_price: STANGER_DELIVERY_FEE * 100,
+          estimated_delivery_days: 1,
+          courier_name: "Biltong & Bytes",
+          courier_code: "local",
+        };
+        return NextResponse.json({ isStanger: true, rates: [stangerRate] });
+      }
+      // For non-Stanger, return a default parcel estimate
+      // (1kg package — rates will refine when items are added)
+      return NextResponse.json({
+        isStanger: false,
+        rates: [],
+        error: "Add items to your cart first, then enter your address for shipping rates.",
+      });
     }
 
     // Check if address is in Stanger → R40 flat fee
