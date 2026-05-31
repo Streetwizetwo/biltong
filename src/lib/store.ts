@@ -148,7 +148,7 @@ export const useCartStore = create<CartStore>()(
       pendingIkhokhaOrder: null,
 
       // Shipping zone state
-      isStangerDelivery: true,
+      isStangerDelivery: false,
       availableRates: [],
       selectedRate: null,
       ratesLoading: false,
@@ -199,11 +199,18 @@ export const useCartStore = create<CartStore>()(
           deliveryAddress: "",
           availableRates: [],
           selectedRate: null,
-          isStangerDelivery: true,
+          isStangerDelivery: false,
           structuredAddress: null,
         }),
 
-      setDeliveryMode: (mode) => set({ deliveryMode: mode }),
+      setDeliveryMode: (mode) => set({
+        deliveryMode: mode,
+        // Reset shipping state when switching modes
+        isStangerDelivery: false,
+        selectedRate: null,
+        availableRates: [],
+        structuredAddress: null,
+      }),
       setDeliveryAddress: (address) => set({ deliveryAddress: address }),
       setCustomerInfo: (name, phone, email) =>
         set({
@@ -226,6 +233,8 @@ export const useCartStore = create<CartStore>()(
 
       deliveryFee: () => {
         if (get().deliveryMode !== "deliver") return 0;
+        // No delivery fee until an address is entered and confirmed
+        if (!get().deliveryAddress || get().deliveryAddress.trim().length < 3) return 0;
         // If Stanger, use the settings delivery fee
         if (get().isStangerDelivery) {
           return useSettingsStore.getState()?.deliveryFee || 40;
@@ -243,6 +252,21 @@ export const useCartStore = create<CartStore>()(
     {
       name: CART_STORAGE_KEY,
       storage: hashedStorage,
+      version: 2,
+      migrate: (persisted: unknown, version: number) => {
+        // Fix: v1 had isStangerDelivery defaulting to true, causing R40 on all orders
+        // v2 defaults to false — only true when address is actually in Stanger
+        if (version < 2) {
+          const state = persisted as Record<string, unknown>;
+          return {
+            ...state,
+            isStangerDelivery: false,
+            selectedRate: null,
+            availableRates: [],
+          };
+        }
+        return persisted;
+      },
       partialize: (state) => ({
         items: state.items,
         deliveryMode: state.deliveryMode,
