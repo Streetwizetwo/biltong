@@ -45,13 +45,13 @@ import {
   useCartStore,
   type DeliveryMode,
   type ShippingRate,
+  type StructuredAddress,
 } from "@/lib/store";
+import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { useSettingsStore } from "@/lib/settings-store";
 import {
   PRODUCTS,
   FLAVORS,
-  STANGER_ADDRESSES,
-  SA_CITIES,
   IKHOKHA_PAYMENT_URL,
   WHATSAPP_NUMBER,
   generateOrderId,
@@ -1077,6 +1077,8 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
   const setSelectedRate = useCartStore((s) => s.setSelectedRate);
   const ratesLoading = useCartStore((s) => s.ratesLoading);
   const setRatesLoading = useCartStore((s) => s.setRatesLoading);
+  const structuredAddress = useCartStore((s) => s.structuredAddress);
+  const setStructuredAddress = useCartStore((s) => s.setStructuredAddress);
   const settingsDeliveryFee = useSettingsStore((s) => s.deliveryFee);
 
   const [name, setName] = useState(customerName);
@@ -1091,28 +1093,15 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
   const [lastPaymentMethod, setLastPaymentMethod] = useState("cash");
   const [trackingRef, setTrackingRef] = useState<string | null>(null);
 
-  // Address & shipping state (moved from CartDrawer)
+  // Address & shipping state
   const [addressQuery, setAddressQuery] = useState(deliveryAddress);
-  const [showSuggestions, setShowSuggestions] = useState(false);
   const [ratesFetched, setRatesFetched] = useState(false);
   const [checkoutStep, setCheckoutStep] = useState(0); // 0=shipping, 1=payment, 2=done
-
-  // Address autocomplete with Stanger addresses shown first
-  const filteredAddresses = useMemo(
-    () => {
-      if (addressQuery.length < 2) return [];
-      const q = addressQuery.toLowerCase();
-      const stanger = STANGER_ADDRESSES.filter((a) => a.toLowerCase().includes(q));
-      const cities = SA_CITIES.filter((a) => a.toLowerCase().includes(q) && !a.toLowerCase().includes("stanger"));
-      return [...stanger, ...cities];
-    },
-    [addressQuery]
-  );
 
   useEffect(() => { setAddressQuery(deliveryAddress); }, [deliveryAddress]);
 
   // Fetch shipping rates when delivery address changes
-  const fetchRates = useCallback(async (address: string) => {
+  const fetchRates = useCallback(async (address: string, structured?: StructuredAddress) => {
     if (!address || address.trim().length < 3) return;
     if (items.length === 0) return;
 
@@ -1126,6 +1115,7 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
         body: JSON.stringify({
           address,
           items: items.map((i) => ({ name: i.name, qty: i.qty })),
+          structuredAddress: structured || null,
         }),
       });
 
@@ -1155,42 +1145,70 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
     }
   }, [items, setIsStangerDelivery, setAvailableRates, setSelectedRate, setRatesLoading]);
 
-  // Debounced rate fetching
+  // Handle address change from AddressAutocomplete component
+  const handleAddressChange = useCallback((address: string, structured?: StructuredAddress) => {
+    setAddressQuery(address);
+    setDeliveryAddress(address);
+    setStructuredAddress(structured || null);
+    setRatesFetched(false);
+
+    // Check if Stanger
+    const isStanger = address.toLowerCase().includes("stanger") ||
+      address.toLowerCase().includes("kwadukuza") ||
+      address.toLowerCase().includes("kwa dukuza");
+
+    if (isStanger) {
+      setIsStangerDelivery(true);
+      setSelectedRate({
+        service_name: "Local Delivery (Stanger)",
+        service_code: "STANGER_LOCAL",
+        total_price: settingsDeliveryFee * 100,
+        estimated_delivery_days: 1,
+        courier_name: "Biltong & Bytes",
+        courier_code: "local",
+      });
+      setAvailableRates([{
+        service_name: "Local Delivery (Stanger)",
+        service_code: "STANGER_LOCAL",
+        total_price: settingsDeliveryFee * 100,
+        estimated_delivery_days: 1,
+        courier_name: "Biltong & Bytes",
+        courier_code: "local",
+      }]);
+      setRatesFetched(true);
+    } else if (address.trim().length >= 5 && items.length > 0) {
+      // For non-Stanger addresses, fetch rates after a short delay
+      // If we have structured data from Google Maps, use it immediately
+      if (structured) {
+        fetchRates(address, structured);
+      } else {
+        // Debounce for manual typing
+        const timer = setTimeout(() => {
+          fetchRates(address);
+        }, 800);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [items.length, settingsDeliveryFee, fetchRates, setIsStangerDelivery, setSelectedRate, setAvailableRates, setDeliveryAddress, setStructuredAddress]);
+
+  // Debounced rate fetching for manual address entry (no Google Maps selection)
   useEffect(() => {
     if (deliveryMode !== "deliver" || !addressQuery.trim()) return;
+    if (structuredAddress) return; // Already handled in handleAddressChange
+    if (items.length === 0) return;
+
+    const isStanger = addressQuery.toLowerCase().includes("stanger") ||
+      addressQuery.toLowerCase().includes("kwadukuza") ||
+      addressQuery.toLowerCase().includes("kwa dukuza");
+
+    if (isStanger || addressQuery.trim().length < 5) return; // Already handled or too short
 
     const timer = setTimeout(() => {
-      const isStanger = addressQuery.toLowerCase().includes("stanger") ||
-        addressQuery.toLowerCase().includes("kwadukuza") ||
-        addressQuery.toLowerCase().includes("kwa dukuza");
-
-      if (isStanger) {
-        setIsStangerDelivery(true);
-        setSelectedRate({
-          service_name: "Local Delivery (Stanger)",
-          service_code: "STANGER_LOCAL",
-          total_price: settingsDeliveryFee * 100,
-          estimated_delivery_days: 1,
-          courier_name: "Biltong & Bytes",
-          courier_code: "local",
-        });
-        setAvailableRates([{
-          service_name: "Local Delivery (Stanger)",
-          service_code: "STANGER_LOCAL",
-          total_price: settingsDeliveryFee * 100,
-          estimated_delivery_days: 1,
-          courier_name: "Biltong & Bytes",
-          courier_code: "local",
-        }]);
-        setRatesFetched(true);
-      } else if (addressQuery.trim().length >= 5) {
-        setDeliveryAddress(addressQuery);
-        fetchRates(addressQuery);
-      }
+      fetchRates(addressQuery);
     }, 800);
 
     return () => clearTimeout(timer);
-  }, [addressQuery, deliveryMode, settingsDeliveryFee, fetchRates, setIsStangerDelivery, setSelectedRate, setAvailableRates, setDeliveryAddress]);
+  }, [addressQuery, deliveryMode, structuredAddress, items.length, fetchRates]);
 
   // Save order to Supabase via API
   const saveOrder = useCallback(
@@ -1256,6 +1274,7 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
         body: JSON.stringify({
           orderId,
           deliveryAddress,
+          structuredAddress: structuredAddress || null,
           customerName: name,
           customerPhone,
           customerEmail: email,
@@ -1479,28 +1498,15 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
                         </div>
                       ) : (
                         <div className="space-y-3">
-                          {/* Delivery Address Input */}
+                          {/* Delivery Address Input — Google Maps Autocomplete */}
                           <div>
                             <label className="text-xs text-[#FEF3DF]/70 font-semibold mb-1.5 block">Delivery Address</label>
-                            <div className="relative">
-                              <input type="text" value={addressQuery}
-                                onChange={(e) => { setAddressQuery(e.target.value); setShowSuggestions(true); setRatesFetched(false); }}
-                                onFocus={() => setShowSuggestions(true)}
-                                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                                placeholder="Start typing your address (e.g. 12 Main Rd, Durban, KwaZulu-Natal)"
-                                className="w-full bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-3 text-[#FEF3DF] text-sm placeholder:text-[#FEF3DF]/25 focus:outline-none focus:border-[#E5B83C] focus:bg-white/12 transition-all" />
-                              {showSuggestions && filteredAddresses.length > 0 && (
-                                <div className="absolute top-full left-0 right-0 bg-[#2A1508] rounded-xl mt-1 max-h-[180px] overflow-y-auto z-10 shadow-xl border border-[#E5B83C]/20">
-                                  {filteredAddresses.map((addr) => (
-                                    <button key={addr} onClick={() => { setDeliveryAddress(addr); setAddressQuery(addr); setShowSuggestions(false); }}
-                                      className="w-full text-left px-4 py-2.5 text-sm text-[#FEF3DF] cursor-pointer border-b border-[#E5B83C]/10 hover:bg-[#E5B83C] hover:text-[#0A0301] transition-colors first:rounded-t-xl last:rounded-b-xl last:border-b-0">
-                                      {addr}
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                            <p className="text-[0.6rem] text-[#FEF3DF]/35 mt-1.5">Format: Street, Suburb, City, Province, Postal Code</p>
+                            <AddressAutocomplete
+                              value={addressQuery}
+                              onChange={handleAddressChange}
+                              onStructuredAddress={setStructuredAddress}
+                              placeholder="Start typing your address (e.g. 12 Main Rd, Durban)"
+                            />
                           </div>
 
                           {/* Loading indicator */}

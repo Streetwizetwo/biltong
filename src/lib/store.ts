@@ -29,6 +29,16 @@ export interface ShippingRate {
   courier_code: string;
 }
 
+// Structured address from Google Maps
+export interface StructuredAddress {
+  street_address: string;
+  local_area: string;
+  city: string;
+  zone: string;
+  code: string;
+  formatted: string;
+}
+
 interface CartStore {
   items: CartItem[];
   deliveryMode: DeliveryMode;
@@ -44,6 +54,9 @@ interface CartStore {
   availableRates: ShippingRate[];
   selectedRate: ShippingRate | null;
   ratesLoading: boolean;
+
+  // Structured address from Google Maps
+  structuredAddress: StructuredAddress | null;
 
   // Actions
   addItem: (item: Omit<CartItem, "id">) => void;
@@ -61,6 +74,7 @@ interface CartStore {
   setAvailableRates: (rates: ShippingRate[]) => void;
   setSelectedRate: (rate: ShippingRate | null) => void;
   setRatesLoading: (loading: boolean) => void;
+  setStructuredAddress: (addr: StructuredAddress | null) => void;
 
   // Computed
   totalItems: () => number;
@@ -138,6 +152,7 @@ export const useCartStore = create<CartStore>()(
       availableRates: [],
       selectedRate: null,
       ratesLoading: false,
+      structuredAddress: null,
 
       addItem: (item) => {
         const id = generateCartItemId(item.name, item.flavor);
@@ -185,6 +200,7 @@ export const useCartStore = create<CartStore>()(
           availableRates: [],
           selectedRate: null,
           isStangerDelivery: true,
+          structuredAddress: null,
         }),
 
       setDeliveryMode: (mode) => set({ deliveryMode: mode }),
@@ -203,6 +219,7 @@ export const useCartStore = create<CartStore>()(
       setAvailableRates: (rates) => set({ availableRates: rates }),
       setSelectedRate: (rate) => set({ selectedRate: rate }),
       setRatesLoading: (loading) => set({ ratesLoading: loading }),
+      setStructuredAddress: (addr) => set({ structuredAddress: addr }),
 
       totalItems: () => get().items.reduce((s, i) => s + i.qty, 0),
       subtotal: () => get().items.reduce((s, i) => s + i.price * i.qty, 0),
@@ -237,6 +254,7 @@ export const useCartStore = create<CartStore>()(
         pendingIkhokhaOrder: state.pendingIkhokhaOrder,
         isStangerDelivery: state.isStangerDelivery,
         selectedRate: state.selectedRate,
+        structuredAddress: state.structuredAddress,
       }),
     }
   )

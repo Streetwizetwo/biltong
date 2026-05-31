@@ -4,14 +4,14 @@ import {
   isStangerAddress,
   parseSAAddress,
 } from "@/lib/courier-guy";
-import type { ShippingRate } from "@/lib/store";
+import type { ShippingRate, StructuredAddress } from "@/lib/store";
 
 // Stanger flat delivery fee
 const STANGER_DELIVERY_FEE = 40; // R40
 
 export async function POST(request: NextRequest) {
   try {
-    const { address, items } = await request.json();
+    const { address, items, structuredAddress } = await request.json();
 
     if (!address || typeof address !== "string" || address.trim().length < 3) {
       return NextResponse.json(
@@ -22,7 +22,6 @@ export async function POST(request: NextRequest) {
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       // If no items provided, still return a Stanger flat rate or default estimate
-      // This can happen when user is typing in the address field before adding items
       if (isStangerAddress(address)) {
         const stangerRate: ShippingRate = {
           service_name: "Local Delivery (Stanger)",
@@ -34,8 +33,6 @@ export async function POST(request: NextRequest) {
         };
         return NextResponse.json({ isStanger: true, rates: [stangerRate] });
       }
-      // For non-Stanger, return a default parcel estimate
-      // (1kg package — rates will refine when items are added)
       return NextResponse.json({
         isStanger: false,
         rates: [],
@@ -61,17 +58,38 @@ export async function POST(request: NextRequest) {
     }
 
     // Non-Stanger address → call Courier Guy API for live rates
-    const parsedAddress = parseSAAddress(address);
+    // Use structured address from Google Maps if available, otherwise parse free text
+    let deliveryAddress: {
+      street_address: string;
+      local_area: string;
+      city: string;
+      zone: string;
+      code: string;
+    };
+
+    if (structuredAddress && structuredAddress.city) {
+      // Use Google Maps structured data directly — much more reliable
+      deliveryAddress = {
+        street_address: structuredAddress.street_address || "",
+        local_area: structuredAddress.local_area || structuredAddress.city,
+        city: structuredAddress.city,
+        zone: structuredAddress.zone || "KwaZulu-Natal",
+        code: structuredAddress.code || "",
+      };
+    } else {
+      // Fallback: parse the free-text address
+      deliveryAddress = parseSAAddress(address);
+    }
 
     // Validate we have enough address info
-    if (!parsedAddress.city || parsedAddress.city === "Unknown") {
+    if (!deliveryAddress.city || deliveryAddress.city === "Unknown") {
       return NextResponse.json(
         {
           isStanger: false,
           rates: [],
-          error: "Please provide a more detailed address including city and province",
+          error: "Please provide a more detailed address including city and province. Try using the address suggestions.",
         },
-        { status: 200 } // Soft error — still 200 so UI can show the message
+        { status: 200 }
       );
     }
 
@@ -88,9 +106,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const courierRates = await getShippingRates(parsedAddress, items);
+    const courierRates = await getShippingRates(deliveryAddress, items);
 
     if (!courierRates || courierRates.length === 0) {
+      // If we have a structured address with a city, try with just the city
+      // Sometimes the street address is too specific and the API can't find it
+      if (deliveryAddress.street_address && deliveryAddress.local_area) {
+        const simplifiedAddress = {
+          ...deliveryAddress,
+          street_address: deliveryAddress.local_area,
+          local_area: deliveryAddress.city,
+        };
+        const retryRates = await getShippingRates(simplifiedAddress, items);
+        if (retryRates && retryRates.length > 0) {
+          const rates: ShippingRate[] = retryRates.map((rate) => ({
+            service_name: rate.service_level.description,
+            service_code: rate.service_level.code,
+            total_price: Math.round(rate.rate * 100),
+            estimated_delivery_days:
+              rate.service_level.code === "ONX" ? 1 :
+              rate.service_level.code === "ECO" ? 3 : 2,
+            courier_name: "The Courier Guy",
+            courier_code: "tcg",
+          }));
+          return NextResponse.json({ isStanger: false, rates });
+        }
+      }
+
       return NextResponse.json({
         isStanger: false,
         rates: [],

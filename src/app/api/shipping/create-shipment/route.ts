@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createShipment, isStangerAddress, parseSAAddress } from "@/lib/courier-guy";
+import type { StructuredAddress } from "@/lib/store";
 
 export async function POST(request: NextRequest) {
   try {
     const {
       orderId,
       deliveryAddress,
+      structuredAddress,
       customerName,
       customerPhone,
       customerEmail,
@@ -37,7 +39,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const parsedAddress = parseSAAddress(deliveryAddress);
+    // Use structured address from Google Maps if available, otherwise parse free text
+    const finalAddress = structuredAddress && structuredAddress.city
+      ? {
+          street_address: structuredAddress.street_address || "",
+          local_area: structuredAddress.local_area || structuredAddress.city,
+          city: structuredAddress.city,
+          zone: structuredAddress.zone || "KwaZulu-Natal",
+          code: structuredAddress.code || "",
+        }
+      : parseSAAddress(deliveryAddress);
 
     // Map service code to service level ID
     // These are TCG's standard service level IDs
@@ -49,7 +60,7 @@ export async function POST(request: NextRequest) {
     const serviceLevelId = serviceLevelMap[serviceLevelCode] || 1; // Default to Economy
 
     const result = await createShipment({
-      deliveryAddress: parsedAddress,
+      deliveryAddress: finalAddress,
       deliveryContact: {
         name: customerName,
         mobile_number: customerPhone.startsWith("+") ? customerPhone : `+27${customerPhone.replace(/^0/, "")}`,
