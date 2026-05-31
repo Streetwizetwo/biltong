@@ -842,122 +842,13 @@ function CartDrawer({ open, onClose, onCheckout }: { open: boolean; onClose: () 
   const decrementQty = useCartStore((s) => s.decrementQty);
   const deliveryMode = useCartStore((s) => s.deliveryMode);
   const setDeliveryMode = useCartStore((s) => s.setDeliveryMode);
-  const deliveryAddress = useCartStore((s) => s.deliveryAddress);
-  const setDeliveryAddress = useCartStore((s) => s.setDeliveryAddress);
   const subtotal = useCartStore((s) => s.subtotal());
   const deliveryFee = useCartStore((s) => s.deliveryFee());
   const total = useCartStore((s) => s.total());
   const settingsDeliveryFee = useSettingsStore((s) => s.deliveryFee);
-  const isStangerDelivery = useCartStore((s) => s.isStangerDelivery);
-  const setIsStangerDelivery = useCartStore((s) => s.setIsStangerDelivery);
-  const availableRates = useCartStore((s) => s.availableRates);
-  const setAvailableRates = useCartStore((s) => s.setAvailableRates);
   const selectedRate = useCartStore((s) => s.selectedRate);
-  const setSelectedRate = useCartStore((s) => s.setSelectedRate);
-  const ratesLoading = useCartStore((s) => s.ratesLoading);
-  const setRatesLoading = useCartStore((s) => s.setRatesLoading);
-  const [addressQuery, setAddressQuery] = useState(deliveryAddress);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [ratesFetched, setRatesFetched] = useState(false);
   const dragY = useMotionValue(0);
   const dragControls = useDragControls();
-
-  const filteredAddresses = useMemo(
-    () => {
-      if (addressQuery.length < 2) return [];
-      const q = addressQuery.toLowerCase();
-      // Show Stanger addresses first, then SA cities
-      const stanger = STANGER_ADDRESSES.filter((a) => a.toLowerCase().includes(q));
-      const cities = SA_CITIES.filter((a) => a.toLowerCase().includes(q) && !a.toLowerCase().includes("stanger"));
-      return [...stanger, ...cities];
-    },
-    [addressQuery]
-  );
-
-  useEffect(() => { setAddressQuery(deliveryAddress); }, [deliveryAddress]);
-
-  // Fetch shipping rates when delivery address changes
-  const fetchRates = useCallback(async (address: string) => {
-    if (!address || address.trim().length < 3) return;
-    if (items.length === 0) return; // Don't fetch rates without items
-
-    setRatesLoading(true);
-    setRatesFetched(false);
-
-    try {
-      const res = await fetch("/api/shipping/rates", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          address,
-          items: items.map((i) => ({ name: i.name, qty: i.qty })),
-        }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-
-        if (data.isStanger) {
-          setIsStangerDelivery(true);
-          setAvailableRates(data.rates);
-          setSelectedRate(data.rates[0] || null);
-        } else {
-          setIsStangerDelivery(false);
-          setAvailableRates(data.rates);
-          // Auto-select cheapest rate
-          const sorted = [...data.rates].sort((a: ShippingRate, b: ShippingRate) => a.total_price - b.total_price);
-          setSelectedRate(sorted[0] || null);
-        }
-        setRatesFetched(true);
-      } else {
-        // Handle non-200 responses gracefully
-        console.warn("[Shipping] Rate fetch failed:", res.status);
-        setAvailableRates([]);
-      }
-    } catch (err) {
-      console.error("Failed to fetch shipping rates:", err);
-      setAvailableRates([]);
-    } finally {
-      setRatesLoading(false);
-    }
-  }, [items, setIsStangerDelivery, setAvailableRates, setSelectedRate, setRatesLoading]);
-
-  // Debounced rate fetching
-  useEffect(() => {
-    if (deliveryMode !== "deliver" || !addressQuery.trim()) return;
-
-    const timer = setTimeout(() => {
-      const isStanger = addressQuery.toLowerCase().includes("stanger") ||
-        addressQuery.toLowerCase().includes("kwadukuza") ||
-        addressQuery.toLowerCase().includes("kwa dukuza");
-
-      if (isStanger) {
-        setIsStangerDelivery(true);
-        setSelectedRate({
-          service_name: "Local Delivery (Stanger)",
-          service_code: "STANGER_LOCAL",
-          total_price: settingsDeliveryFee * 100,
-          estimated_delivery_days: 1,
-          courier_name: "Biltong & Bytes",
-          courier_code: "local",
-        });
-        setAvailableRates([{
-          service_name: "Local Delivery (Stanger)",
-          service_code: "STANGER_LOCAL",
-          total_price: settingsDeliveryFee * 100,
-          estimated_delivery_days: 1,
-          courier_name: "Biltong & Bytes",
-          courier_code: "local",
-        }]);
-        setRatesFetched(true);
-      } else if (addressQuery.trim().length >= 5) {
-        setDeliveryAddress(addressQuery);
-        fetchRates(addressQuery);
-      }
-    }, 800);
-
-    return () => clearTimeout(timer);
-  }, [addressQuery, deliveryMode, settingsDeliveryFee, fetchRates, setIsStangerDelivery, setSelectedRate, setAvailableRates, setDeliveryAddress]);
 
   return (
     <AnimatePresence>
@@ -1030,9 +921,9 @@ function CartDrawer({ open, onClose, onCheckout }: { open: boolean; onClose: () 
               )}
             </div>
 
-            {/* Delivery Options */}
+            {/* Delivery Mode Toggle */}
             <div className="px-5 py-3 border-t border-white/10">
-              <div className="flex gap-2 mb-2">
+              <div className="flex gap-2">
                 {[{ mode: "collect" as DeliveryMode, icon: MapPin, label: "COLLECT", sub: "Free · Stanger" },
                   { mode: "deliver" as DeliveryMode, icon: Truck, label: "DELIVER", sub: `R${settingsDeliveryFee} Stanger · Courier Nationwide` }].map(({ mode, icon: Icon, label, sub }) => (
                   <motion.button key={mode} whileTap={{ scale: 0.97 }}
@@ -1044,96 +935,6 @@ function CartDrawer({ open, onClose, onCheckout }: { open: boolean; onClose: () 
                   </motion.button>
                 ))}
               </div>
-              <AnimatePresence>
-                {deliveryMode === "deliver" && (
-                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
-                    <div className="relative">
-                      <input type="text" value={addressQuery}
-                        onChange={(e) => { setAddressQuery(e.target.value); setShowSuggestions(true); setRatesFetched(false); }}
-                        onFocus={() => setShowSuggestions(true)}
-                        placeholder="Enter your full address (e.g. 12 Main Rd, Durban)"
-                        className="w-full bg-[#1E0A02] text-white border border-[#E5B83C] p-2.5 mt-2 rounded-lg text-sm placeholder:text-[#FEF3DF]/25 focus:outline-none focus:border-[#E5B83C]" />
-                      {showSuggestions && filteredAddresses.length > 0 && (
-                        <div className="absolute top-full left-0 right-0 bg-[#2A1508] rounded-lg mt-1 max-h-[150px] overflow-y-auto z-10 shadow-xl">
-                          {filteredAddresses.map((addr) => (
-                            <button key={addr} onClick={() => { setDeliveryAddress(addr); setAddressQuery(addr); setShowSuggestions(false); }}
-                              className="w-full text-left px-3 py-2 text-sm text-[#FEF3DF] cursor-pointer border-b border-[#E5B83C]/10 hover:bg-[#E5B83C] hover:text-[#0A0301] transition-colors">
-                              {addr}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    {/* Loading indicator */}
-                    {ratesLoading && (
-                      <div className="flex items-center gap-2 mt-2 text-[#E5B83C]/70 text-xs">
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        <span>Getting shipping rates...</span>
-                      </div>
-                    )}
-
-                    {/* Stanger delivery detected */}
-                    {isStangerDelivery && ratesFetched && !ratesLoading && (
-                      <div className="mt-2 bg-[#2E7D32]/15 border border-[#2E7D32]/30 rounded-lg p-2.5">
-                        <p className="text-[#2E7D32] text-xs font-semibold flex items-center gap-1.5">
-                          <MapPin className="w-3.5 h-3.5" /> Stanger Local Delivery — R{settingsDeliveryFee}
-                        </p>
-                        <p className="text-[#FEF3DF]/40 text-[0.6rem] mt-0.5">Delivery within Stanger town, next day</p>
-                      </div>
-                    )}
-
-                    {/* Courier rates for non-Stanger */}
-                    {!isStangerDelivery && availableRates.length > 0 && ratesFetched && !ratesLoading && (
-                      <div className="mt-2 space-y-1.5">
-                        <p className="text-[0.6rem] text-[#FEF3DF]/50 font-semibold tracking-wider uppercase">Select shipping method:</p>
-                        {availableRates.sort((a, b) => a.total_price - b.total_price).map((rate) => {
-                          const price = Math.round(rate.total_price / 100);
-                          const isSelected = selectedRate?.service_code === rate.service_code;
-                          return (
-                            <motion.button key={rate.service_code} whileTap={{ scale: 0.98 }}
-                              onClick={() => setSelectedRate(rate)}
-                              className={`w-full text-left p-2.5 rounded-lg cursor-pointer transition-all text-xs border ${
-                                isSelected
-                                  ? "bg-[#E5B83C]/15 border-[#E5B83C] text-[#FEF3DF]"
-                                  : "bg-white/3 border-white/10 text-[#FEF3DF]/70 hover:border-[#E5B83C]/40"
-                              }`}>
-                              <div className="flex justify-between items-center">
-                                <div className="flex items-center gap-2">
-                                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                                    isSelected ? "border-[#E5B83C]" : "border-white/20"
-                                  }`}>
-                                    {isSelected && <div className="w-2 h-2 rounded-full bg-[#E5B83C]" />}
-                                  </div>
-                                  <div>
-                                    <p className="font-semibold">{rate.service_name}</p>
-                                    <p className="text-[0.6rem] text-[#FEF3DF]/40">{rate.courier_name} · {rate.estimated_delivery_days} business day{rate.estimated_delivery_days !== 1 ? "s" : ""}</p>
-                                  </div>
-                                </div>
-                                <span className="font-['Bebas_Neue'] text-lg text-[#F8E5B0]">R{price}</span>
-                              </div>
-                            </motion.button>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {/* No rates found */}
-                    {!isStangerDelivery && ratesFetched && availableRates.length === 0 && !ratesLoading && (
-                      <div className="mt-2 bg-[#B23A1A]/15 border border-[#B23A1A]/30 rounded-lg p-2.5">
-                        <p className="text-[#B23A1A] text-xs">No shipping rates found. Please check your address or contact us on WhatsApp.</p>
-                      </div>
-                    )}
-
-                    <p className="text-[0.6rem] text-[#FEF3DF]/40 mt-1.5">
-                      {isStangerDelivery
-                        ? "Stanger delivery · R" + settingsDeliveryFee + " fee"
-                        : "Nationwide courier via The Courier Guy · Rates above"
-                      }
-                    </p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
             </div>
 
             {/* Footer */}
@@ -1251,12 +1052,13 @@ function OrderSuccess({ orderId, paymentMethod, trackingReference, onClose }: { 
 }
 
 // ============================================
-// CHECKOUT MODAL — with step progress
+// CHECKOUT MODAL — 3-Step: Shipping → Payment → Done
 // ============================================
 function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: () => void; resetKey: number }) {
   const items = useCartStore((s) => s.items);
   const deliveryMode = useCartStore((s) => s.deliveryMode);
   const deliveryAddress = useCartStore((s) => s.deliveryAddress);
+  const setDeliveryAddress = useCartStore((s) => s.setDeliveryAddress);
   const customerName = useCartStore((s) => s.customerName);
   const customerPhone = useCartStore((s) => s.customerPhone);
   const customerEmail = useCartStore((s) => s.customerEmail);
@@ -1268,7 +1070,14 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
   const deliveryFee = useCartStore((s) => s.deliveryFee());
   const clearCart = useCartStore((s) => s.clearCart);
   const isStangerDelivery = useCartStore((s) => s.isStangerDelivery);
+  const setIsStangerDelivery = useCartStore((s) => s.setIsStangerDelivery);
+  const availableRates = useCartStore((s) => s.availableRates);
+  const setAvailableRates = useCartStore((s) => s.setAvailableRates);
   const selectedRate = useCartStore((s) => s.selectedRate);
+  const setSelectedRate = useCartStore((s) => s.setSelectedRate);
+  const ratesLoading = useCartStore((s) => s.ratesLoading);
+  const setRatesLoading = useCartStore((s) => s.setRatesLoading);
+  const settingsDeliveryFee = useSettingsStore((s) => s.deliveryFee);
 
   const [name, setName] = useState(customerName);
   const [phone, setPhone] = useState(customerPhone);
@@ -1282,6 +1091,107 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
   const [lastPaymentMethod, setLastPaymentMethod] = useState("cash");
   const [trackingRef, setTrackingRef] = useState<string | null>(null);
 
+  // Address & shipping state (moved from CartDrawer)
+  const [addressQuery, setAddressQuery] = useState(deliveryAddress);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [ratesFetched, setRatesFetched] = useState(false);
+  const [checkoutStep, setCheckoutStep] = useState(0); // 0=shipping, 1=payment, 2=done
+
+  // Address autocomplete with Stanger addresses shown first
+  const filteredAddresses = useMemo(
+    () => {
+      if (addressQuery.length < 2) return [];
+      const q = addressQuery.toLowerCase();
+      const stanger = STANGER_ADDRESSES.filter((a) => a.toLowerCase().includes(q));
+      const cities = SA_CITIES.filter((a) => a.toLowerCase().includes(q) && !a.toLowerCase().includes("stanger"));
+      return [...stanger, ...cities];
+    },
+    [addressQuery]
+  );
+
+  useEffect(() => { setAddressQuery(deliveryAddress); }, [deliveryAddress]);
+
+  // Fetch shipping rates when delivery address changes
+  const fetchRates = useCallback(async (address: string) => {
+    if (!address || address.trim().length < 3) return;
+    if (items.length === 0) return;
+
+    setRatesLoading(true);
+    setRatesFetched(false);
+
+    try {
+      const res = await fetch("/api/shipping/rates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          address,
+          items: items.map((i) => ({ name: i.name, qty: i.qty })),
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+
+        if (data.isStanger) {
+          setIsStangerDelivery(true);
+          setAvailableRates(data.rates);
+          setSelectedRate(data.rates[0] || null);
+        } else {
+          setIsStangerDelivery(false);
+          setAvailableRates(data.rates);
+          const sorted = [...data.rates].sort((a: ShippingRate, b: ShippingRate) => a.total_price - b.total_price);
+          setSelectedRate(sorted[0] || null);
+        }
+        setRatesFetched(true);
+      } else {
+        console.warn("[Shipping] Rate fetch failed:", res.status);
+        setAvailableRates([]);
+      }
+    } catch (err) {
+      console.error("Failed to fetch shipping rates:", err);
+      setAvailableRates([]);
+    } finally {
+      setRatesLoading(false);
+    }
+  }, [items, setIsStangerDelivery, setAvailableRates, setSelectedRate, setRatesLoading]);
+
+  // Debounced rate fetching
+  useEffect(() => {
+    if (deliveryMode !== "deliver" || !addressQuery.trim()) return;
+
+    const timer = setTimeout(() => {
+      const isStanger = addressQuery.toLowerCase().includes("stanger") ||
+        addressQuery.toLowerCase().includes("kwadukuza") ||
+        addressQuery.toLowerCase().includes("kwa dukuza");
+
+      if (isStanger) {
+        setIsStangerDelivery(true);
+        setSelectedRate({
+          service_name: "Local Delivery (Stanger)",
+          service_code: "STANGER_LOCAL",
+          total_price: settingsDeliveryFee * 100,
+          estimated_delivery_days: 1,
+          courier_name: "Biltong & Bytes",
+          courier_code: "local",
+        });
+        setAvailableRates([{
+          service_name: "Local Delivery (Stanger)",
+          service_code: "STANGER_LOCAL",
+          total_price: settingsDeliveryFee * 100,
+          estimated_delivery_days: 1,
+          courier_name: "Biltong & Bytes",
+          courier_code: "local",
+        }]);
+        setRatesFetched(true);
+      } else if (addressQuery.trim().length >= 5) {
+        setDeliveryAddress(addressQuery);
+        fetchRates(addressQuery);
+      }
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [addressQuery, deliveryMode, settingsDeliveryFee, fetchRates, setIsStangerDelivery, setSelectedRate, setAvailableRates, setDeliveryAddress]);
+
   // Save order to Supabase via API
   const saveOrder = useCallback(
     async (paymentMethod: string) => {
@@ -1290,12 +1200,11 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
       setCurrentOrderId(newOrderId);
       setSavingStatus("saving");
 
-      // Include shipping info for non-Stanger deliveries
       const shippingCarrier = deliveryMode === "deliver" && !isStangerDelivery && selectedRate
         ? selectedRate.courier_name
         : null;
       const trackingReference = deliveryMode === "deliver" && !isStangerDelivery
-        ? "PENDING" // Will be updated after shipment creation
+        ? "PENDING"
         : null;
 
       const orderData: OrderData = {
@@ -1360,7 +1269,6 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
         if (data.trackingReference) {
           setTrackingRef(data.trackingReference);
 
-          // Update order in Supabase with tracking reference
           try {
             await fetch("/api/orders", {
               method: "PATCH",
@@ -1373,7 +1281,6 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
             });
           } catch { /* non-critical */ }
 
-          // Also update the pending iKhokha order if it exists
           const pending = useCartStore.getState().pendingIkhokhaOrder;
           if (pending) {
             (pending as Record<string, unknown>).tracking_reference = data.trackingReference;
@@ -1394,12 +1301,16 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
     return true;
   }, [name, phone, deliveryMode, deliveryAddress, isStangerDelivery, selectedRate]);
 
+  const handleContinueToPayment = () => {
+    if (!validate()) return;
+    setCheckoutStep(1);
+  };
+
   const handleWhatsAppCash = async () => {
     if (!validate()) return;
     const orderData = await saveOrder("cash");
     setLastPaymentMethod("cash");
 
-    // Create Courier Guy shipment for non-Stanger deliveries (non-blocking)
     if (!isStangerDelivery && deliveryMode === "deliver") {
       createShipment(orderData.order_id);
     }
@@ -1408,6 +1319,7 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, "_blank");
     toast.success(`Order ${orderData.order_id} sent!`, { icon: "🥩" });
     setOrderSuccess(true);
+    setCheckoutStep(2);
   };
 
   const handleIkhokha = async () => {
@@ -1418,7 +1330,6 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
       setLastPaymentMethod("ikhokha");
       setPendingIkhokhaOrder(orderData as unknown as Record<string, unknown>);
 
-      // Call our API to create an iKhokha payment link with the exact amount
       const res = await fetch("/api/ikhokha/create-payment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1432,12 +1343,10 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
       const paymentData = await res.json();
 
       if (res.ok && paymentData.success && paymentData.paylinkUrl) {
-        // API created a proper paylink with exact amount
         setPaylinkUrl(paymentData.paylinkUrl);
         window.open(paymentData.paylinkUrl, "_blank");
         toast.info("iKhokha payment page opened! Complete payment, then confirm below.", { icon: "💳", duration: 5000 });
 
-        // Update order status
         try {
           await fetch("/api/orders", {
             method: "PATCH",
@@ -1446,7 +1355,6 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
           });
         } catch { /* non-critical */ }
       } else {
-        // Fallback: open static iKhokha link WITH amount pre-filled
         console.warn("iKhokha API failed or not configured, using static URL with amount");
         const amountUrl = `${IKHOKHA_PAYMENT_URL}?amount=${total.toFixed(2)}`;
         setPaylinkUrl(amountUrl);
@@ -1456,7 +1364,6 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
 
       setIkhokhaStep(true);
     } catch {
-      // Fallback to static URL with amount on any error
       const orderData = await saveOrder("ikhokha");
       setLastPaymentMethod("ikhokha");
       setPendingIkhokhaOrder(orderData as unknown as Record<string, unknown>);
@@ -1475,7 +1382,6 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
     if (!pendingOrder) { toast.error("No pending order found"); return; }
     const orderData = pendingOrder as unknown as OrderData;
 
-    // Create Courier Guy shipment for non-Stanger deliveries (non-blocking)
     if (!isStangerDelivery && deliveryMode === "deliver" && orderData.order_id) {
       createShipment(orderData.order_id);
     }
@@ -1484,152 +1390,335 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, "_blank");
     toast.success("Confirmation sent!", { icon: "✅" });
     setOrderSuccess(true);
+    setCheckoutStep(2);
   };
 
   const handleClose = () => {
     if (orderSuccess) clearCart();
     setOrderSuccess(false);
     setIkhokhaStep(false);
+    setCheckoutStep(0);
     onClose();
   };
 
-  // Checkout steps for progress indicator
-  const checkoutSteps = ["Details", "Payment", "Confirm"];
-  const currentStep = orderSuccess ? 3 : ikhokhaStep ? 2 : !name || !phone ? 0 : 1;
+  // Step progress indicator
+  const checkoutSteps = ["Shipping", "Payment", "Done"];
+
+  // Can proceed from step 0 to step 1?
+  const canContinueToPayment = name.trim() && phone.trim() &&
+    (deliveryMode === "collect" ||
+      (deliveryMode === "deliver" && deliveryAddress.trim() && (isStangerDelivery || selectedRate)));
 
   return (
     <AnimatePresence>
       {open && (
         <>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[3000]" onClick={handleClose} />
+            className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[3000]" />
           <motion.div
-            initial={{ y: "100%", opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: "100%", opacity: 0 }}
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 30 }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className="fixed bottom-0 left-0 right-0 z-[3001] max-h-[95vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-[3001] overflow-y-auto"
           >
-            <div key={resetKey} className="bg-gradient-to-br from-[#1A0A04] to-[#0E0500] border-t border-[#E5B83C] rounded-t-3xl p-5 md:p-8 max-w-[500px] mx-auto">
-              <div className="flex justify-center mb-3"><div className="w-10 h-1.5 bg-[#E5B83C]/30 rounded-full" /></div>
+            <div key={resetKey} className="min-h-full flex items-start justify-center">
+              <div className="w-full max-w-[540px] min-h-screen bg-gradient-to-br from-[#1A0A04] to-[#0E0500] border-x border-[#E5B83C]/20 px-5 py-6 md:px-8 md:py-8">
 
-              {orderSuccess ? (
-                <OrderSuccess orderId={orderId || ""} paymentMethod={lastPaymentMethod} trackingReference={trackingRef} onClose={handleClose} />
-              ) : (
-                <>
-                  <h3 className="font-['Cormorant_Garamond'] text-2xl text-[#E5B83C] text-center mb-4">Complete Your Order</h3>
+                {/* Close button */}
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-['Cormorant_Garamond'] text-2xl text-[#E5B83C]">Checkout</h3>
+                  <button onClick={handleClose} className="text-white/60 hover:text-white cursor-pointer p-1"><X className="w-6 h-6" /></button>
+                </div>
 
-                  {/* Step Progress */}
-                  <div className="flex items-center justify-center gap-2 mb-5">
-                    {checkoutSteps.map((step, i) => (
-                      <div key={step} className="flex items-center gap-2">
-                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                          i <= currentStep ? "bg-[#E5B83C] text-[#0A0301]" : "bg-white/10 text-white/40"
-                        }`}>
-                          {i < currentStep ? <Check className="w-3.5 h-3.5" /> : i + 1}
-                        </div>
-                        <span className={`text-[0.6rem] tracking-wider uppercase hidden sm:inline ${
-                          i <= currentStep ? "text-[#E5B83C]" : "text-white/30"
-                        }`}>{step}</span>
-                        {i < checkoutSteps.length - 1 && (
-                          <div className={`w-8 h-0.5 ${i < currentStep ? "bg-[#E5B83C]" : "bg-white/10"}`} />
-                        )}
+                {/* Step Progress Indicator */}
+                <div className="flex items-center justify-center gap-2 mb-6">
+                  {checkoutSteps.map((step, i) => (
+                    <div key={step} className="flex items-center gap-2">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                        i <= checkoutStep ? "bg-[#E5B83C] text-[#0A0301]" : "bg-white/10 text-white/40"
+                      }`}>
+                        {i < checkoutStep ? <Check className="w-4 h-4" /> : i + 1}
                       </div>
-                    ))}
-                  </div>
-
-                  {/* Order ID & saving */}
-                  <AnimatePresence>
-                    {orderId && (
-                      <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-                        className="bg-[#2E7D32]/15 border border-[#2E7D32] rounded-xl p-3 text-center mb-3">
-                        <p className="text-[0.6rem] tracking-[0.15em] uppercase text-[#FEF3DF]/70">Order Reference</p>
-                        <p className="font-['Bebas_Neue'] text-xl text-[#2E7D32] tracking-[0.1em]">{orderId}</p>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                  {savingStatus !== "idle" && (
-                    <div className={`text-center text-xs mb-3 ${
-                      savingStatus === "saving" ? "text-[#E5B83C]/70" : savingStatus === "saved" ? "text-[#2E7D32]" : "text-[#B23A1A]"
-                    }`}>
-                      {savingStatus === "saving" && <span className="flex items-center justify-center gap-2"><Loader2 className="w-3 h-3 animate-spin" /> Saving...</span>}
-                      {savingStatus === "saved" && "✓ Order saved!"}
-                      {savingStatus === "error" && "Saved locally (database unavailable)"}
+                      <span className={`text-[0.65rem] tracking-wider uppercase ${
+                        i <= checkoutStep ? "text-[#E5B83C] font-semibold" : "text-white/30"
+                      }`}>{step}</span>
+                      {i < checkoutSteps.length - 1 && (
+                        <div className={`w-6 h-0.5 ${i < checkoutStep ? "bg-[#E5B83C]" : "bg-white/10"}`} />
+                      )}
                     </div>
-                  )}
+                  ))}
+                </div>
 
-                  {/* Customer Info */}
-                  <div className="space-y-3 mb-4">
-                    <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your Full Name *"
-                      className="w-full bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-3 text-[#FEF3DF] text-sm placeholder:text-[#FEF3DF]/25 focus:outline-none focus:border-[#E5B83C] focus:bg-white/12 transition-all" />
-                    <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Your Phone Number *"
-                      className="w-full bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-3 text-[#FEF3DF] text-sm placeholder:text-[#FEF3DF]/25 focus:outline-none focus:border-[#E5B83C] focus:bg-white/12 transition-all" />
-                    <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Your Email (for receipt)"
-                      className="w-full bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-3 text-[#FEF3DF] text-sm placeholder:text-[#FEF3DF]/25 focus:outline-none focus:border-[#E5B83C] focus:bg-white/12 transition-all" />
-                  </div>
+                {/* ============================== */}
+                {/* STEP 0: Shipping & Details     */}
+                {/* ============================== */}
+                {checkoutStep === 0 && (
+                  <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }}>
+                    {/* Customer Info */}
+                    <div className="space-y-3 mb-5">
+                      <p className="text-[0.65rem] tracking-[0.2em] uppercase text-[#E07A2C] font-semibold">Your Details</p>
+                      <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your Full Name *"
+                        className="w-full bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-3 text-[#FEF3DF] text-sm placeholder:text-[#FEF3DF]/25 focus:outline-none focus:border-[#E5B83C] focus:bg-white/12 transition-all" />
+                      <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Your Phone Number *"
+                        className="w-full bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-3 text-[#FEF3DF] text-sm placeholder:text-[#FEF3DF]/25 focus:outline-none focus:border-[#E5B83C] focus:bg-white/12 transition-all" />
+                      <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Your Email (for receipt)"
+                        className="w-full bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-3 text-[#FEF3DF] text-sm placeholder:text-[#FEF3DF]/25 focus:outline-none focus:border-[#E5B83C] focus:bg-white/12 transition-all" />
+                    </div>
 
-                  {/* Order Summary */}
-                  <div className="bg-white/4 rounded-xl p-3 mb-4 border border-white/5">
-                    <p className="text-[0.6rem] font-semibold text-[#FEF3DF]/60 mb-2 tracking-wider uppercase">Order Summary</p>
-                    {items.map((item) => (
-                      <div key={item.id} className="flex justify-between text-xs py-1">
-                        <span className="text-[#FEF3DF]/80">{item.qty}x {item.name}</span>
-                        <span className="text-[#F8E5B0]">R{item.price * item.qty}</span>
+                    {/* Shipping Section */}
+                    <div className="mb-5">
+                      <p className="text-[0.65rem] tracking-[0.2em] uppercase text-[#E07A2C] font-semibold mb-3">Shipping</p>
+
+                      {deliveryMode === "collect" ? (
+                        <div className="bg-[#2E7D32]/15 border border-[#2E7D32]/30 rounded-xl p-4">
+                          <p className="text-[#2E7D32] text-sm font-semibold flex items-center gap-2">
+                            <MapPin className="w-4 h-4" /> Collection from Stanger — Free
+                          </p>
+                          <p className="text-[#FEF3DF]/40 text-xs mt-1">Pick up your order in Stanger town</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {/* Delivery Address Input */}
+                          <div>
+                            <label className="text-xs text-[#FEF3DF]/70 font-semibold mb-1.5 block">Delivery Address</label>
+                            <div className="relative">
+                              <input type="text" value={addressQuery}
+                                onChange={(e) => { setAddressQuery(e.target.value); setShowSuggestions(true); setRatesFetched(false); }}
+                                onFocus={() => setShowSuggestions(true)}
+                                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                                placeholder="Start typing your address (e.g. 12 Main Rd, Durban, KwaZulu-Natal)"
+                                className="w-full bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-3 text-[#FEF3DF] text-sm placeholder:text-[#FEF3DF]/25 focus:outline-none focus:border-[#E5B83C] focus:bg-white/12 transition-all" />
+                              {showSuggestions && filteredAddresses.length > 0 && (
+                                <div className="absolute top-full left-0 right-0 bg-[#2A1508] rounded-xl mt-1 max-h-[180px] overflow-y-auto z-10 shadow-xl border border-[#E5B83C]/20">
+                                  {filteredAddresses.map((addr) => (
+                                    <button key={addr} onClick={() => { setDeliveryAddress(addr); setAddressQuery(addr); setShowSuggestions(false); }}
+                                      className="w-full text-left px-4 py-2.5 text-sm text-[#FEF3DF] cursor-pointer border-b border-[#E5B83C]/10 hover:bg-[#E5B83C] hover:text-[#0A0301] transition-colors first:rounded-t-xl last:rounded-b-xl last:border-b-0">
+                                      {addr}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-[0.6rem] text-[#FEF3DF]/35 mt-1.5">Format: Street, Suburb, City, Province, Postal Code</p>
+                          </div>
+
+                          {/* Loading indicator */}
+                          {ratesLoading && (
+                            <div className="flex items-center gap-2 text-[#E5B83C]/70 text-xs">
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              <span>Getting shipping rates...</span>
+                            </div>
+                          )}
+
+                          {/* Stanger delivery detected */}
+                          {isStangerDelivery && ratesFetched && !ratesLoading && (
+                            <div className="bg-[#2E7D32]/15 border border-[#2E7D32]/30 rounded-xl p-3">
+                              <p className="text-[#2E7D32] text-sm font-semibold flex items-center gap-2">
+                                <MapPin className="w-4 h-4" /> Stanger Local Delivery — R{settingsDeliveryFee}
+                              </p>
+                              <p className="text-[#FEF3DF]/40 text-xs mt-0.5">Delivery within Stanger town, next day</p>
+                            </div>
+                          )}
+
+                          {/* Courier rates for non-Stanger */}
+                          {!isStangerDelivery && availableRates.length > 0 && ratesFetched && !ratesLoading && (
+                            <div className="space-y-2">
+                              <p className="text-[0.65rem] text-[#FEF3DF]/50 font-semibold tracking-wider uppercase">Select shipping method:</p>
+                              {availableRates.sort((a, b) => a.total_price - b.total_price).map((rate) => {
+                                const price = Math.round(rate.total_price / 100);
+                                const isSelected = selectedRate?.service_code === rate.service_code;
+                                return (
+                                  <motion.button key={rate.service_code} whileTap={{ scale: 0.98 }}
+                                    onClick={() => setSelectedRate(rate)}
+                                    className={`w-full text-left p-3 rounded-xl cursor-pointer transition-all text-xs border ${
+                                      isSelected
+                                        ? "bg-[#E5B83C]/15 border-[#E5B83C] text-[#FEF3DF]"
+                                        : "bg-white/3 border-white/10 text-[#FEF3DF]/70 hover:border-[#E5B83C]/40"
+                                    }`}>
+                                    <div className="flex justify-between items-center">
+                                      <div className="flex items-center gap-2.5">
+                                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                                          isSelected ? "border-[#E5B83C]" : "border-white/20"
+                                        }`}>
+                                          {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-[#E5B83C]" />}
+                                        </div>
+                                        <div>
+                                          <p className="font-semibold">{rate.service_name}</p>
+                                          <p className="text-[0.6rem] text-[#FEF3DF]/40">{rate.courier_name} · {rate.estimated_delivery_days} business day{rate.estimated_delivery_days !== 1 ? "s" : ""}</p>
+                                        </div>
+                                      </div>
+                                      <span className="font-['Bebas_Neue'] text-xl text-[#F8E5B0]">R{price}</span>
+                                    </div>
+                                  </motion.button>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {/* No rates found */}
+                          {!isStangerDelivery && ratesFetched && availableRates.length === 0 && !ratesLoading && (
+                            <div className="bg-[#B23A1A]/15 border border-[#B23A1A]/30 rounded-xl p-3">
+                              <p className="text-[#B23A1A] text-xs">No shipping rates found. Please check your address or contact us on WhatsApp.</p>
+                            </div>
+                          )}
+
+                          {/* Address hint */}
+                          {deliveryMode === "deliver" && addressQuery.trim().length > 0 && !ratesLoading && (
+                            <p className="text-[0.6rem] text-[#FEF3DF]/35">
+                              {isStangerDelivery
+                                ? "Stanger delivery · R" + settingsDeliveryFee + " fee"
+                                : "Nationwide courier via The Courier Guy"
+                              }
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Order ID & saving status */}
+                    <AnimatePresence>
+                      {orderId && (
+                        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+                          className="bg-[#2E7D32]/15 border border-[#2E7D32] rounded-xl p-3 text-center mb-3">
+                          <p className="text-[0.6rem] tracking-[0.15em] uppercase text-[#FEF3DF]/70">Order Reference</p>
+                          <p className="font-['Bebas_Neue'] text-xl text-[#2E7D32] tracking-[0.1em]">{orderId}</p>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                    {savingStatus !== "idle" && (
+                      <div className={`text-center text-xs mb-3 ${
+                        savingStatus === "saving" ? "text-[#E5B83C]/70" : savingStatus === "saved" ? "text-[#2E7D32]" : "text-[#B23A1A]"
+                      }`}>
+                        {savingStatus === "saving" && <span className="flex items-center justify-center gap-2"><Loader2 className="w-3 h-3 animate-spin" /> Saving...</span>}
+                        {savingStatus === "saved" && "✓ Order saved!"}
+                        {savingStatus === "error" && "Saved locally (database unavailable)"}
                       </div>
-                    ))}
-                    {deliveryFee > 0 && (
+                    )}
+
+                    {/* Continue to Payment */}
+                    <motion.button whileTap={{ scale: 0.97 }} onClick={handleContinueToPayment}
+                      disabled={!canContinueToPayment}
+                      className={`w-full py-3.5 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-sm flex items-center justify-center gap-2 ${
+                        canContinueToPayment
+                          ? "bg-[#E5B83C] text-[#0A0301] hover:shadow-[0_8px_25px_rgba(229,184,60,0.4)]"
+                          : "bg-white/5 text-white/30 cursor-not-allowed"
+                      }`}>
+                      CONTINUE TO PAYMENT <ChevronUp className="w-4 h-4 rotate-90" />
+                    </motion.button>
+
+                    <button onClick={handleClose}
+                      className="w-full text-white/40 py-3 cursor-pointer text-sm hover:text-white transition-colors bg-transparent border-none mt-1">Cancel</button>
+                  </motion.div>
+                )}
+
+                {/* ============================== */}
+                {/* STEP 1: Payment                */}
+                {/* ============================== */}
+                {checkoutStep === 1 && (
+                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }}>
+                    {/* Order Summary */}
+                    <div className="bg-white/4 rounded-xl p-4 mb-4 border border-white/5">
+                      <p className="text-[0.65rem] font-semibold text-[#FEF3DF]/60 mb-2 tracking-wider uppercase">Order Summary</p>
+                      {items.map((item) => (
+                        <div key={item.id} className="flex justify-between text-xs py-1">
+                          <span className="text-[#FEF3DF]/80">{item.qty}x {item.name}</span>
+                          <span className="text-[#F8E5B0]">R{item.price * item.qty}</span>
+                        </div>
+                      ))}
                       <div className="flex justify-between text-xs py-1 border-t border-white/10 mt-1">
-                        <span className="text-[#FEF3DF]/60">{selectedRate?.service_name || "Delivery"}</span><span>R{deliveryFee}</span>
+                        <span className="text-[#FEF3DF]/60">Subtotal</span><span>R{subtotal}</span>
+                      </div>
+                      {deliveryFee > 0 && (
+                        <div className="flex justify-between text-xs py-1">
+                          <span className="text-[#FEF3DF]/60">{selectedRate?.service_name || "Delivery"}</span><span>R{deliveryFee}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Total */}
+                    <div className="bg-[#E5B83C]/12 border-2 border-[#E5B83C] rounded-xl p-4 text-center mb-5">
+                      <p className="text-[0.65rem] tracking-[0.2em] uppercase text-[#FEF3DF]/70">AMOUNT TO PAY</p>
+                      <motion.p key={total} initial={{ scale: 1.1 }} animate={{ scale: 1 }}
+                        className="font-['Bebas_Neue'] text-4xl text-[#E5B83C]">R{total}</motion.p>
+                    </div>
+
+                    {/* Order ID & saving */}
+                    <AnimatePresence>
+                      {orderId && (
+                        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+                          className="bg-[#2E7D32]/15 border border-[#2E7D32] rounded-xl p-3 text-center mb-3">
+                          <p className="text-[0.6rem] tracking-[0.15em] uppercase text-[#FEF3DF]/70">Order Reference</p>
+                          <p className="font-['Bebas_Neue'] text-xl text-[#2E7D32] tracking-[0.1em]">{orderId}</p>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                    {savingStatus !== "idle" && (
+                      <div className={`text-center text-xs mb-3 ${
+                        savingStatus === "saving" ? "text-[#E5B83C]/70" : savingStatus === "saved" ? "text-[#2E7D32]" : "text-[#B23A1A]"
+                      }`}>
+                        {savingStatus === "saving" && <span className="flex items-center justify-center gap-2"><Loader2 className="w-3 h-3 animate-spin" /> Saving...</span>}
+                        {savingStatus === "saved" && "✓ Order saved!"}
+                        {savingStatus === "error" && "Saved locally (database unavailable)"}
                       </div>
                     )}
-                  </div>
 
-                  {/* Total */}
-                  <div className="bg-[#E5B83C]/12 border-2 border-[#E5B83C] rounded-xl p-4 text-center mb-4">
-                    <p className="text-[0.65rem] tracking-[0.2em] uppercase text-[#FEF3DF]/70">AMOUNT TO PAY</p>
-                    <motion.p key={total} initial={{ scale: 1.1 }} animate={{ scale: 1 }}
-                      className="font-['Bebas_Neue'] text-4xl text-[#E5B83C]">R{total}</motion.p>
-                  </div>
-
-                  {/* Payment Buttons */}
-                  {!ikhokhaStep ? (
-                    <>
-                      <motion.button whileTap={{ scale: 0.97 }} onClick={handleIkhokha} disabled={ikhokhaLoading}
-                        className={`w-full bg-[#1DB954] text-white py-3.5 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-sm mb-3 hover:shadow-[0_8px_25px_rgba(29,185,84,0.4)] flex items-center justify-center gap-2 ${ikhokhaLoading ? 'opacity-60 cursor-not-allowed' : ''}`}>
-                        {ikhokhaLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />} {ikhokhaLoading ? 'CREATING PAYMENT...' : 'PAY WITH IKHOKHA'}
-                      </motion.button>
-                      <div className="flex items-center gap-3 my-1">
-                        <div className="flex-1 h-px bg-white/15" />
-                        <span className="text-[0.55rem] text-white/40 uppercase tracking-[0.1em]">or</span>
-                        <div className="flex-1 h-px bg-white/15" />
-                      </div>
-                      <motion.button whileTap={{ scale: 0.97 }} onClick={handleWhatsAppCash}
-                        className="w-full bg-[#25D366] text-white py-3 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-xs mb-3 hover:shadow-[0_8px_25px_rgba(37,211,102,0.4)] flex items-center justify-center gap-2">
-                        <MessageCircle className="w-3.5 h-3.5" /> WHATSAPP (Cash/Card)
-                      </motion.button>
-                    </>
-                  ) : (
-                    <>
-                      <motion.button whileTap={{ scale: 0.97 }} onClick={handleConfirmWhatsApp}
-                        className="w-full bg-[#25D366] text-white py-3.5 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-sm mb-3 hover:shadow-[0_8px_25px_rgba(37,211,102,0.4)] flex items-center justify-center gap-2">
-                        <MessageCircle className="w-4 h-4" /> CONFIRM ON WHATSAPP
-                      </motion.button>
-                      <motion.button whileTap={{ scale: 0.97 }} onClick={() => window.open(paylinkUrl || IKHOKHA_PAYMENT_URL, "_blank")}
-                        className="w-full border border-[#E5B83C]/40 text-[#E5B83C] py-2.5 font-bold tracking-[0.1em] uppercase cursor-pointer rounded-xl text-xs mb-3 hover:bg-[#E5B83C]/10 flex items-center justify-center gap-2">
-                        <CreditCard className="w-3.5 h-3.5" /> RE-OPEN PAYMENT
-                      </motion.button>
-                    </>
-                  )}
-                  <button onClick={handleClose}
-                    className="w-full text-white/40 py-3 cursor-pointer text-sm hover:text-white transition-colors bg-transparent border-none">Cancel</button>
-                  <p className="text-[0.6rem] text-white/35 text-center mt-2 leading-relaxed">
-                    iKhokha: Secure card payment in a new tab.
-                    <br />WhatsApp: For cash or card on collection/delivery.
-                    {deliveryMode === "deliver" && !isStangerDelivery && (
-                      <><br />📦 Nationwide delivery via The Courier Guy</>
+                    {/* Payment Buttons */}
+                    {!ikhokhaStep ? (
+                      <>
+                        <motion.button whileTap={{ scale: 0.97 }} onClick={handleIkhokha} disabled={ikhokhaLoading}
+                          className={`w-full bg-[#1DB954] text-white py-3.5 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-sm mb-3 hover:shadow-[0_8px_25px_rgba(29,185,84,0.4)] flex items-center justify-center gap-2 ${ikhokhaLoading ? 'opacity-60 cursor-not-allowed' : ''}`}>
+                          {ikhokhaLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />} {ikhokhaLoading ? 'CREATING PAYMENT...' : 'PAY WITH IKHOKHA'}
+                        </motion.button>
+                        <div className="flex items-center gap-3 my-1">
+                          <div className="flex-1 h-px bg-white/15" />
+                          <span className="text-[0.55rem] text-white/40 uppercase tracking-[0.1em]">or</span>
+                          <div className="flex-1 h-px bg-white/15" />
+                        </div>
+                        <motion.button whileTap={{ scale: 0.97 }} onClick={handleWhatsAppCash}
+                          className="w-full bg-[#25D366] text-white py-3 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-xs mb-3 hover:shadow-[0_8px_25px_rgba(37,211,102,0.4)] flex items-center justify-center gap-2">
+                          <MessageCircle className="w-3.5 h-3.5" /> WHATSAPP (Cash/Card)
+                        </motion.button>
+                      </>
+                    ) : (
+                      <>
+                        <motion.button whileTap={{ scale: 0.97 }} onClick={handleConfirmWhatsApp}
+                          className="w-full bg-[#25D366] text-white py-3.5 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-sm mb-3 hover:shadow-[0_8px_25px_rgba(37,211,102,0.4)] flex items-center justify-center gap-2">
+                          <MessageCircle className="w-4 h-4" /> CONFIRM ON WHATSAPP
+                        </motion.button>
+                        <motion.button whileTap={{ scale: 0.97 }} onClick={() => window.open(paylinkUrl || IKHOKHA_PAYMENT_URL, "_blank")}
+                          className="w-full border border-[#E5B83C]/40 text-[#E5B83C] py-2.5 font-bold tracking-[0.1em] uppercase cursor-pointer rounded-xl text-xs mb-3 hover:bg-[#E5B83C]/10 flex items-center justify-center gap-2">
+                          <CreditCard className="w-3.5 h-3.5" /> RE-OPEN PAYMENT
+                        </motion.button>
+                      </>
                     )}
-                  </p>
-                </>
-              )}
+
+                    {/* Back button */}
+                    <button onClick={() => setCheckoutStep(0)}
+                      className="w-full text-white/40 py-3 cursor-pointer text-sm hover:text-white transition-colors bg-transparent border-none">
+                      ← Back to Shipping
+                    </button>
+
+                    <p className="text-[0.6rem] text-white/35 text-center mt-2 leading-relaxed">
+                      iKhokha: Secure card payment in a new tab.
+                      <br />WhatsApp: For cash or card on collection/delivery.
+                      {deliveryMode === "deliver" && !isStangerDelivery && (
+                        <><br />📦 Nationwide delivery via The Courier Guy</>
+                      )}
+                    </p>
+                  </motion.div>
+                )}
+
+                {/* ============================== */}
+                {/* STEP 2: Done (Order Success)   */}
+                {/* ============================== */}
+                {checkoutStep === 2 && orderSuccess && (
+                  <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3 }}>
+                    <OrderSuccess orderId={orderId || ""} paymentMethod={lastPaymentMethod} trackingReference={trackingRef} onClose={handleClose} />
+                  </motion.div>
+                )}
+
+              </div>
             </div>
           </motion.div>
         </>
