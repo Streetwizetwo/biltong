@@ -1,0 +1,92 @@
+[
+  {
+    "url": "https://www.bobgo.co.za/apps-integrations",
+    "name": "Apps & integrations to connect your store | Bob Go",
+    "snippet": "With Bob Go's open API, you can easily connect your online store or system directly to Bob Go for a fully automated shipping experience. This means you can ...\nBob Go's platform integrates rates from various delivery partners, allowing you to select the option that best suits your service level and budget. Scalable & ...",
+    "host_name": "www.bobgo.co.za",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.bobgo.co.za/pricing",
+    "name": "Smart shipping pricing for your business - Bob Go",
+    "snippet": "Discover Bob Go pricing plans and find the best option for your business. Save on shipping with transparent costs tailored to your needs.",
+    "host_name": "www.bobgo.co.za",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://api-docs.bob.co.za/bobgo",
+    "name": "Bob Go :: API documentation",
+    "snippet": "Our API facilitates real-time shipping rate calculations, order synchronization, shipment submissions, and tracking event retrievals, thereby enhancing your e- ...\nRates at checkout: Retrieve dynamic, fixed, courier, and formula rates configured within the Bob Go platform to present a variety of shipping options to your ...",
+    "host_name": "api-docs.bob.co.za",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.youtube.com/shorts/KWXlqvNzAhg",
+    "name": "Bob Go - more of the features you need to give your  - YouTube",
+    "snippet": "Life is busy - we get that. That's why we've included loads of neat features in Bob Go ... shipping experience. 17. Dislike.",
+    "host_name": "www.youtube.com",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.bobgo.co.za/post/your-comprehensive-guide-to-bob-go-streamlining-your-ecommerce-fulfilment",
+    "name": "Streamlining your ecommerce fulfilment | Bob Go Blog",
+    "snippet": "Bob Go integrates seamlessly with popular ecommerce fulfillment platforms like Shopify and WordPress, so you can connect your online store o in a few simple ...\nAdditionally, our open API allows for integration with other websites, ensuring broad compatibility. Once integrated, Bob Go can automatically pull orders ...",
+    "host_name": "www.bobgo.co.za",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://apps.shopify.com/bobgo/reviews?page=3",
+    "name": "Reviews: Bob Go smart shipping solution - Shopify App Store",
+    "snippet": "Automating and streamlining shipping processes for ecommerce businesses in South Africa, saving them valuable time and money.\nGives you the best courier pricing in SA and assists greatly in a seamless delivery solution for customers, keeping them updated automatically throughout the ...",
+    "host_name": "apps.shopify.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://portmoni.com/shipping-rates-bobgo",
+    "name": "How to Get Shipping Rates Automatically at Checkout using Bob Go",
+    "snippet": "In this guide we explain how to integrate your Portmoni online store with Bob Go. This enables getting shipping rates automatically at checkout on your online ...",
+    "host_name": "portmoni.com",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.bob.co.za/resources/building-an-integrated-digital-ecosystem-for-online-transactions-in-south-africa",
+    "name": "Building an integrated digital ecosystem for online transactions in",
+    "snippet": "Bob Go is South Africa's leading courier aggregator, connecting merchants and customers with over 12 courier partners to ensure the best service and price. This ...",
+    "host_name": "www.bob.co.za",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://help.benimble.co.za/shipping/courier-settings/bobgo-smart-shipping",
+    "name": "BobGo Smart Shipping - BeNimble",
+    "snippet": "BeNimble integrates directly with Bob Go using their official REST API to enable seamless shipping solutions across South Africa. BobGo is a smart shipping ...",
+    "host_name": "help.benimble.co.za",
+    "rank": 8,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://wordpress.org/plugins/uafrica-shipping",
+    "name": "Bob Go smart shipping solution for WooCommerce - WordPress.org",
+    "snippet": "Easily integrate Bob Go with your ecommerce stores, sync with your sales channels and automatically pull orders from your store. Use features like the address ...",
+    "host_name": "wordpress.org",
+    "rank": 9,
+    "date": "",
+    "favicon": ""
+  }
+]

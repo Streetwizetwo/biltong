@@ -1,0 +1,92 @@
+[
+  {
+    "url": "https://api-docs.bob.co.za/bobgo",
+    "name": "Bob Go :: API documentation",
+    "snippet": "Our API facilitates real-time shipping rate calculations, order synchronization, shipment submissions, and tracking event retrievals, thereby enhancing your e- ...\nRates at checkout: Retrieve dynamic, fixed, courier, and formula rates configured within the Bob Go platform to present a variety of shipping options to your ...",
+    "host_name": "api-docs.bob.co.za",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.bobgo.co.za/apps-integrations",
+    "name": "Apps & integrations to connect your store | Bob Go",
+    "snippet": "Designed to grow with your business, the API supports custom process requirements needed to assist high-volume shipping merchants. View developer documentation.",
+    "host_name": "www.bobgo.co.za",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.bobgo.co.za/blog/ten-things-you-might-not-know-about-bob-go",
+    "name": "Ten things you might not know about Bob Go (and which might",
+    "snippet": "Bob Go offers a robust API that automates order processing, shipping rate calculations, and fulfilment actions. ... Shipping smarts: How to calculate costs like a ...\n1. Analyse shipping costs with the shipping analysis report · 2. Set up default order filters · 3. Order courier stationery · 4. Set maximum shipping rates for ...",
+    "host_name": "www.bobgo.co.za",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://en-za.wordpress.org/plugins/uafrica-shipping",
+    "name": "Bob Go smart shipping solution for WooCommerce - WordPress.org",
+    "snippet": "External services. This plugin connects to the Bob Go API to retrieve shipping rates at checkout and order tracking information. Bob Go Rates at Checkout API",
+    "host_name": "en-za.wordpress.org",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://portmoni.com/shipping-rates-bobgo",
+    "name": "How to Get Shipping Rates Automatically at Checkout using Bob Go",
+    "snippet": "In this guide we explain how to integrate your Portmoni online store with Bob Go. This enables getting shipping rates automatically at checkout on your online ...\nIn this guide we show how to get shipping rates automatically at checkout on your online store using Bob Go.",
+    "host_name": "portmoni.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://apps.shopify.com/bobgo/reviews",
+    "name": "Reviews: Bob Go smart shipping solution - Shopify App Store",
+    "snippet": "Automating and streamlining shipping processes for ecommerce businesses in South Africa, saving them valuable time and money.",
+    "host_name": "apps.shopify.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://api-docs.bob.co.za/bobbox",
+    "name": "Bob Box :: API documentation",
+    "snippet": "This API enables couriers and logistics platforms to interact directly with Bob Box infrastructure, from reserving compartments and managing parcel drop-offs to ...",
+    "host_name": "api-docs.bob.co.za",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://apidocs.hibob.com/reference/getting-started-with-bob-api",
+    "name": "Start developing with the API - HiBob API",
+    "snippet": "The Bob API Reference lists the available endpoints and allows you to test endpoints and develop your app efficiently. Learn how to use this website.",
+    "host_name": "apidocs.hibob.com",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://fempreneurs.co.za/wp-content/uploads/2024/07/A-Guide-to-Signing-Up-With-Bobgo.pdf",
+    "name": "[PDF] A GUIDE TO SETTING UP YOUR BOB GO ACCOUNT - Fempreneurs",
+    "snippet": "Introduction. Fempreneurs has teamed up with Bob Go as our courier platform. They have agreements with some of the top couriers in South Africa.\nPlease note the API and Delivery Address fields above are compulsory requirements in order for your store to be published on the Fempreneurs website. Failure to ...",
+    "host_name": "fempreneurs.co.za",
+    "rank": 8,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://help.benimble.co.za/shipping/courier-settings/bobgo-smart-shipping",
+    "name": "BobGo Smart Shipping - BeNimble",
+    "snippet": "BeNimble integrates directly with Bob Go using their official REST API to enable seamless shipping solutions across South Africa. BobGo is a smart shipping ...",
+    "host_name": "help.benimble.co.za",
+    "rank": 9,
+    "date": "",
+    "favicon": ""
+  }
+]
