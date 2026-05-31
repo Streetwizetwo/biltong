@@ -1,0 +1,92 @@
+[
+  {
+    "url": "https://shiplogic.com/api-docs",
+    "name": "API Documentation | Shiplogic",
+    "snippet": "Shiplogic API documentation. Learn how to integrate with our shipping API for quotes, bookings, tracking, and more.",
+    "host_name": "shiplogic.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://support.starshipit.com/articles/90200000000108-how-to-set-up-the-courier-guy",
+    "name": "How to set up The Courier Guy - Starshipit Support Centre",
+    "snippet": "Connect The Courier Guy to Starshipit to create South African domestic labels and show live rates. This guide explains what you need from ...",
+    "host_name": "support.starshipit.com",
+    "rank": 1,
+    "date": "May 25, 2026",
+    "favicon": ""
+  },
+  {
+    "url": "https://en-za.wordpress.org/plugins/the-courier-guy",
+    "name": "The Courier Guy Shipping for WooCommerce - WordPress.org",
+    "snippet": "The plugin will compare the cart's total dimensions against “Flyer”, “Medium” and “Large” parcel sizes to determine the best fit.",
+    "host_name": "en-za.wordpress.org",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://thecourierguy.co.za/wp-content/uploads/2025/08/The-Courier-Guy-Locker-API-docs.pdf",
+    "name": "[PDF] The Courier Guy Locker API docs",
+    "snippet": "When getting rates for a pickup point shipment, use collection_pickup_point_id or delivery_pickup_point_id to specify the locker or kiosk's ...",
+    "host_name": "thecourierguy.co.za",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.aftership.com/carriers/thecourierguy/api",
+    "name": "The Courier Guy API - AfterShip",
+    "snippet": "Integrate seamless The Courier Guy tracking integration with robust RESTful API and webhooks to automate The Courier Guy delivery updates in real-time.",
+    "host_name": "www.aftership.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://api-tcg.co.za",
+    "name": "The Courier Guy Locker Production API Documentation",
+    "snippet": "This section lists all the APIs related to getting rates and creating/generating, retrieving and cancelling shipments. Getting opt-in rates Door to Door (D2D).",
+    "host_name": "api-tcg.co.za",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://documentation.transtream.com/Content/Carriers/Courier%20Guy/CGUYRef.htm",
+    "name": "The Courier Guy Reference - Transtream - Pierbridge",
+    "snippet": "This is a reference topic listing all The Courier Guy carrier functions, services, special services, package types, output types and ...",
+    "host_name": "documentation.transtream.com",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.shiplogic.com/tcg/api-docs",
+    "name": "The Courier Guy | Shiplogic",
+    "snippet": "The Courier Guy API documentation and services.",
+    "host_name": "www.shiplogic.com",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.opencart.com/index.php?route=marketplace/extension/info&extension_id=40249&page=58",
+    "name": "The Courier Guy Shipping Extension - OpenCart",
+    "snippet": "Right now, it submits the dimensions and rates to their Shiplogic API and then returns the results and displays them to the users at ...",
+    "host_name": "www.opencart.com",
+    "rank": 8,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.youtube.com/watch?v=2QZRru_XZqk",
+    "name": "(Old) The Courier Guy plugin - Setting parcel sizes (Essential field)",
+    "snippet": "... Courier Guy plugin, mentioned in our previous video, is parcel size. Adding this will help The Courier Guy calculate accurate shipping costs.",
+    "host_name": "www.youtube.com",
+    "rank": 9,
+    "date": "",
+    "favicon": ""
+  }
+]

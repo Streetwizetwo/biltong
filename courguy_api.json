@@ -1,0 +1,92 @@
+[
+  {
+    "url": "https://thecourierguy.co.za/business-courier-services",
+    "name": "Business Shipping Solutions | The Courier Guy",
+    "snippet": "Woocommerce Integration Guide · Configure your plugin with the API credentials. · Set your shipping rates, zones, and delivery options directly in WooCommerce.",
+    "host_name": "thecourierguy.co.za",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://myecommerce.world/e-commerce-academy/how-to-link-your-ecommerce-store-to-the-courier-guy",
+    "name": "How to link your eCommerce store to The Courier Guy?",
+    "snippet": "Log in to your eCommerce admin panel. · Navigate to Settings → Shipping. · Scroll down and click on “Add shipping method”. · On the opened modal, ...",
+    "host_name": "myecommerce.world",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://api-pudo.co.za",
+    "name": "The Courier Guy Locker Production API Documentation",
+    "snippet": "This section lists all the APIs related to getting rates and creating/generating, retrieving and cancelling shipments. Getting opt-in rates Door to Door (D2D).",
+    "host_name": "api-pudo.co.za",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://thecourierguy.zendesk.com/hc/en-us/articles/32566633756817-Integration-WordPress-Shopify-API-documentation",
+    "name": "https://thecourierguy.zendesk.com/hc/en-us/article",
+    "snippet": "No information is available for this page. · Learn why",
+    "host_name": "thecourierguy.zendesk.com",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://thecourierguy.co.za/api-docs",
+    "name": "api-docs The Courier Guy",
+    "snippet": "Integrations · Alerts. Login. Direct · Locker · Kiosk · Point. Shipping. Ship Now · Get a Quote · Business Services · Register Now. Tracking. Track my Parcel.",
+    "host_name": "thecourierguy.co.za",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://en-za.wordpress.org/plugins/the-courier-guy",
+    "name": "The Courier Guy Shipping for WooCommerce - WordPress.org",
+    "snippet": "The plugin will compare the cart's total dimensions against “Flyer”, “Medium” and “Large” parcel sizes to determine the best fit.",
+    "host_name": "en-za.wordpress.org",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://sitemile.com/integrating-pargo-vs-the-courier-guy-which-is-better-for-south-african-e-commerce",
+    "name": "Integrating Pargo vs. The Courier Guy: Which is better for South",
+    "snippet": "Its WooCommerce guide pushes sandbox testing, API credential setup, shipping rates, zones, and delivery options. Its WordPress PDF says you ...",
+    "host_name": "sitemile.com",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.aftership.com/carriers/thecourierguy/api",
+    "name": "The Courier Guy API - AfterShip",
+    "snippet": "Integrate seamless The Courier Guy tracking integration with robust RESTful API and webhooks to automate The Courier Guy delivery updates in real-time.",
+    "host_name": "www.aftership.com",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.clickpost.ai/carrier-integration/thecourierguy",
+    "name": "The Courier Guy API Integration & Tracking with ClickPost",
+    "snippet": "Streamline your logistics with The Courier Guy API integration and real-time tracking through ClickPost. Enhance delivery efficiency and improve customer ...",
+    "host_name": "www.clickpost.ai",
+    "rank": 8,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.trackingmore.com/thecourierguy-tracking-api",
+    "name": "The Courier Guy Tracking API and integration - TrackingMore",
+    "snippet": "Integrate the The Courier Guy Tracking API with TrackingMore. Access API documentation, code examples, SDKs, and resources via GitHub or Postman.",
+    "host_name": "www.trackingmore.com",
+    "rank": 9,
+    "date": "",
+    "favicon": ""
+  }
+]

@@ -1,0 +1,92 @@
+[
+  {
+    "url": "https://shiplogic.com/api-docs",
+    "name": "API Documentation | Shiplogic",
+    "snippet": "Shiplogic API documentation. Learn how to integrate with our shipping API for quotes, bookings, tracking, and more.",
+    "host_name": "shiplogic.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://shiplogic.com",
+    "name": "Shiplogic | Efficiency delivered",
+    "snippet": "Create and manage shipments · Top up accounts via multiple payment methods · Quick quotes for informed decisions · Real-time parcel tracking · Full billing history ...\nCreate and manage shipments · Top up accounts via multiple payment methods · Quick quotes for informed decisions · Real-time parcel tracking · Full billing history.",
+    "host_name": "shiplogic.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.shiplogic.com/tcg/api-docs",
+    "name": "The Courier Guy | Shiplogic",
+    "snippet": "The Courier Guy API documentation and services.\nModern shipping software that revolutionises parcel delivery. Automate operations, track shipments, and scale your courier business.",
+    "host_name": "www.shiplogic.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://wordpress.org/plugins/the-courier-guy",
+    "name": "The Courier Guy Shipping for WooCommerce - WordPress.org",
+    "snippet": "The Courier Guy extension for WooCommerce enables you to ship products using The Courier Guy. Why choose The Courier Guy? The Courier Guy has built a strong ...\nThe plugin now skips the ShipLogic API call if required shipping rates are missing. ... * Update “Send Order to Courier Guy” and “Print Waybill” for recent ...\n* Add “Rates for free Shipping” feature. * Update “Send Order to Courier Guy” and “Print Waybill” for recent ShipLogic API changes. = 5.0.3 – January 1 ...",
+    "host_name": "wordpress.org",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://thecourierguy.co.za/wp-content/uploads/2025/08/The-Courier-Guy-Locker-API-docs.pdf",
+    "name": "[PDF] The Courier Guy Locker API docs",
+    "snippet": "Endpoint: https://api.shiplogic.com/rates. Method: GET. When getting rates for a pickup point shipment, use collection_pickup_point_id or.\ncollection_address or delivery_address with collection_pickup_point_id or delivery_pickup_point_id exactly as with the rates request. Note that the collection_pickup_point_provider and delivery_pickup_point_provider fields with a value of tcg-locker are still required.",
+    "host_name": "thecourierguy.co.za",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.shippit.com/products/shipping-api",
+    "name": "Enterprise Shipping API | Shippit",
+    "snippet": "Meet your unique needs with the Shippit APIs. Our APIs offer full shipping functionality and access to competitive carrier rates. Integrate seamlessly with your ...\nThe Quote API returns a quote given a destination, location, and parcel attributes. Documentation. Order API. The Order API submits an order to Shippit.",
+    "host_name": "www.shippit.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.aftership.com/carriers/thecourierguy/api",
+    "name": "The Courier Guy API - AfterShip",
+    "snippet": "Integrate seamless The Courier Guy tracking integration with robust RESTful API and webhooks to automate The Courier Guy delivery updates in real-time.",
+    "host_name": "www.aftership.com",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.shiplogic.com/api-docs",
+    "name": "API Documentation | Shiplogic",
+    "snippet": "Shiplogic API documentation. Learn how to integrate with our shipping API for quotes, bookings, tracking, and more.",
+    "host_name": "www.shiplogic.com",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://api-pudo.co.za",
+    "name": "API Documentation",
+    "snippet": "The Courier Guy Locker Production API Documentation Welcome to The Courier Guy Locker API! Our API is designed to provide you with robust and flexible tools to integrate The Courier Guy Locker’s capabilities into your applications, ensuring a smooth and reliable experience for your users.",
+    "host_name": "api-pudo.co.za",
+    "rank": 8,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/sonnenglas/shiplogic-php-sdk/blob/master/README.md",
+    "name": "shiplogic-php-sdk/README.md at master · sonnenglas/shiplogic",
+    "snippet": "Shiplogic PHP SDK Unofficial PHP SDK for the Shiplogic shipping platform — the API behind The Courier Guy and other South African carrier brands.",
+    "host_name": "github.com",
+    "rank": 9,
+    "date": "",
+    "favicon": ""
+  }
+]
