@@ -44,6 +44,7 @@ import {
 import {
   useCartStore,
   type DeliveryMode,
+  type ShippingRate,
 } from "@/lib/store";
 import { useSettingsStore } from "@/lib/settings-store";
 import {
@@ -770,7 +771,7 @@ function HowToOrderSection() {
     { icon: Package, title: "Pick your Biltong", desc: "Choose size & flavor", num: "1" },
     { icon: ShoppingCart, title: "Add to Cart", desc: "Adjust quantity & mix", num: "2" },
     { icon: CreditCard, title: "Pay with iKhokha", desc: "Secure online payment", num: "3" },
-    { icon: Truck, title: "Collect or Delivery", desc: `R${deliveryFee} delivery (Stanger only)`, num: "4" },
+    { icon: Truck, title: "Collect or Delivery", desc: `R${deliveryFee} Stanger · Nationwide courier`, num: "4" },
   ];
 
   return (
@@ -846,8 +847,17 @@ function CartDrawer({ open, onClose, onCheckout }: { open: boolean; onClose: () 
   const deliveryFee = useCartStore((s) => s.deliveryFee());
   const total = useCartStore((s) => s.total());
   const settingsDeliveryFee = useSettingsStore((s) => s.deliveryFee);
+  const isStangerDelivery = useCartStore((s) => s.isStangerDelivery);
+  const setIsStangerDelivery = useCartStore((s) => s.setIsStangerDelivery);
+  const availableRates = useCartStore((s) => s.availableRates);
+  const setAvailableRates = useCartStore((s) => s.setAvailableRates);
+  const selectedRate = useCartStore((s) => s.selectedRate);
+  const setSelectedRate = useCartStore((s) => s.setSelectedRate);
+  const ratesLoading = useCartStore((s) => s.ratesLoading);
+  const setRatesLoading = useCartStore((s) => s.setRatesLoading);
   const [addressQuery, setAddressQuery] = useState(deliveryAddress);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [ratesFetched, setRatesFetched] = useState(false);
   const dragY = useMotionValue(0);
   const dragControls = useDragControls();
 
@@ -857,6 +867,83 @@ function CartDrawer({ open, onClose, onCheckout }: { open: boolean; onClose: () 
   );
 
   useEffect(() => { setAddressQuery(deliveryAddress); }, [deliveryAddress]);
+
+  // Fetch shipping rates when delivery address changes
+  const fetchRates = useCallback(async (address: string) => {
+    if (!address || address.trim().length < 3) return;
+
+    setRatesLoading(true);
+    setRatesFetched(false);
+
+    try {
+      const res = await fetch("/api/shipping/rates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          address,
+          items: items.map((i) => ({ name: i.name, qty: i.qty })),
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+
+        if (data.isStanger) {
+          setIsStangerDelivery(true);
+          setAvailableRates(data.rates);
+          setSelectedRate(data.rates[0] || null);
+        } else {
+          setIsStangerDelivery(false);
+          setAvailableRates(data.rates);
+          // Auto-select cheapest rate
+          const sorted = [...data.rates].sort((a: ShippingRate, b: ShippingRate) => a.total_price - b.total_price);
+          setSelectedRate(sorted[0] || null);
+        }
+        setRatesFetched(true);
+      }
+    } catch (err) {
+      console.error("Failed to fetch shipping rates:", err);
+    } finally {
+      setRatesLoading(false);
+    }
+  }, [items, setIsStangerDelivery, setAvailableRates, setSelectedRate, setRatesLoading]);
+
+  // Debounced rate fetching
+  useEffect(() => {
+    if (deliveryMode !== "deliver" || !addressQuery.trim()) return;
+
+    const timer = setTimeout(() => {
+      const isStanger = addressQuery.toLowerCase().includes("stanger") ||
+        addressQuery.toLowerCase().includes("kwadukuza") ||
+        addressQuery.toLowerCase().includes("kwa dukuza");
+
+      if (isStanger) {
+        setIsStangerDelivery(true);
+        setSelectedRate({
+          service_name: "Local Delivery (Stanger)",
+          service_code: "STANGER_LOCAL",
+          total_price: settingsDeliveryFee * 100,
+          estimated_delivery_days: 1,
+          courier_name: "Biltong & Bytes",
+          courier_code: "local",
+        });
+        setAvailableRates([{
+          service_name: "Local Delivery (Stanger)",
+          service_code: "STANGER_LOCAL",
+          total_price: settingsDeliveryFee * 100,
+          estimated_delivery_days: 1,
+          courier_name: "Biltong & Bytes",
+          courier_code: "local",
+        }]);
+        setRatesFetched(true);
+      } else if (addressQuery.trim().length >= 5) {
+        setDeliveryAddress(addressQuery);
+        fetchRates(addressQuery);
+      }
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [addressQuery, deliveryMode, settingsDeliveryFee, fetchRates, setIsStangerDelivery, setSelectedRate, setAvailableRates, setDeliveryAddress]);
 
   return (
     <AnimatePresence>
@@ -932,8 +1019,8 @@ function CartDrawer({ open, onClose, onCheckout }: { open: boolean; onClose: () 
             {/* Delivery Options */}
             <div className="px-5 py-3 border-t border-white/10">
               <div className="flex gap-2 mb-2">
-                {[{ mode: "collect" as DeliveryMode, icon: MapPin, label: "COLLECT", sub: "Free" },
-                  { mode: "deliver" as DeliveryMode, icon: Truck, label: "DELIVER", sub: `R${settingsDeliveryFee}` }].map(({ mode, icon: Icon, label, sub }) => (
+                {[{ mode: "collect" as DeliveryMode, icon: MapPin, label: "COLLECT", sub: "Free · Stanger" },
+                  { mode: "deliver" as DeliveryMode, icon: Truck, label: "DELIVER", sub: `R${settingsDeliveryFee} Stanger · Nationwide` }].map(({ mode, icon: Icon, label, sub }) => (
                   <motion.button key={mode} whileTap={{ scale: 0.97 }}
                     onClick={() => setDeliveryMode(mode)}
                     className={`flex-1 py-2.5 text-center cursor-pointer rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
@@ -949,9 +1036,9 @@ function CartDrawer({ open, onClose, onCheckout }: { open: boolean; onClose: () 
                     exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
                     <div className="relative">
                       <input type="text" value={addressQuery}
-                        onChange={(e) => { setAddressQuery(e.target.value); setShowSuggestions(true); }}
+                        onChange={(e) => { setAddressQuery(e.target.value); setShowSuggestions(true); setRatesFetched(false); }}
                         onFocus={() => setShowSuggestions(true)}
-                        placeholder="Start typing your Stanger address..."
+                        placeholder="Enter your full address (e.g. 12 Main Rd, Durban)"
                         className="w-full bg-[#1E0A02] text-white border border-[#E5B83C] p-2.5 mt-2 rounded-lg text-sm placeholder:text-[#FEF3DF]/25 focus:outline-none focus:border-[#E5B83C]" />
                       {showSuggestions && filteredAddresses.length > 0 && (
                         <div className="absolute top-full left-0 right-0 bg-[#2A1508] rounded-lg mt-1 max-h-[150px] overflow-y-auto z-10 shadow-xl">
@@ -964,7 +1051,72 @@ function CartDrawer({ open, onClose, onCheckout }: { open: boolean; onClose: () 
                         </div>
                       )}
                     </div>
-                    <p className="text-[0.6rem] text-[#FEF3DF]/40 mt-1.5">Stanger delivery only · R{settingsDeliveryFee} fee</p>
+                    {/* Loading indicator */}
+                    {ratesLoading && (
+                      <div className="flex items-center gap-2 mt-2 text-[#E5B83C]/70 text-xs">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Getting shipping rates...</span>
+                      </div>
+                    )}
+
+                    {/* Stanger delivery detected */}
+                    {isStangerDelivery && ratesFetched && !ratesLoading && (
+                      <div className="mt-2 bg-[#2E7D32]/15 border border-[#2E7D32]/30 rounded-lg p-2.5">
+                        <p className="text-[#2E7D32] text-xs font-semibold flex items-center gap-1.5">
+                          <MapPin className="w-3.5 h-3.5" /> Stanger Local Delivery — R{settingsDeliveryFee}
+                        </p>
+                        <p className="text-[#FEF3DF]/40 text-[0.6rem] mt-0.5">Delivery within Stanger town, next day</p>
+                      </div>
+                    )}
+
+                    {/* Courier rates for non-Stanger */}
+                    {!isStangerDelivery && availableRates.length > 0 && ratesFetched && !ratesLoading && (
+                      <div className="mt-2 space-y-1.5">
+                        <p className="text-[0.6rem] text-[#FEF3DF]/50 font-semibold tracking-wider uppercase">Select shipping method:</p>
+                        {availableRates.sort((a, b) => a.total_price - b.total_price).map((rate) => {
+                          const price = Math.round(rate.total_price / 100);
+                          const isSelected = selectedRate?.service_code === rate.service_code;
+                          return (
+                            <motion.button key={rate.service_code} whileTap={{ scale: 0.98 }}
+                              onClick={() => setSelectedRate(rate)}
+                              className={`w-full text-left p-2.5 rounded-lg cursor-pointer transition-all text-xs border ${
+                                isSelected
+                                  ? "bg-[#E5B83C]/15 border-[#E5B83C] text-[#FEF3DF]"
+                                  : "bg-white/3 border-white/10 text-[#FEF3DF]/70 hover:border-[#E5B83C]/40"
+                              }`}>
+                              <div className="flex justify-between items-center">
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                                    isSelected ? "border-[#E5B83C]" : "border-white/20"
+                                  }`}>
+                                    {isSelected && <div className="w-2 h-2 rounded-full bg-[#E5B83C]" />}
+                                  </div>
+                                  <div>
+                                    <p className="font-semibold">{rate.service_name}</p>
+                                    <p className="text-[0.6rem] text-[#FEF3DF]/40">{rate.courier_name} · {rate.estimated_delivery_days} business day{rate.estimated_delivery_days !== 1 ? "s" : ""}</p>
+                                  </div>
+                                </div>
+                                <span className="font-['Bebas_Neue'] text-lg text-[#F8E5B0]">R{price}</span>
+                              </div>
+                            </motion.button>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* No rates found */}
+                    {!isStangerDelivery && ratesFetched && availableRates.length === 0 && !ratesLoading && (
+                      <div className="mt-2 bg-[#B23A1A]/15 border border-[#B23A1A]/30 rounded-lg p-2.5">
+                        <p className="text-[#B23A1A] text-xs">No shipping rates found. Please check your address or contact us on WhatsApp.</p>
+                      </div>
+                    )}
+
+                    <p className="text-[0.6rem] text-[#FEF3DF]/40 mt-1.5">
+                      {isStangerDelivery
+                        ? "Stanger delivery · R" + settingsDeliveryFee + " fee"
+                        : "Nationwide courier via The Courier Guy · Rates above"
+                      }
+                    </p>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -977,7 +1129,10 @@ function CartDrawer({ open, onClose, onCheckout }: { open: boolean; onClose: () 
               </div>
               {deliveryFee > 0 && (
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-xs text-[#FEF3DF]/60">Delivery:</span><span className="text-xs">R{deliveryFee}</span>
+                  <span className="text-xs text-[#FEF3DF]/60">
+                    {selectedRate ? selectedRate.service_name : "Delivery"}:
+                  </span>
+                  <span className="text-xs">R{deliveryFee}</span>
                 </div>
               )}
               <div className="flex justify-between items-center font-['Bebas_Neue'] text-2xl">
@@ -1088,6 +1243,8 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
   const subtotal = useCartStore((s) => s.subtotal());
   const deliveryFee = useCartStore((s) => s.deliveryFee());
   const clearCart = useCartStore((s) => s.clearCart);
+  const isStangerDelivery = useCartStore((s) => s.isStangerDelivery);
+  const selectedRate = useCartStore((s) => s.selectedRate);
 
   const [name, setName] = useState(customerName);
   const [phone, setPhone] = useState(customerPhone);
@@ -1148,8 +1305,9 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
     if (!name.trim()) { toast.error("Please enter your name"); return false; }
     if (!phone.trim()) { toast.error("Please enter your phone number"); return false; }
     if (deliveryMode === "deliver" && !deliveryAddress.trim()) { toast.error("Please enter your delivery address"); return false; }
+    if (deliveryMode === "deliver" && !isStangerDelivery && !selectedRate) { toast.error("Please select a shipping method"); return false; }
     return true;
-  }, [name, phone, deliveryMode, deliveryAddress]);
+  }, [name, phone, deliveryMode, deliveryAddress, isStangerDelivery, selectedRate]);
 
   const handleWhatsAppCash = async () => {
     if (!validate()) return;
@@ -1323,7 +1481,7 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
                     ))}
                     {deliveryFee > 0 && (
                       <div className="flex justify-between text-xs py-1 border-t border-white/10 mt-1">
-                        <span className="text-[#FEF3DF]/60">Delivery</span><span>R{deliveryFee}</span>
+                        <span className="text-[#FEF3DF]/60">{selectedRate?.service_name || "Delivery"}</span><span>R{deliveryFee}</span>
                       </div>
                     )}
                   </div>
@@ -1447,18 +1605,21 @@ function Footer() {
             </div>
             <div className="mt-1.5 flex items-center justify-center md:justify-start gap-1.5 text-[#FEF3DF]/40 text-xs">
               <Truck className="w-3.5 h-3.5" />
-              <span>Delivery: Stanger only · R{deliveryFee}</span>
+              <span>R{deliveryFee} Stanger · Nationwide courier available</span>
             </div>
           </div>
 
           {/* Info Column */}
           <div className="text-center md:text-left">
-            <p className="text-[0.6rem] tracking-[0.25em] uppercase text-[#E5B83C]/60 mb-3">Delivery Zone</p>
+            <p className="text-[0.6rem] tracking-[0.25em] uppercase text-[#E5B83C]/60 mb-3">Delivery Options</p>
             <div className="bg-[#0E0500]/60 rounded-xl p-3 border border-[#E5B83C]/10">
               <p className="text-[#FEF3DF]/50 text-xs leading-relaxed">
-                We deliver within Stanger town only. No outlying areas.
+                <span className="text-[#2E7D32] font-semibold">Stanger:</span> R{deliveryFee} flat fee, next-day delivery
               </p>
-              <p className="text-[#FEF3DF]/30 text-[0.6rem] mt-2">Collect for free in Stanger town</p>
+              <p className="text-[#FEF3DF]/50 text-xs leading-relaxed mt-1">
+                <span className="text-[#E5B83C] font-semibold">Nationwide:</span> Live courier rates via The Courier Guy
+              </p>
+              <p className="text-[#FEF3DF]/30 text-[0.6rem] mt-2">Free collection in Stanger town</p>
             </div>
           </div>
         </div>

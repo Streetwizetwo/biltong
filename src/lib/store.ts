@@ -19,6 +19,16 @@ export type DeliveryMode = "collect" | "deliver";
 export type PaymentMethod = "ikhokha" | "cash";
 export type OrderStatus = "new" | "payment_initiated" | "paid" | "confirmed";
 
+// Shipping rate from Courier Guy API
+export interface ShippingRate {
+  service_name: string;
+  service_code: string;
+  total_price: number;       // in cents
+  estimated_delivery_days: number;
+  courier_name: string;
+  courier_code: string;
+}
+
 interface CartStore {
   items: CartItem[];
   deliveryMode: DeliveryMode;
@@ -28,6 +38,12 @@ interface CartStore {
   customerEmail: string;
   currentOrderId: string | null;
   pendingIkhokhaOrder: Record<string, unknown> | null;
+
+  // Shipping zone awareness
+  isStangerDelivery: boolean;
+  availableRates: ShippingRate[];
+  selectedRate: ShippingRate | null;
+  ratesLoading: boolean;
 
   // Actions
   addItem: (item: Omit<CartItem, "id">) => void;
@@ -41,6 +57,10 @@ interface CartStore {
   setCustomerInfo: (name: string, phone: string, email: string) => void;
   setCurrentOrderId: (id: string | null) => void;
   setPendingIkhokhaOrder: (order: Record<string, unknown> | null) => void;
+  setIsStangerDelivery: (isStanger: boolean) => void;
+  setAvailableRates: (rates: ShippingRate[]) => void;
+  setSelectedRate: (rate: ShippingRate | null) => void;
+  setRatesLoading: (loading: boolean) => void;
 
   // Computed
   totalItems: () => number;
@@ -113,6 +133,12 @@ export const useCartStore = create<CartStore>()(
       currentOrderId: null,
       pendingIkhokhaOrder: null,
 
+      // Shipping zone state
+      isStangerDelivery: true,
+      availableRates: [],
+      selectedRate: null,
+      ratesLoading: false,
+
       addItem: (item) => {
         const id = generateCartItemId(item.name, item.flavor);
         const existing = get().items.find((i) => i.id === id);
@@ -156,6 +182,9 @@ export const useCartStore = create<CartStore>()(
           currentOrderId: null,
           pendingIkhokhaOrder: null,
           deliveryAddress: "",
+          availableRates: [],
+          selectedRate: null,
+          isStangerDelivery: true,
         }),
 
       setDeliveryMode: (mode) => set({ deliveryMode: mode }),
@@ -170,9 +199,28 @@ export const useCartStore = create<CartStore>()(
       setPendingIkhokhaOrder: (order) =>
         set({ pendingIkhokhaOrder: order }),
 
+      setIsStangerDelivery: (isStanger) => set({ isStangerDelivery: isStanger }),
+      setAvailableRates: (rates) => set({ availableRates: rates }),
+      setSelectedRate: (rate) => set({ selectedRate: rate }),
+      setRatesLoading: (loading) => set({ ratesLoading: loading }),
+
       totalItems: () => get().items.reduce((s, i) => s + i.qty, 0),
       subtotal: () => get().items.reduce((s, i) => s + i.price * i.qty, 0),
-      deliveryFee: () => (get().deliveryMode === "deliver" ? (useSettingsStore.getState()?.deliveryFee || 40) : 0),
+
+      deliveryFee: () => {
+        if (get().deliveryMode !== "deliver") return 0;
+        // If Stanger, use the settings delivery fee
+        if (get().isStangerDelivery) {
+          return useSettingsStore.getState()?.deliveryFee || 40;
+        }
+        // If national, use the selected shipping rate price
+        const rate = get().selectedRate;
+        if (rate) {
+          return Math.round(rate.total_price / 100); // cents to rands
+        }
+        return 0;
+      },
+
       total: () => get().subtotal() + get().deliveryFee(),
     }),
     {
@@ -187,6 +235,8 @@ export const useCartStore = create<CartStore>()(
         customerEmail: state.customerEmail,
         currentOrderId: state.currentOrderId,
         pendingIkhokhaOrder: state.pendingIkhokhaOrder,
+        isStangerDelivery: state.isStangerDelivery,
+        selectedRate: state.selectedRate,
       }),
     }
   )

@@ -32,7 +32,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline' fonts.googleapis.com",
               "font-src 'self' fonts.gstatic.com",
               "img-src 'self' data: blob: https://fltjcycovhslqupmalfj.supabase.co",
-              "connect-src 'self' https://fltjcycovhslqupmalfj.supabase.co https://api.ikhokha.com",
+              "connect-src 'self' https://fltjcycovhslqupmalfj.supabase.co https://api.ikhokha.com https://api.shiplogic.com https://sandbox.shiplogic.com",
               "form-action 'self'",
               "frame-ancestors 'none'",
               "base-uri 'self'",
