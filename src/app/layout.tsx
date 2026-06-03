@@ -52,7 +52,7 @@ export default function RootLayout({
         <meta name="theme-color" content="#0A0301" />
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
-      <body className="antialiased bg-[#0A0301] text-[#FEF3DF]">
+      <body className="antialiased bg-[#0A0301] text-[#FEF3DF] overflow-x-hidden">
         {children}
         <Toaster />
       </body>

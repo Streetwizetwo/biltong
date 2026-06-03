@@ -103,7 +103,7 @@ function SectionDivider() {
       whileInView={{ opacity: 1 }}
       viewport={{ once: true, margin: "-50px" }}
       transition={{ duration: 0.8 }}
-      className="relative w-full h-12 md:h-16 flex items-center justify-center z-20 -my-2"
+      className="relative w-full max-w-[1400px] mx-auto h-12 md:h-16 flex items-center justify-center z-20 -my-2"
     >
       <svg
         viewBox="0 0 1200 60"
@@ -537,7 +537,7 @@ function PhotoStrip() {
   return (
     <>
       {/* Desktop grid */}
-      <div className="hidden md:grid grid-cols-4 h-[45vh] relative z-10">
+      <div className="hidden md:grid grid-cols-4 h-[45vh] max-w-[1400px] mx-auto relative z-10">
         {images.map((img, i) => (
           <motion.div key={i} initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}
             transition={{ delay: i * 0.1 }} className="overflow-hidden">
@@ -1442,8 +1442,8 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
             className="fixed inset-0 z-[3001] overflow-y-auto"
           >
-            <div key={resetKey} className="min-h-full flex items-start justify-center">
-              <div className="w-full max-w-[540px] min-h-screen bg-gradient-to-br from-[#1A0A04] to-[#0E0500] border-x border-[#E5B83C]/20 px-5 py-6 md:px-8 md:py-8">
+            <div key={resetKey} className="min-h-full flex items-start md:items-center justify-center py-4 md:py-8">
+              <div className="w-full max-w-[540px] bg-gradient-to-br from-[#1A0A04] to-[#0E0500] border border-[#E5B83C]/20 rounded-2xl shadow-2xl shadow-black/50 px-5 py-6 md:px-8 md:py-8">
 
                 {/* Close button */}
                 <div className="flex justify-between items-center mb-4">
