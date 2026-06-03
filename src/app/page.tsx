@@ -40,6 +40,7 @@ import {
   Sun,
   Moon,
   CheckCircle2,
+  Facebook,
 } from "lucide-react";
 import {
   useCartStore,
@@ -1786,14 +1787,24 @@ function Footer() {
           {/* Contact Column */}
           <div className="text-center md:text-left">
             <p className="text-[0.6rem] tracking-[0.25em] uppercase text-[#E5B83C]/60 mb-3">Get In Touch</p>
-            <a
-              href={`https://wa.me/${WHATSAPP_NUMBER}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 bg-[#25D366]/15 border border-[#25D366]/30 text-[#25D366] px-4 py-2.5 rounded-xl text-xs font-bold tracking-wider uppercase no-underline transition-all hover:bg-[#25D366]/25"
-            >
-              <MessageCircle className="w-4 h-4" /> WhatsApp Us
-            </a>
+            <div className="mt-3 flex items-center justify-center md:justify-start gap-2 flex-wrap">
+              <a
+                href={`https://wa.me/${WHATSAPP_NUMBER}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 bg-[#25D366]/15 border border-[#25D366]/30 text-[#25D366] px-4 py-2.5 rounded-xl text-xs font-bold tracking-wider uppercase no-underline transition-all hover:bg-[#25D366]/25"
+              >
+                <MessageCircle className="w-4 h-4" /> WhatsApp Us
+              </a>
+              <a
+                href="https://www.facebook.com/profile.php?id=61590746632536"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 bg-[#1877F2]/15 border border-[#1877F2]/30 text-[#1877F2] px-4 py-2.5 rounded-xl text-xs font-bold tracking-wider uppercase no-underline transition-all hover:bg-[#1877F2]/25"
+              >
+                <Facebook className="w-4 h-4" /> Facebook
+              </a>
+            </div>
             <div className="mt-3 flex items-center justify-center md:justify-start gap-1.5 text-[#FEF3DF]/40 text-xs">
               <MapPin className="w-3.5 h-3.5" />
               <span>Stanger, KwaZulu-Natal</span>
