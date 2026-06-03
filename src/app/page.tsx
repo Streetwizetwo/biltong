@@ -1178,16 +1178,13 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
       }]);
       setRatesFetched(true);
     } else if (address.trim().length >= 5 && items.length > 0) {
-      // For non-Stanger addresses, fetch rates after a short delay
-      // If we have structured data from Google Maps, use it immediately
+      // For non-Stanger addresses, fetch rates
       if (structured) {
+        // Structured data from Geoapify — fetch rates immediately
         fetchRates(address, structured);
       } else {
-        // Debounce for manual typing
-        const timer = setTimeout(() => {
-          fetchRates(address);
-        }, 800);
-        return () => clearTimeout(timer);
+        // Manual typing — fetch rates directly (debouncing handled by the useEffect below)
+        fetchRates(address);
       }
     }
   }, [items.length, settingsDeliveryFee, fetchRates, setIsStangerDelivery, setSelectedRate, setAvailableRates, setDeliveryAddress, setStructuredAddress]);
@@ -1443,7 +1440,7 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
             className="fixed inset-0 z-[3001] overflow-y-auto"
           >
             <div key={resetKey} className="min-h-full flex items-start md:items-center justify-center py-4 md:py-8">
-              <div className="w-full max-w-[540px] bg-gradient-to-br from-[#1A0A04] to-[#0E0500] border border-[#E5B83C]/20 rounded-2xl shadow-2xl shadow-black/50 px-5 py-6 md:px-8 md:py-8">
+              <div className="w-full max-w-[540px] bg-gradient-to-br from-[#1A0A04] to-[#0E0500] border border-[#E5B83C]/20 rounded-2xl shadow-2xl shadow-black/50 px-5 py-6 md:px-8 md:py-8 relative overflow-visible">
 
                 {/* Close button */}
                 <div className="flex justify-between items-center mb-4">
