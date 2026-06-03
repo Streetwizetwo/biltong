@@ -444,6 +444,7 @@ function OrderRow({
 // ============================================
 function SettingsPanel() {
   const [deliveryFeeInput, setDeliveryFeeInput] = useState("40");
+  const [nationwideFeeInput, setNationwideFeeInput] = useState("150");
   const [productPriceInputs, setProductPriceInputs] = useState<Record<string, string>>({
     "0": "35", "1": "100", "2": "300", "3": "550",
   });
@@ -456,6 +457,7 @@ function SettingsPanel() {
       if (res.ok) {
         const data = await res.json();
         setDeliveryFeeInput(String(data.deliveryFee ?? 40));
+        setNationwideFeeInput(String(data.nationwideDeliveryFee ?? 150));
         const prices = data.productPrices ?? { "0": 35, "1": 100, "2": 300, "3": 550 };
         setProductPriceInputs(Object.fromEntries(Object.entries(prices).map(([k, v]) => [k, String(v)])));
       }
@@ -474,6 +476,7 @@ function SettingsPanel() {
     setSaving(true);
     try {
       const deliveryFee = parseInt(deliveryFeeInput, 10) || 0;
+      const nationwideDeliveryFee = parseInt(nationwideFeeInput, 10) || 0;
       const productPrices: Record<string, number> = {};
       for (const [id, val] of Object.entries(productPriceInputs)) {
         productPrices[id] = parseInt(val, 10) || 0;
@@ -483,7 +486,7 @@ function SettingsPanel() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ deliveryFee, productPrices }),
+        body: JSON.stringify({ deliveryFee, nationwideDeliveryFee, productPrices }),
       });
 
       if (res.ok) {
@@ -524,22 +527,41 @@ function SettingsPanel() {
             <Truck className="w-5 h-5 text-[#E5B83C]" />
           </div>
           <div>
-            <h3 className="font-['Cormorant_Garamond'] text-lg text-[#FEF3DF]">Delivery Fee</h3>
-            <p className="text-[0.6rem] text-[#FEF3DF]/40 tracking-wider uppercase">Stanger delivery area</p>
+            <h3 className="font-['Cormorant_Garamond'] text-lg text-[#FEF3DF]">Delivery Fees</h3>
+            <p className="text-[0.6rem] text-[#FEF3DF]/40 tracking-wider uppercase">Set delivery rates</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-[#FEF3DF]/60 text-sm font-bold">R</span>
-          <input
-            type="text"
-            inputMode="numeric"
-            value={deliveryFeeInput}
-            onChange={(e) => {
-              const val = e.target.value;
-              if (val === "" || /^\d+$/.test(val)) setDeliveryFeeInput(val);
-            }}
-            className="flex-1 bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-3 text-[#FEF3DF] text-lg font-['Bebas_Neue'] tracking-wider focus:outline-none focus:border-[#E5B83C] transition-all"
-          />
+        <div className="space-y-3">
+          {/* Stanger Fee */}
+          <div className="flex items-center gap-3">
+            <span className="text-[#FEF3DF]/60 text-xs font-bold min-w-[80px]">Stanger</span>
+            <span className="text-[#FEF3DF]/60 text-sm font-bold">R</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={deliveryFeeInput}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === "" || /^\d+$/.test(val)) setDeliveryFeeInput(val);
+              }}
+              className="flex-1 bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-3 text-[#FEF3DF] text-lg font-['Bebas_Neue'] tracking-wider focus:outline-none focus:border-[#E5B83C] transition-all"
+            />
+          </div>
+          {/* Nationwide Fee */}
+          <div className="flex items-center gap-3">
+            <span className="text-[#FEF3DF]/60 text-xs font-bold min-w-[80px]">Nationwide</span>
+            <span className="text-[#FEF3DF]/60 text-sm font-bold">R</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={nationwideFeeInput}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === "" || /^\d+$/.test(val)) setNationwideFeeInput(val);
+              }}
+              className="flex-1 bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-3 text-[#FEF3DF] text-lg font-['Bebas_Neue'] tracking-wider focus:outline-none focus:border-[#E5B83C] transition-all"
+            />
+          </div>
         </div>
       </div>
 

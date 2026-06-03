@@ -34,14 +34,25 @@ export async function GET() {
       // No settings row yet — return defaults
       return NextResponse.json({
         deliveryFee: 40,
+        nationwideDeliveryFee: 150,
         productPrices: { "0": 35, "1": 100, "2": 300, "3": 550 },
       });
     }
 
     const row = data[0];
+    // Extract nationwide fee from product_prices JSON (stored alongside prices)
+    const pp = row.product_prices || {};
+    const nationwideDeliveryFee = pp.nationwide_delivery_fee ?? 150;
+    // Clean product prices (remove the nationwide_fee key so it doesn't leak into product pricing)
+    const cleanPrices: Record<string, number> = {};
+    for (const [k, v] of Object.entries(pp)) {
+      if (k !== "nationwide_delivery_fee") cleanPrices[k] = v as number;
+    }
+
     return NextResponse.json({
       deliveryFee: row.delivery_fee,
-      productPrices: row.product_prices,
+      nationwideDeliveryFee,
+      productPrices: cleanPrices,
     });
   } catch (error) {
     console.error("Settings API error:", error);
@@ -61,7 +72,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { deliveryFee, productPrices } = body;
+    const { deliveryFee, nationwideDeliveryFee, productPrices } = body;
 
     if (typeof deliveryFee !== "number" || !productPrices || typeof productPrices !== "object") {
       return NextResponse.json(
@@ -69,6 +80,12 @@ export async function PUT(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Merge nationwide fee into product_prices JSON for Supabase storage
+    const mergedProductPrices = {
+      ...productPrices,
+      nationwide_delivery_fee: typeof nationwideDeliveryFee === "number" ? nationwideDeliveryFee : 150,
+    };
 
     const response = await fetch(
       `${SUPABASE_URL}/rest/v1/settings?id=eq.1`,
@@ -82,7 +99,7 @@ export async function PUT(request: NextRequest) {
         },
         body: JSON.stringify({
           delivery_fee: deliveryFee,
-          product_prices: productPrices,
+          product_prices: mergedProductPrices,
           updated_at: new Date().toISOString(),
         }),
       }

@@ -13,14 +13,16 @@ const DEFAULT_PRICES: Record<string, number> = {
 };
 
 const DEFAULT_DELIVERY_FEE = 40;
+const DEFAULT_NATIONWIDE_FEE = 150;
 
 /**
- * Fetch live product prices and delivery fee from the settings table.
+ * Fetch live product prices and delivery fees from the settings table.
  * Falls back to hardcoded defaults if Supabase is unreachable.
  */
 async function getLivePrices(): Promise<{
   productPrices: Record<string, number>;
   deliveryFee: number;
+  nationwideDeliveryFee: number;
 }> {
   try {
     const res = await fetch(
@@ -45,9 +47,11 @@ async function getLivePrices(): Promise<{
           "Family Batch": priceById["2"] ?? DEFAULT_PRICES["Family Batch"],
           "The Feast": priceById["3"] ?? DEFAULT_PRICES["The Feast"],
         };
+        const nationwideDeliveryFee = priceById.nationwide_delivery_fee ?? DEFAULT_NATIONWIDE_FEE;
         return {
           productPrices,
           deliveryFee: row.delivery_fee ?? DEFAULT_DELIVERY_FEE,
+          nationwideDeliveryFee,
         };
       }
     }
@@ -55,7 +59,7 @@ async function getLivePrices(): Promise<{
     // Fall through to defaults
   }
 
-  return { productPrices: DEFAULT_PRICES, deliveryFee: DEFAULT_DELIVERY_FEE };
+  return { productPrices: DEFAULT_PRICES, deliveryFee: DEFAULT_DELIVERY_FEE, nationwideDeliveryFee: DEFAULT_NATIONWIDE_FEE };
 }
 
 export async function POST(request: NextRequest) {
@@ -67,7 +71,7 @@ export async function POST(request: NextRequest) {
     // Recalculate prices from live settings to prevent
     // clients from submitting tampered cart data.
     // ============================================
-    const { productPrices, deliveryFee } = await getLivePrices();
+    const { productPrices, deliveryFee, nationwideDeliveryFee } = await getLivePrices();
 
     // Recalculate subtotal from items using server-side prices
     let verifiedSubtotal = 0;
@@ -84,10 +88,13 @@ export async function POST(request: NextRequest) {
       verifiedSubtotal += serverPrice * item.qty;
     }
 
-    // Verify delivery fee — flat fee from settings for all deliveries
-    const verifiedDeliveryFee = orderData.delivery_mode === "deliver"
-      ? deliveryFee
-      : 0;
+    // Verify delivery fee — R40 Stanger / R150 nationwide based on address
+    let verifiedDeliveryFee = 0;
+    if (orderData.delivery_mode === "deliver") {
+      const addr = (orderData.delivery_address || "").toLowerCase();
+      const isStanger = /stanger|kwa[d\-]ukuza|kukuza|mandeni/i.test(addr);
+      verifiedDeliveryFee = isStanger ? deliveryFee : nationwideDeliveryFee;
+    }
 
     // Recompute total
     const verifiedTotal = verifiedSubtotal + verifiedDeliveryFee;

@@ -767,11 +767,12 @@ function StorySection() {
 // ============================================
 function HowToOrderSection() {
   const deliveryFee = useSettingsStore((s) => s.deliveryFee);
+  const nationwideFee = useSettingsStore((s) => s.nationwideDeliveryFee);
   const steps = [
     { icon: Package, title: "Pick your Biltong", desc: "Choose size & flavor", num: "1" },
     { icon: ShoppingCart, title: "Add to Cart", desc: "Adjust quantity & mix", num: "2" },
     { icon: CreditCard, title: "Pay with iKhokha", desc: "Secure online payment", num: "3" },
-    { icon: Truck, title: "Collect or Delivery", desc: `R${deliveryFee} delivery · Free collection`, num: "4" },
+    { icon: Truck, title: "Collect or Delivery", desc: `R${deliveryFee} Stanger · R${nationwideFee} SA · Free collect`, num: "4" },
   ];
 
   return (
@@ -845,6 +846,8 @@ function CartDrawer({ open, onClose, onCheckout }: { open: boolean; onClose: () 
   const deliveryFee = useCartStore((s) => s.deliveryFee());
   const total = useCartStore((s) => s.total());
   const settingsDeliveryFee = useSettingsStore((s) => s.deliveryFee);
+  const settingsNationwideFee = useSettingsStore((s) => s.nationwideDeliveryFee);
+  const deliveryAddress = useCartStore((s) => s.deliveryAddress);
   const dragY = useMotionValue(0);
   const dragControls = useDragControls();
 
@@ -923,7 +926,7 @@ function CartDrawer({ open, onClose, onCheckout }: { open: boolean; onClose: () 
             <div className="px-5 py-3 border-t border-white/10">
               <div className="flex gap-2">
                 {[{ mode: "collect" as DeliveryMode, icon: MapPin, label: "COLLECT", sub: "Free · Stanger" },
-                  { mode: "deliver" as DeliveryMode, icon: Truck, label: "DELIVER", sub: `R${settingsDeliveryFee} flat fee` }].map(({ mode, icon: Icon, label, sub }) => (
+                  { mode: "deliver" as DeliveryMode, icon: Truck, label: "DELIVER", sub: `R${settingsDeliveryFee} Stanger · R${settingsNationwideFee} SA` }].map(({ mode, icon: Icon, label, sub }) => (
                   <motion.button key={mode} whileTap={{ scale: 0.97 }}
                     onClick={() => setDeliveryMode(mode)}
                     className={`flex-1 py-2.5 text-center cursor-pointer rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
@@ -1059,6 +1062,7 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
   const deliveryFee = useCartStore((s) => s.deliveryFee());
   const clearCart = useCartStore((s) => s.clearCart);
   const settingsDeliveryFee = useSettingsStore((s) => s.deliveryFee);
+  const settingsNationwideFee = useSettingsStore((s) => s.nationwideDeliveryFee);
 
   const [name, setName] = useState(customerName);
   const [phone, setPhone] = useState(customerPhone);
@@ -1315,9 +1319,16 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
                           {/* Delivery fee info */}
                           <div className="bg-[#E5B83C]/8 border border-[#E5B83C]/20 rounded-xl p-3">
                             <p className="text-[#E5B83C] text-sm font-semibold flex items-center gap-2">
-                              <Truck className="w-4 h-4" /> Delivery Fee — R{settingsDeliveryFee}
+                              <Truck className="w-4 h-4" /> Delivery — R{deliveryFee}
                             </p>
-                            <p className="text-[#FEF3DF]/40 text-xs mt-0.5">Flat rate nationwide delivery</p>
+                            <p className="text-[#FEF3DF]/40 text-xs mt-0.5">
+                              {deliveryAddress && /stanger|kwa[d\-]ukuza|kukuza|mandeni/i.test(deliveryAddress)
+                                ? "Stanger local delivery"
+                                : deliveryAddress.trim().length >= 3
+                                  ? "Nationwide delivery"
+                                  : `R${settingsDeliveryFee} Stanger · R${settingsNationwideFee} Nationwide`
+                              }
+                            </p>
                           </div>
                         </div>
                       )}
@@ -1511,6 +1522,7 @@ function FloatingCartButton({ onClick, pulse }: { onClick: () => void; pulse?: b
 // ============================================
 function Footer() {
   const deliveryFee = useSettingsStore((s) => s.deliveryFee);
+  const nationwideFee = useSettingsStore((s) => s.nationwideDeliveryFee);
   return (
     <footer className="py-10 md:py-14 px-4 md:px-[6%] relative z-20 border-t border-[#E5B83C]/10">
       <div className="max-w-[1200px] mx-auto">
@@ -1563,7 +1575,7 @@ function Footer() {
             <p className="text-[0.6rem] tracking-[0.25em] uppercase text-[#E5B83C]/60 mb-3">Delivery Options</p>
             <div className="bg-[#0E0500]/60 rounded-xl p-3 border border-[#E5B83C]/10">
               <p className="text-[#FEF3DF]/50 text-xs leading-relaxed">
-                <span className="text-[#E5B83C] font-semibold">Delivery:</span> R{deliveryFee} flat fee nationwide
+                <span className="text-[#E5B83C] font-semibold">Stanger:</span> R{deliveryFee} &nbsp;·&nbsp; <span className="text-[#E5B83C] font-semibold">Nationwide:</span> R{nationwideFee}
               </p>
               <p className="text-[#FEF3DF]/30 text-[0.6rem] mt-2">Free collection in Stanger town</p>
             </div>

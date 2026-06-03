@@ -2,7 +2,8 @@
 import { create } from "zustand";
 
 interface SettingsStore {
-  deliveryFee: number;
+  deliveryFee: number; // Stanger local delivery fee
+  nationwideDeliveryFee: number; // Nationwide delivery fee
   productPrices: Record<string, number>; // { "0": 35, "1": 100, etc }
   loaded: boolean;
   fetchSettings: () => Promise<void>;
@@ -11,6 +12,7 @@ interface SettingsStore {
 
 export const useSettingsStore = create<SettingsStore>()((set, get) => ({
   deliveryFee: 40,
+  nationwideDeliveryFee: 150,
   productPrices: {},
   loaded: false,
 
@@ -21,6 +23,7 @@ export const useSettingsStore = create<SettingsStore>()((set, get) => ({
         const data = await res.json();
         set({
           deliveryFee: data.deliveryFee ?? 40,
+          nationwideDeliveryFee: data.nationwideDeliveryFee ?? 150,
           productPrices: data.productPrices ?? {},
           loaded: true,
         });

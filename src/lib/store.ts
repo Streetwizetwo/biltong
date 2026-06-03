@@ -177,8 +177,13 @@ export const useCartStore = create<CartStore>()(
         if (get().deliveryMode !== "deliver") return 0;
         // No delivery fee until an address is entered
         if (!get().deliveryAddress || get().deliveryAddress.trim().length < 3) return 0;
-        // Flat delivery fee from settings
-        return useSettingsStore.getState()?.deliveryFee || 40;
+        // Check if address is in Stanger (local) or nationwide
+        const addr = get().deliveryAddress.toLowerCase();
+        const isStanger = /stanger|kwa[d\-]ukuza|kukuza|mandeni/i.test(addr);
+        const settings = useSettingsStore.getState();
+        return isStanger
+          ? (settings?.deliveryFee || 40)
+          : (settings?.nationwideDeliveryFee || 150);
       },
 
       total: () => get().subtotal() + get().deliveryFee(),
