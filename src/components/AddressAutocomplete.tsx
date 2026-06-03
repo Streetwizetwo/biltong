@@ -16,14 +16,14 @@ export interface StructuredAddress {
   lng?: number;
 }
 
-// A prediction from Here Maps or static fallback
+// A prediction from Geoapify or static fallback
 interface AddressPrediction {
   place_id: string;
   description: string;
   main_text: string;
   secondary_text: string;
   resultType?: string;
-  // Here Maps autosuggest already returns structured address data
+  // Geoapify autocomplete already returns structured address data
   structured?: {
     street_address: string;
     local_area: string;
@@ -55,7 +55,7 @@ export function AddressAutocomplete({
   const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
   const [detailsLoading, setDetailsLoading] = useState(false);
-  const [hereMapsAvailable, setHereMapsAvailable] = useState(true);
+  const [geoapifyAvailable, setGeoapifyAvailable] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -98,7 +98,7 @@ export function AddressAutocomplete({
     ];
   }, [query]);
 
-  // Fetch Here Maps autocomplete predictions
+  // Fetch Geoapify autocomplete predictions
   const fetchPredictions = useCallback(async (input: string) => {
     if (fetchControllerRef.current) {
       fetchControllerRef.current.abort();
@@ -114,17 +114,17 @@ export function AddressAutocomplete({
       const data = await res.json();
 
       if (data.fallback) {
-        setHereMapsAvailable(false);
+        setGeoapifyAvailable(false);
         setPredictions([]);
         return;
       }
 
-      setHereMapsAvailable(true);
+      setGeoapifyAvailable(true);
       setPredictions(data.predictions || []);
     } catch (err: unknown) {
       if (err instanceof Error && err.name !== "AbortError") {
         console.warn("[AddressAutocomplete] Fetch error:", err);
-        setHereMapsAvailable(false);
+        setGeoapifyAvailable(false);
         setPredictions([]);
       }
     }
@@ -139,7 +139,7 @@ export function AddressAutocomplete({
       return;
     }
 
-    if (hereMapsAvailable) {
+    if (geoapifyAvailable) {
       setLoading(true);
       debounceRef.current = setTimeout(() => {
         fetchPredictions(query).finally(() => setLoading(false));
@@ -149,7 +149,7 @@ export function AddressAutocomplete({
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [query, hereMapsAvailable, fetchPredictions]);
+  }, [query, geoapifyAvailable, fetchPredictions]);
 
   // Handle input change
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -165,9 +165,8 @@ export function AddressAutocomplete({
     async (prediction: AddressPrediction) => {
       setShowDropdown(false);
 
-      // If Here Maps autosuggest already gave us structured data (street + city),
-      // use it directly — no need for a second API call
-      if (prediction.structured && prediction.structured.city) {
+      // Geoapify autocomplete already gives us full structured data — use it directly
+      if (prediction.structured && (prediction.structured.city || prediction.structured.street_address)) {
         const s = prediction.structured;
         const formatted = prediction.description ||
           [s.street_address, s.local_area, s.city, s.zone, s.code].filter(Boolean).join(", ");
@@ -233,7 +232,7 @@ export function AddressAutocomplete({
   );
 
   // Determine which suggestions to show
-  const displayPredictions = hereMapsAvailable
+  const displayPredictions = geoapifyAvailable
     ? predictions
     : staticSuggestions;
 
@@ -276,7 +275,7 @@ export function AddressAutocomplete({
           ref={dropdownRef}
           className="absolute top-full left-0 right-0 bg-[#2A1508] rounded-xl mt-1 max-h-[260px] overflow-y-auto z-50 shadow-2xl border border-[#E5B83C]/20"
         >
-          {hereMapsAvailable && (
+          {geoapifyAvailable && (
             <div className="px-4 py-2 border-b border-[#E5B83C]/10 flex items-center gap-1.5 sticky top-0 bg-[#2A1508] z-10">
               <Navigation className="w-3 h-3 text-[#E5B83C]/50" />
               <span className="text-[0.55rem] text-[#E5B83C]/50 tracking-wider uppercase font-semibold">
@@ -319,7 +318,7 @@ export function AddressAutocomplete({
         !detailsLoading && (
           <div className="absolute top-full left-0 right-0 bg-[#2A1508] rounded-xl mt-1 z-50 shadow-2xl border border-[#E5B83C]/20 p-3">
             <p className="text-xs text-[#FEF3DF]/40 text-center">
-              {hereMapsAvailable
+              {geoapifyAvailable
                 ? "No addresses found. Try a different search or type your full address."
                 : "Type your full address (e.g. 12 Main Rd, Durban, KwaZulu-Natal)"}
             </p>
@@ -328,7 +327,7 @@ export function AddressAutocomplete({
 
       {/* Status indicator */}
       <p className="text-[0.6rem] text-[#FEF3DF]/35 mt-1.5 flex items-center gap-1.5">
-        {hereMapsAvailable ? (
+        {geoapifyAvailable ? (
           <>
             <span className="inline-block w-1.5 h-1.5 bg-[#2E7D32] rounded-full" />
             Address lookup active

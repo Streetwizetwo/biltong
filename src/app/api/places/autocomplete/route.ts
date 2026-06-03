@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// Here Maps Autosuggest proxy for SA address autocomplete
+// Geoapify Autocomplete proxy for SA address search
 // Returns real delivery addresses (residential, streets, suburbs, cities)
 // Server-side proxy keeps the API key secure (never exposed to client)
-// Here Maps free tier: 250,000 requests/month
+// Geoapify free tier: 3,000 requests/day (90,000/month)
 
 export async function GET(request: NextRequest) {
   const query = request.nextUrl.searchParams.get("q");
@@ -11,97 +11,86 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ predictions: [] });
   }
 
-  const apiKey = process.env.HERE_MAPS_API_KEY;
+  const apiKey = process.env.GEOAPIFY_API_KEY;
   if (!apiKey) {
     return NextResponse.json({
       predictions: [],
       fallback: true,
-      error: "HERE_MAPS_API_KEY not configured",
+      error: "GEOAPIFY_API_KEY not configured",
     });
   }
 
   try {
-    // Center on South Africa (approximate center: -29.0, 25.0)
-    // Limit results to South Africa using in=countryCode:ZAF
+    // Geoapify autocomplete — restrict to South Africa
     const url =
-      `https://autosuggest.search.hereapi.com/v1/autosuggest` +
-      `?q=${encodeURIComponent(query)}` +
+      `https://api.geoapify.com/v1/geocode/autocomplete` +
+      `?text=${encodeURIComponent(query)}` +
       `&apiKey=${apiKey}` +
-      `&in=countryCode:ZAF` +
-      `&at=-29.0,25.0` + // Center on SA for better relevance
+      `&filter=countrycode:za` +
       `&limit=8` +
-      `&types=address,locality,postalCode`; // Addresses only — no POIs/businesses
+      `&type=building,street,suburb,city,postcode`;
 
     const res = await fetch(url);
 
     if (!res.ok) {
-      console.warn("[Here Maps] API error:", res.status);
+      console.warn("[Geoapify] API error:", res.status);
       return NextResponse.json({ predictions: [], fallback: true });
     }
 
     const data = await res.json();
 
-    // Map Here Maps items to our prediction format
-    // Filter out items that don't have useful address data
-    const predictions = (data.items || [])
-      .filter((item: { address?: { label?: string } }) => item.address?.label)
-      .map(
-        (item: {
-          id: string;
-          address: {
-            label: string;
-            street?: string;
-            district?: string;
-            city?: string;
-            state?: string;
-            postalCode?: string;
-          };
-          position?: { lat: number; lng: number };
-          resultType?: string;
-        }) => {
-          // Build main_text (street address) and secondary_text (area, city, province)
-          const street = item.address?.street || "";
-          const district = item.address?.district || "";
-          const city = item.address?.city || "";
-          const state = item.address?.state || "";
-          const postalCode = item.address?.postalCode || "";
+    // Map Geoapify features to our prediction format
+    const predictions = (data.features || []).map(
+      (feature: {
+        properties: {
+          place_id: string;
+          formatted: string;
+          address_line1: string;
+          address_line2: string;
+          housenumber?: string;
+          street?: string;
+          suburb?: string;
+          city?: string;
+          county?: string;
+          state?: string;
+          postcode?: string;
+          lat: number;
+          lon: number;
+          result_type: string;
+        };
+      }) => {
+        const p = feature.properties;
 
-          // main_text = street if available, otherwise city
-          const main_text = street || city || item.address.label.split(",")[0];
+        // Build Courier Guy-compatible structured address
+        const street_address = [p.housenumber, p.street].filter(Boolean).join(" ") || p.street || "";
+        const local_area = p.suburb || p.county || p.city || "";
+        const city = p.city || p.county || p.suburb || "";
+        const zone = p.state || "KwaZulu-Natal";
+        const code = p.postcode || "";
 
-          // secondary_text = district, city, state, postal code
-          const secondaryParts = [
-            district && district !== city ? district : "",
+        return {
+          place_id: p.place_id,
+          description: p.formatted,
+          main_text: p.address_line1 || p.formatted.split(",")[0],
+          secondary_text: p.address_line2 || "",
+          resultType: p.result_type,
+          // Geoapify returns full structured data — no second API call needed
+          structured: {
+            street_address,
+            local_area,
             city,
-            state,
-            postalCode,
-          ].filter(Boolean);
-          const secondary_text = secondaryParts.join(", ");
+            zone,
+            code,
+            lat: p.lat,
+            lng: p.lon,
+          },
+        };
+      }
+    );
 
-          return {
-            place_id: item.id,
-            description: item.address.label,
-            main_text,
-            secondary_text,
-            resultType: item.resultType,
-            // Include structured address data from autosuggest so we don't
-            // always need a second API call for details
-            structured: {
-              street_address: street || "",
-              local_area: district || city || "",
-              city: city || district || "",
-              zone: state || "KwaZulu-Natal",
-              code: postalCode || "",
-              lat: item.position?.lat,
-              lng: item.position?.lng,
-            },
-          };
-        }
-      );
-
-    return NextResponse.json({ predictions, source: "here_maps" });
+    return NextResponse.json({ predictions, source: "geoapify" });
   } catch (error) {
-    console.error("[Here Maps] Search error:", error);
+    console.error("[Geoapify] Search error:", error);
     return NextResponse.json({ predictions: [], fallback: true });
   }
 }
