@@ -55,9 +55,6 @@ export function buildWhatsAppMessage(orderData: OrderData): string {
 
   if (orderData.delivery_mode === "deliver") {
     msg += `\n🏠 Delivery: ${orderData.delivery_address || "TBD"}`;
-    if (orderData.tracking_reference) {
-      msg += `\n📦 Tracking: ${orderData.tracking_reference} (${orderData.shipping_carrier || "Courier"})`;
-    }
   } else {
     msg += `\n📍 Collection in Stanger`;
   }
@@ -75,53 +72,6 @@ export function buildWhatsAppMessage(orderData: OrderData): string {
   msg += "\n\n🤲 JazakAllah Khair!";
   return msg;
 }
-
-export const STANGER_ADDRESSES = [
-  "King Street, Stanger",
-  "Queen Street, Stanger",
-  "Prince Edward Road, Stanger",
-  "Victoria Street, Stanger",
-  "Church Street, Stanger",
-  "Market Street, Stanger",
-  "Mahatma Gandhi Road, Stanger",
-  "Ridge Road, Stanger",
-  "Hibiscus Street, Stanger",
-  "Acacia Road, Stanger",
-  "Umvoti Drive, Stanger",
-  "Mandini Road, Stanger",
-  "Blake Street, Stanger",
-  "Campbell Road, Stanger",
-  "Chapel Street, Stanger",
-  "Commercial Road, Stanger",
-  "Durban Road, Stanger",
-  "Stanger Manor",
-  "Newtown, Stanger",
-  "The Ridge, Stanger",
-];
-
-// Major SA cities for national delivery suggestions
-export const SA_CITIES = [
-  "Durban, KwaZulu-Natal",
-  "Pietermaritzburg, KwaZulu-Natal",
-  "Ballito, KwaZulu-Natal",
-  "Umhlanga, KwaZulu-Natal",
-  "Richards Bay, KwaZulu-Natal",
-  "Johannesburg, Gauteng",
-  "Sandton, Gauteng",
-  "Pretoria, Gauteng",
-  "Centurion, Gauteng",
-  "Midrand, Gauteng",
-  "Cape Town, Western Cape",
-  "Stellenbosch, Western Cape",
-  "Bellville, Western Cape",
-  "Port Elizabeth, Eastern Cape",
-  "East London, Eastern Cape",
-  "Bloemfontein, Free State",
-  "Nelspruit, Mpumalanga",
-  "Polokwane, Limpopo",
-  "Rustenburg, North West",
-  "Kimberley, Northern Cape",
-];
 
 export const PRODUCTS = [
   {

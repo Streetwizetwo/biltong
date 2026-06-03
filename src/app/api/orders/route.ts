@@ -38,8 +38,6 @@ async function getLivePrices(): Promise<{
       const data = await res.json();
       if (data && data.length > 0) {
         const row = data[0];
-        // product_prices is keyed by product ID: { "0": 35, "1": 100, ... }
-        // We need to map these to product names for validation
         const priceById: Record<string, number> = row.product_prices || {};
         const productPrices: Record<string, number> = {
           "The Taster": priceById["0"] ?? DEFAULT_PRICES["The Taster"],
@@ -86,13 +84,9 @@ export async function POST(request: NextRequest) {
       verifiedSubtotal += serverPrice * item.qty;
     }
 
-    // Verify delivery fee
-    // Stanger local delivery uses the flat fee from settings
-    // Non-Stanger (Courier Guy) uses the rate fetched from our API
-    const isStangerDelivery = orderData.delivery_address &&
-      (/stanger|kwadukuza|kwa dukuza/i.test(orderData.delivery_address));
+    // Verify delivery fee — flat fee from settings for all deliveries
     const verifiedDeliveryFee = orderData.delivery_mode === "deliver"
-      ? (isStangerDelivery ? deliveryFee : orderData.delivery_fee) // Non-Stanger: trust the Courier Guy rate from our API
+      ? deliveryFee
       : 0;
 
     // Recompute total
@@ -142,25 +136,6 @@ export async function POST(request: NextRequest) {
         },
       ]),
     });
-
-    // If the insert succeeded but shipping columns aren't in the table yet,
-    // try updating separately (will silently fail if columns don't exist)
-    if (response.ok && (orderData.shipping_carrier || orderData.tracking_reference)) {
-      try {
-        await fetch(`${SUPABASE_URL}/rest/v1/orders?order_id=eq.${orderData.order_id}`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-          },
-          body: JSON.stringify({
-            ...(orderData.shipping_carrier ? { shipping_carrier: orderData.shipping_carrier } : {}),
-            ...(orderData.tracking_reference ? { tracking_reference: orderData.tracking_reference } : {}),
-          }),
-        });
-      } catch { /* columns may not exist yet — non-critical */ }
-    }
 
     if (!response.ok) {
       const errorText = await response.text();

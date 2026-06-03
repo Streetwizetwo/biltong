@@ -45,8 +45,6 @@ import {
 import {
   useCartStore,
   type DeliveryMode,
-  type ShippingRate,
-  type StructuredAddress,
 } from "@/lib/store";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { useSettingsStore } from "@/lib/settings-store";
@@ -773,7 +771,7 @@ function HowToOrderSection() {
     { icon: Package, title: "Pick your Biltong", desc: "Choose size & flavor", num: "1" },
     { icon: ShoppingCart, title: "Add to Cart", desc: "Adjust quantity & mix", num: "2" },
     { icon: CreditCard, title: "Pay with iKhokha", desc: "Secure online payment", num: "3" },
-    { icon: Truck, title: "Collect or Delivery", desc: `R${deliveryFee} Stanger · Nationwide courier`, num: "4" },
+    { icon: Truck, title: "Collect or Delivery", desc: `R${deliveryFee} delivery · Free collection`, num: "4" },
   ];
 
   return (
@@ -847,7 +845,6 @@ function CartDrawer({ open, onClose, onCheckout }: { open: boolean; onClose: () 
   const deliveryFee = useCartStore((s) => s.deliveryFee());
   const total = useCartStore((s) => s.total());
   const settingsDeliveryFee = useSettingsStore((s) => s.deliveryFee);
-  const selectedRate = useCartStore((s) => s.selectedRate);
   const dragY = useMotionValue(0);
   const dragControls = useDragControls();
 
@@ -926,7 +923,7 @@ function CartDrawer({ open, onClose, onCheckout }: { open: boolean; onClose: () 
             <div className="px-5 py-3 border-t border-white/10">
               <div className="flex gap-2">
                 {[{ mode: "collect" as DeliveryMode, icon: MapPin, label: "COLLECT", sub: "Free · Stanger" },
-                  { mode: "deliver" as DeliveryMode, icon: Truck, label: "DELIVER", sub: `R${settingsDeliveryFee} Stanger · Courier Nationwide` }].map(({ mode, icon: Icon, label, sub }) => (
+                  { mode: "deliver" as DeliveryMode, icon: Truck, label: "DELIVER", sub: `R${settingsDeliveryFee} flat fee` }].map(({ mode, icon: Icon, label, sub }) => (
                   <motion.button key={mode} whileTap={{ scale: 0.97 }}
                     onClick={() => setDeliveryMode(mode)}
                     className={`flex-1 py-2.5 text-center cursor-pointer rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
@@ -946,7 +943,7 @@ function CartDrawer({ open, onClose, onCheckout }: { open: boolean; onClose: () 
               {deliveryFee > 0 && (
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-xs text-[#FEF3DF]/60">
-                    {selectedRate ? selectedRate.service_name : "Delivery"}:
+                    Delivery:
                   </span>
                   <span className="text-xs">R{deliveryFee}</span>
                 </div>
@@ -972,7 +969,7 @@ function CartDrawer({ open, onClose, onCheckout }: { open: boolean; onClose: () 
 // ============================================
 // ORDER SUCCESS SCREEN
 // ============================================
-function OrderSuccess({ orderId, paymentMethod, trackingReference, onClose }: { orderId: string; paymentMethod: string; trackingReference?: string | null; onClose: () => void }) {
+function OrderSuccess({ orderId, paymentMethod, onClose }: { orderId: string; paymentMethod: string; onClose: () => void }) {
   const steps = [
     { icon: Package, label: "Order Placed", active: true },
     { icon: CheckCircle2, label: "Confirmed", active: false },
@@ -1033,15 +1030,6 @@ function OrderSuccess({ orderId, paymentMethod, trackingReference, onClose }: { 
         <p className="font-['Bebas_Neue'] text-2xl text-[#2E7D32] tracking-[0.1em]">{orderId}</p>
       </motion.div>
 
-      {/* Tracking Reference for Courier Guy shipments */}
-      {trackingReference && trackingReference !== "PENDING" && (
-        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 1.4 }}
-          className="bg-[#E5B83C]/10 border border-[#E5B83C]/30 rounded-xl p-3 mt-3 inline-block">
-          <p className="text-[0.6rem] tracking-[0.15em] uppercase text-[#FEF3DF]/70">Tracking Number</p>
-          <p className="font-['Bebas_Neue'] text-lg text-[#E5B83C] tracking-[0.1em]">{trackingReference}</p>
-          <p className="text-[0.55rem] text-[#FEF3DF]/40 mt-0.5">The Courier Guy · Track at thecourierguy.co.za</p>
-        </motion.div>
-      )}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.4 }}>
         <button onClick={onClose}
           className="mt-6 px-6 py-3 bg-[#E5B83C] text-[#0A0301] font-bold tracking-[0.1em] uppercase rounded-xl cursor-pointer text-sm">
@@ -1070,16 +1058,6 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
   const subtotal = useCartStore((s) => s.subtotal());
   const deliveryFee = useCartStore((s) => s.deliveryFee());
   const clearCart = useCartStore((s) => s.clearCart);
-  const isStangerDelivery = useCartStore((s) => s.isStangerDelivery);
-  const setIsStangerDelivery = useCartStore((s) => s.setIsStangerDelivery);
-  const availableRates = useCartStore((s) => s.availableRates);
-  const setAvailableRates = useCartStore((s) => s.setAvailableRates);
-  const selectedRate = useCartStore((s) => s.selectedRate);
-  const setSelectedRate = useCartStore((s) => s.setSelectedRate);
-  const ratesLoading = useCartStore((s) => s.ratesLoading);
-  const setRatesLoading = useCartStore((s) => s.setRatesLoading);
-  const structuredAddress = useCartStore((s) => s.structuredAddress);
-  const setStructuredAddress = useCartStore((s) => s.setStructuredAddress);
   const settingsDeliveryFee = useSettingsStore((s) => s.deliveryFee);
 
   const [name, setName] = useState(customerName);
@@ -1092,121 +1070,7 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
   const [paylinkUrl, setPaylinkUrl] = useState<string | null>(null);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [lastPaymentMethod, setLastPaymentMethod] = useState("cash");
-  const [trackingRef, setTrackingRef] = useState<string | null>(null);
-
-  // Address & shipping state
-  const [addressQuery, setAddressQuery] = useState(deliveryAddress);
-  const [ratesFetched, setRatesFetched] = useState(false);
   const [checkoutStep, setCheckoutStep] = useState(0); // 0=shipping, 1=payment, 2=done
-
-  useEffect(() => { setAddressQuery(deliveryAddress); }, [deliveryAddress]);
-
-  // Fetch shipping rates when delivery address changes
-  const fetchRates = useCallback(async (address: string, structured?: StructuredAddress) => {
-    if (!address || address.trim().length < 3) return;
-    if (items.length === 0) return;
-
-    setRatesLoading(true);
-    setRatesFetched(false);
-
-    try {
-      const res = await fetch("/api/shipping/rates", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          address,
-          items: items.map((i) => ({ name: i.name, qty: i.qty })),
-          structuredAddress: structured || null,
-        }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-
-        if (data.isStanger) {
-          setIsStangerDelivery(true);
-          setAvailableRates(data.rates);
-          setSelectedRate(data.rates[0] || null);
-        } else {
-          setIsStangerDelivery(false);
-          setAvailableRates(data.rates);
-          const sorted = [...data.rates].sort((a: ShippingRate, b: ShippingRate) => a.total_price - b.total_price);
-          setSelectedRate(sorted[0] || null);
-        }
-        setRatesFetched(true);
-      } else {
-        console.warn("[Shipping] Rate fetch failed:", res.status);
-        setAvailableRates([]);
-      }
-    } catch (err) {
-      console.error("Failed to fetch shipping rates:", err);
-      setAvailableRates([]);
-    } finally {
-      setRatesLoading(false);
-    }
-  }, [items, setIsStangerDelivery, setAvailableRates, setSelectedRate, setRatesLoading]);
-
-  // Handle address change from AddressAutocomplete component
-  const handleAddressChange = useCallback((address: string, structured?: StructuredAddress) => {
-    setAddressQuery(address);
-    setDeliveryAddress(address);
-    setStructuredAddress(structured || null);
-    setRatesFetched(false);
-
-    // Check if Stanger
-    const isStanger = address.toLowerCase().includes("stanger") ||
-      address.toLowerCase().includes("kwadukuza") ||
-      address.toLowerCase().includes("kwa dukuza");
-
-    if (isStanger) {
-      setIsStangerDelivery(true);
-      setSelectedRate({
-        service_name: "Local Delivery (Stanger)",
-        service_code: "STANGER_LOCAL",
-        total_price: settingsDeliveryFee * 100,
-        estimated_delivery_days: 1,
-        courier_name: "Biltong & Bytes",
-        courier_code: "local",
-      });
-      setAvailableRates([{
-        service_name: "Local Delivery (Stanger)",
-        service_code: "STANGER_LOCAL",
-        total_price: settingsDeliveryFee * 100,
-        estimated_delivery_days: 1,
-        courier_name: "Biltong & Bytes",
-        courier_code: "local",
-      }]);
-      setRatesFetched(true);
-    } else if (address.trim().length >= 5 && items.length > 0) {
-      // For non-Stanger addresses, fetch rates
-      if (structured) {
-        // Structured data from Geoapify — fetch rates immediately
-        fetchRates(address, structured);
-      } else {
-        // Manual typing — fetch rates directly (debouncing handled by the useEffect below)
-        fetchRates(address);
-      }
-    }
-  }, [items.length, settingsDeliveryFee, fetchRates, setIsStangerDelivery, setSelectedRate, setAvailableRates, setDeliveryAddress, setStructuredAddress]);
-
-  // Debounced rate fetching for manual address entry (no Google Maps selection)
-  useEffect(() => {
-    if (deliveryMode !== "deliver" || !addressQuery.trim()) return;
-    if (structuredAddress) return; // Already handled in handleAddressChange
-    if (items.length === 0) return;
-
-    const isStanger = addressQuery.toLowerCase().includes("stanger") ||
-      addressQuery.toLowerCase().includes("kwadukuza") ||
-      addressQuery.toLowerCase().includes("kwa dukuza");
-
-    if (isStanger || addressQuery.trim().length < 5) return; // Already handled or too short
-
-    const timer = setTimeout(() => {
-      fetchRates(addressQuery);
-    }, 800);
-
-    return () => clearTimeout(timer);
-  }, [addressQuery, deliveryMode, structuredAddress, items.length, fetchRates]);
 
   // Save order to Supabase via API
   const saveOrder = useCallback(
@@ -1215,13 +1079,6 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
       setOrderId(newOrderId);
       setCurrentOrderId(newOrderId);
       setSavingStatus("saving");
-
-      const shippingCarrier = deliveryMode === "deliver" && !isStangerDelivery && selectedRate
-        ? selectedRate.courier_name
-        : null;
-      const trackingReference = deliveryMode === "deliver" && !isStangerDelivery
-        ? "PENDING"
-        : null;
 
       const orderData: OrderData = {
         order_id: newOrderId,
@@ -1236,8 +1093,8 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
         payment_method: paymentMethod,
         payment_status: paymentMethod === "ikhokha" ? "pending" : "cash_on_delivery",
         order_status: "new",
-        shipping_carrier: shippingCarrier,
-        tracking_reference: trackingReference,
+        shipping_carrier: null,
+        tracking_reference: null,
       };
 
       setCustomerInfo(name, phone, email);
@@ -1258,65 +1115,15 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
       }
       return orderData;
     },
-    [name, phone, email, items, subtotal, deliveryFee, total, deliveryMode, deliveryAddress, isStangerDelivery, selectedRate, setCustomerInfo, setCurrentOrderId]
+    [name, phone, email, items, subtotal, deliveryFee, total, deliveryMode, deliveryAddress, setCustomerInfo, setCurrentOrderId]
   );
-
-  // Create Courier Guy shipment for non-Stanger deliveries
-  const createShipment = useCallback(async (orderId: string) => {
-    if (isStangerDelivery || deliveryMode !== "deliver" || !selectedRate) return;
-
-    try {
-      const res = await fetch("/api/shipping/create-shipment", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          orderId,
-          deliveryAddress,
-          structuredAddress: structuredAddress || null,
-          customerName: name,
-          customerPhone,
-          customerEmail: email,
-          items: items.map((i) => ({ name: i.name, qty: i.qty })),
-          serviceLevelCode: selectedRate.service_code,
-        }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        if (data.trackingReference) {
-          setTrackingRef(data.trackingReference);
-
-          try {
-            await fetch("/api/orders", {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                order_id: orderId,
-                tracking_reference: data.trackingReference,
-                shipping_carrier: "The Courier Guy",
-              }),
-            });
-          } catch { /* non-critical */ }
-
-          const pending = useCartStore.getState().pendingIkhokhaOrder;
-          if (pending) {
-            (pending as Record<string, unknown>).tracking_reference = data.trackingReference;
-            (pending as Record<string, unknown>).shipping_carrier = "The Courier Guy";
-          }
-        }
-      }
-    } catch (err) {
-      console.error("[Checkout] Shipment creation failed (non-blocking):", err);
-    }
-  }, [isStangerDelivery, deliveryMode, selectedRate, deliveryAddress, name, customerPhone, email, items]);
 
   const validate = useCallback((): boolean => {
     if (!name.trim()) { toast.error("Please enter your name"); return false; }
     if (!phone.trim()) { toast.error("Please enter your phone number"); return false; }
     if (deliveryMode === "deliver" && !deliveryAddress.trim()) { toast.error("Please enter your delivery address"); return false; }
-    if (deliveryMode === "deliver" && !isStangerDelivery && !selectedRate) { toast.error("Please select a shipping method"); return false; }
     return true;
-  }, [name, phone, deliveryMode, deliveryAddress, isStangerDelivery, selectedRate]);
+  }, [name, phone, deliveryMode, deliveryAddress]);
 
   const handleContinueToPayment = () => {
     if (!validate()) return;
@@ -1327,10 +1134,6 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
     if (!validate()) return;
     const orderData = await saveOrder("cash");
     setLastPaymentMethod("cash");
-
-    if (!isStangerDelivery && deliveryMode === "deliver") {
-      createShipment(orderData.order_id);
-    }
 
     const msg = buildWhatsAppMessage(orderData);
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, "_blank");
@@ -1399,10 +1202,6 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
     if (!pendingOrder) { toast.error("No pending order found"); return; }
     const orderData = pendingOrder as unknown as OrderData;
 
-    if (!isStangerDelivery && deliveryMode === "deliver" && orderData.order_id) {
-      createShipment(orderData.order_id);
-    }
-
     const msg = buildWhatsAppMessage(orderData) + "\n\n✅ Payment completed via iKhokha!";
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, "_blank");
     toast.success("Confirmation sent!", { icon: "✅" });
@@ -1424,7 +1223,7 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
   // Can proceed from step 0 to step 1?
   const canContinueToPayment = name.trim() && phone.trim() &&
     (deliveryMode === "collect" ||
-      (deliveryMode === "deliver" && deliveryAddress.trim() && (isStangerDelivery || selectedRate)));
+      (deliveryMode === "deliver" && deliveryAddress.trim().length >= 3));
 
   return (
     <AnimatePresence>
@@ -1496,86 +1295,23 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
                         </div>
                       ) : (
                         <div className="space-y-3">
-                          {/* Delivery Address Input — Google Maps Autocomplete */}
+                          {/* Delivery Address Input */}
                           <div>
                             <label className="text-xs text-[#FEF3DF]/70 font-semibold mb-1.5 block">Delivery Address</label>
                             <AddressAutocomplete
-                              value={addressQuery}
-                              onChange={handleAddressChange}
-                              onStructuredAddress={setStructuredAddress}
-                              placeholder="Start typing your address (e.g. 12 Main Rd, Durban)"
+                              value={deliveryAddress}
+                              onChange={(address: string) => setDeliveryAddress(address)}
+                              placeholder="Enter your full address (e.g. 12 Main Rd, Durban, KZN)"
                             />
                           </div>
 
-                          {/* Loading indicator */}
-                          {ratesLoading && (
-                            <div className="flex items-center gap-2 text-[#E5B83C]/70 text-xs">
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              <span>Getting shipping rates...</span>
-                            </div>
-                          )}
-
-                          {/* Stanger delivery detected */}
-                          {isStangerDelivery && ratesFetched && !ratesLoading && (
-                            <div className="bg-[#2E7D32]/15 border border-[#2E7D32]/30 rounded-xl p-3">
-                              <p className="text-[#2E7D32] text-sm font-semibold flex items-center gap-2">
-                                <MapPin className="w-4 h-4" /> Stanger Local Delivery — R{settingsDeliveryFee}
-                              </p>
-                              <p className="text-[#FEF3DF]/40 text-xs mt-0.5">Delivery within Stanger town, next day</p>
-                            </div>
-                          )}
-
-                          {/* Courier rates for non-Stanger */}
-                          {!isStangerDelivery && availableRates.length > 0 && ratesFetched && !ratesLoading && (
-                            <div className="space-y-2">
-                              <p className="text-[0.65rem] text-[#FEF3DF]/50 font-semibold tracking-wider uppercase">Select shipping method:</p>
-                              {availableRates.sort((a, b) => a.total_price - b.total_price).map((rate) => {
-                                const price = Math.round(rate.total_price / 100);
-                                const isSelected = selectedRate?.service_code === rate.service_code;
-                                return (
-                                  <motion.button key={rate.service_code} whileTap={{ scale: 0.98 }}
-                                    onClick={() => setSelectedRate(rate)}
-                                    className={`w-full text-left p-3 rounded-xl cursor-pointer transition-all text-xs border ${
-                                      isSelected
-                                        ? "bg-[#E5B83C]/15 border-[#E5B83C] text-[#FEF3DF]"
-                                        : "bg-white/3 border-white/10 text-[#FEF3DF]/70 hover:border-[#E5B83C]/40"
-                                    }`}>
-                                    <div className="flex justify-between items-center">
-                                      <div className="flex items-center gap-2.5">
-                                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                                          isSelected ? "border-[#E5B83C]" : "border-white/20"
-                                        }`}>
-                                          {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-[#E5B83C]" />}
-                                        </div>
-                                        <div>
-                                          <p className="font-semibold">{rate.service_name}</p>
-                                          <p className="text-[0.6rem] text-[#FEF3DF]/40">{rate.courier_name} · {rate.estimated_delivery_days} business day{rate.estimated_delivery_days !== 1 ? "s" : ""}</p>
-                                        </div>
-                                      </div>
-                                      <span className="font-['Bebas_Neue'] text-xl text-[#F8E5B0]">R{price}</span>
-                                    </div>
-                                  </motion.button>
-                                );
-                              })}
-                            </div>
-                          )}
-
-                          {/* No rates found */}
-                          {!isStangerDelivery && ratesFetched && availableRates.length === 0 && !ratesLoading && (
-                            <div className="bg-[#B23A1A]/15 border border-[#B23A1A]/30 rounded-xl p-3">
-                              <p className="text-[#B23A1A] text-xs">No shipping rates found. Please check your address or contact us on WhatsApp.</p>
-                            </div>
-                          )}
-
-                          {/* Address hint */}
-                          {deliveryMode === "deliver" && addressQuery.trim().length > 0 && !ratesLoading && (
-                            <p className="text-[0.6rem] text-[#FEF3DF]/35">
-                              {isStangerDelivery
-                                ? "Stanger delivery · R" + settingsDeliveryFee + " fee"
-                                : "Nationwide courier via The Courier Guy"
-                              }
+                          {/* Delivery fee info */}
+                          <div className="bg-[#E5B83C]/8 border border-[#E5B83C]/20 rounded-xl p-3">
+                            <p className="text-[#E5B83C] text-sm font-semibold flex items-center gap-2">
+                              <Truck className="w-4 h-4" /> Delivery Fee — R{settingsDeliveryFee}
                             </p>
-                          )}
+                            <p className="text-[#FEF3DF]/40 text-xs mt-0.5">Flat rate nationwide delivery</p>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -1635,7 +1371,13 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
                       </div>
                       {deliveryFee > 0 && (
                         <div className="flex justify-between text-xs py-1">
-                          <span className="text-[#FEF3DF]/60">{selectedRate?.service_name || "Delivery"}</span><span>R{deliveryFee}</span>
+                          <span className="text-[#FEF3DF]/60">Delivery</span><span>R{deliveryFee}</span>
+                        </div>
+                      )}
+                      {deliveryMode === "deliver" && deliveryAddress && (
+                        <div className="flex justify-between text-xs py-1 border-t border-white/10 mt-1">
+                          <span className="text-[#FEF3DF]/60">Deliver to</span>
+                          <span className="text-[#FEF3DF]/80 text-right max-w-[60%] truncate">{deliveryAddress}</span>
                         </div>
                       )}
                     </div>
@@ -1706,9 +1448,6 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
                     <p className="text-[0.6rem] text-white/35 text-center mt-2 leading-relaxed">
                       iKhokha: Secure card payment in a new tab.
                       <br />WhatsApp: For cash or card on collection/delivery.
-                      {deliveryMode === "deliver" && !isStangerDelivery && (
-                        <><br />📦 Nationwide delivery via The Courier Guy</>
-                      )}
                     </p>
                   </motion.div>
                 )}
@@ -1718,7 +1457,7 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
                 {/* ============================== */}
                 {checkoutStep === 2 && orderSuccess && (
                   <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3 }}>
-                    <OrderSuccess orderId={orderId || ""} paymentMethod={lastPaymentMethod} trackingReference={trackingRef} onClose={handleClose} />
+                    <OrderSuccess orderId={orderId || ""} paymentMethod={lastPaymentMethod} onClose={handleClose} />
                   </motion.div>
                 )}
 
@@ -1808,7 +1547,7 @@ function Footer() {
             </div>
             <div className="mt-1.5 flex items-center justify-center md:justify-start gap-1.5 text-[#FEF3DF]/40 text-xs">
               <Truck className="w-3.5 h-3.5" />
-              <span>R{deliveryFee} Stanger · Nationwide courier available</span>
+              <span>R{deliveryFee} flat delivery fee nationwide</span>
             </div>
           </div>
 
@@ -1817,10 +1556,7 @@ function Footer() {
             <p className="text-[0.6rem] tracking-[0.25em] uppercase text-[#E5B83C]/60 mb-3">Delivery Options</p>
             <div className="bg-[#0E0500]/60 rounded-xl p-3 border border-[#E5B83C]/10">
               <p className="text-[#FEF3DF]/50 text-xs leading-relaxed">
-                <span className="text-[#2E7D32] font-semibold">Stanger:</span> R{deliveryFee} flat fee, next-day delivery
-              </p>
-              <p className="text-[#FEF3DF]/50 text-xs leading-relaxed mt-1">
-                <span className="text-[#E5B83C] font-semibold">Nationwide:</span> Live courier rates via The Courier Guy
+                <span className="text-[#E5B83C] font-semibold">Delivery:</span> R{deliveryFee} flat fee nationwide
               </p>
               <p className="text-[#FEF3DF]/30 text-[0.6rem] mt-2">Free collection in Stanger town</p>
             </div>

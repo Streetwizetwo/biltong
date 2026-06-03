@@ -19,26 +19,6 @@ export type DeliveryMode = "collect" | "deliver";
 export type PaymentMethod = "ikhokha" | "cash";
 export type OrderStatus = "new" | "payment_initiated" | "paid" | "confirmed";
 
-// Shipping rate from Courier Guy API
-export interface ShippingRate {
-  service_name: string;
-  service_code: string;
-  total_price: number;       // in cents
-  estimated_delivery_days: number;
-  courier_name: string;
-  courier_code: string;
-}
-
-// Structured address from Google Maps
-export interface StructuredAddress {
-  street_address: string;
-  local_area: string;
-  city: string;
-  zone: string;
-  code: string;
-  formatted: string;
-}
-
 interface CartStore {
   items: CartItem[];
   deliveryMode: DeliveryMode;
@@ -48,15 +28,6 @@ interface CartStore {
   customerEmail: string;
   currentOrderId: string | null;
   pendingIkhokhaOrder: Record<string, unknown> | null;
-
-  // Shipping zone awareness
-  isStangerDelivery: boolean;
-  availableRates: ShippingRate[];
-  selectedRate: ShippingRate | null;
-  ratesLoading: boolean;
-
-  // Structured address from Google Maps
-  structuredAddress: StructuredAddress | null;
 
   // Actions
   addItem: (item: Omit<CartItem, "id">) => void;
@@ -70,11 +41,6 @@ interface CartStore {
   setCustomerInfo: (name: string, phone: string, email: string) => void;
   setCurrentOrderId: (id: string | null) => void;
   setPendingIkhokhaOrder: (order: Record<string, unknown> | null) => void;
-  setIsStangerDelivery: (isStanger: boolean) => void;
-  setAvailableRates: (rates: ShippingRate[]) => void;
-  setSelectedRate: (rate: ShippingRate | null) => void;
-  setRatesLoading: (loading: boolean) => void;
-  setStructuredAddress: (addr: StructuredAddress | null) => void;
 
   // Computed
   totalItems: () => number;
@@ -147,13 +113,6 @@ export const useCartStore = create<CartStore>()(
       currentOrderId: null,
       pendingIkhokhaOrder: null,
 
-      // Shipping zone state
-      isStangerDelivery: false,
-      availableRates: [],
-      selectedRate: null,
-      ratesLoading: false,
-      structuredAddress: null,
-
       addItem: (item) => {
         const id = generateCartItemId(item.name, item.flavor);
         const existing = get().items.find((i) => i.id === id);
@@ -197,20 +156,9 @@ export const useCartStore = create<CartStore>()(
           currentOrderId: null,
           pendingIkhokhaOrder: null,
           deliveryAddress: "",
-          availableRates: [],
-          selectedRate: null,
-          isStangerDelivery: false,
-          structuredAddress: null,
         }),
 
-      setDeliveryMode: (mode) => set({
-        deliveryMode: mode,
-        // Reset shipping state when switching modes
-        isStangerDelivery: false,
-        selectedRate: null,
-        availableRates: [],
-        structuredAddress: null,
-      }),
+      setDeliveryMode: (mode) => set({ deliveryMode: mode }),
       setDeliveryAddress: (address) => set({ deliveryAddress: address }),
       setCustomerInfo: (name, phone, email) =>
         set({
@@ -222,29 +170,15 @@ export const useCartStore = create<CartStore>()(
       setPendingIkhokhaOrder: (order) =>
         set({ pendingIkhokhaOrder: order }),
 
-      setIsStangerDelivery: (isStanger) => set({ isStangerDelivery: isStanger }),
-      setAvailableRates: (rates) => set({ availableRates: rates }),
-      setSelectedRate: (rate) => set({ selectedRate: rate }),
-      setRatesLoading: (loading) => set({ ratesLoading: loading }),
-      setStructuredAddress: (addr) => set({ structuredAddress: addr }),
-
       totalItems: () => get().items.reduce((s, i) => s + i.qty, 0),
       subtotal: () => get().items.reduce((s, i) => s + i.price * i.qty, 0),
 
       deliveryFee: () => {
         if (get().deliveryMode !== "deliver") return 0;
-        // No delivery fee until an address is entered and confirmed
+        // No delivery fee until an address is entered
         if (!get().deliveryAddress || get().deliveryAddress.trim().length < 3) return 0;
-        // If Stanger, use the settings delivery fee
-        if (get().isStangerDelivery) {
-          return useSettingsStore.getState()?.deliveryFee || 40;
-        }
-        // If national, use the selected shipping rate price
-        const rate = get().selectedRate;
-        if (rate) {
-          return Math.round(rate.total_price / 100); // cents to rands
-        }
-        return 0;
+        // Flat delivery fee from settings
+        return useSettingsStore.getState()?.deliveryFee || 40;
       },
 
       total: () => get().subtotal() + get().deliveryFee(),
@@ -252,17 +186,20 @@ export const useCartStore = create<CartStore>()(
     {
       name: CART_STORAGE_KEY,
       storage: hashedStorage,
-      version: 2,
+      version: 3,
       migrate: (persisted: unknown, version: number) => {
-        // Fix: v1 had isStangerDelivery defaulting to true, causing R40 on all orders
-        // v2 defaults to false — only true when address is actually in Stanger
-        if (version < 2) {
+        // v1/v2 had Courier Guy shipping state — remove it all
+        if (version < 3) {
           const state = persisted as Record<string, unknown>;
           return {
-            ...state,
-            isStangerDelivery: false,
-            selectedRate: null,
-            availableRates: [],
+            items: state.items || [],
+            deliveryMode: state.deliveryMode || "collect",
+            deliveryAddress: state.deliveryAddress || "",
+            customerName: state.customerName || "",
+            customerPhone: state.customerPhone || "",
+            customerEmail: state.customerEmail || "",
+            currentOrderId: state.currentOrderId || null,
+            pendingIkhokhaOrder: state.pendingIkhokhaOrder || null,
           };
         }
         return persisted;
@@ -276,9 +213,6 @@ export const useCartStore = create<CartStore>()(
         customerEmail: state.customerEmail,
         currentOrderId: state.currentOrderId,
         pendingIkhokhaOrder: state.pendingIkhokhaOrder,
-        isStangerDelivery: state.isStangerDelivery,
-        selectedRate: state.selectedRate,
-        structuredAddress: state.structuredAddress,
       }),
     }
   )
