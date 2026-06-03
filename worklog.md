@@ -31,3 +31,28 @@ Stage Summary:
 - iKhokha payment gateway preserved
 - Address saved to Supabase and shown in admin panel
 - NEEDS: User to push to GitHub or add auth token for auto-deploy
+---
+Task ID: 1
+Agent: Main Agent
+Task: Remove Courier Guy API and address autocomplete, simplify checkout
+
+Work Log:
+- Read all key project files to understand current state
+- Discovered the codebase was already mostly cleaned up from previous sessions
+- AddressAutocomplete was already simplified to a basic text input, but was an unnecessary separate component
+- Deleted src/components/AddressAutocomplete.tsx
+- Inlined the address text input directly in CheckoutModal in page.tsx
+- Removed shipping_carrier and tracking_reference fields from OrderData type in supabase.ts
+- Removed shipping_carrier and tracking_reference from order creation in CheckoutModal
+- Removed Courier Guy shipping fields from orders API PATCH endpoint
+- Verified .env.local is already clean (no Courier Guy / Geoapify keys)
+- Build verified successfully with no errors
+- Committed and pushed to GitHub using user's PAT token
+- Vercel will auto-deploy
+
+Stage Summary:
+- All Courier Guy API remnants removed
+- Address autocomplete removed, replaced with simple inline text input
+- Address is captured in Supabase and shown in admin panel
+- iKhokha payment gateway kept intact
+- Changes pushed to GitHub, Vercel auto-deploy triggered
