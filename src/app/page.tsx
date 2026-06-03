@@ -46,7 +46,7 @@ import {
   useCartStore,
   type DeliveryMode,
 } from "@/lib/store";
-import { AddressAutocomplete } from "@/components/AddressAutocomplete";
+// Address input is now inline — no external component needed
 import { useSettingsStore } from "@/lib/settings-store";
 import {
   PRODUCTS,
@@ -1093,8 +1093,6 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
         payment_method: paymentMethod,
         payment_status: paymentMethod === "ikhokha" ? "pending" : "cash_on_delivery",
         order_status: "new",
-        shipping_carrier: null,
-        tracking_reference: null,
       };
 
       setCustomerInfo(name, phone, email);
@@ -1298,11 +1296,20 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
                           {/* Delivery Address Input */}
                           <div>
                             <label className="text-xs text-[#FEF3DF]/70 font-semibold mb-1.5 block">Delivery Address</label>
-                            <AddressAutocomplete
-                              value={deliveryAddress}
-                              onChange={(address: string) => setDeliveryAddress(address)}
-                              placeholder="Enter your full address (e.g. 12 Main Rd, Durban, KZN)"
-                            />
+                            <div className="relative">
+                              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#E5B83C]/50 pointer-events-none" />
+                              <input
+                                type="text"
+                                value={deliveryAddress}
+                                onChange={(e) => setDeliveryAddress(e.target.value)}
+                                placeholder="Enter your full address (e.g. 12 Main Rd, Durban, KZN)"
+                                className="w-full bg-white/8 border border-[#E5B83C]/30 rounded-xl pl-10 pr-4 py-3 text-[#FEF3DF] text-sm placeholder:text-[#FEF3DF]/25 focus:outline-none focus:border-[#E5B83C] focus:bg-white/12 transition-all"
+                                autoComplete="street-address"
+                              />
+                            </div>
+                            <p className="text-[0.6rem] text-[#FEF3DF]/35 mt-1.5 flex items-center gap-1.5">
+                              Format: Street, Suburb, City, Province, Postal Code
+                            </p>
                           </div>
 
                           {/* Delivery fee info */}

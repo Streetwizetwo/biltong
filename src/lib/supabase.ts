@@ -23,8 +23,6 @@ export interface OrderData {
   payment_method: string;
   payment_status: string;
   order_status: string;
-  shipping_carrier?: string | null;
-  tracking_reference?: string | null;
 }
 
 export function generateOrderId(): string {

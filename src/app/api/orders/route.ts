@@ -160,13 +160,11 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json();
-    const { order_id, order_status, tracking_reference, shipping_carrier } = body;
+    const { order_id, order_status } = body;
 
     // Build update object with only provided fields
     const updates: Record<string, unknown> = {};
     if (order_status != null) updates.order_status = order_status;
-    if (tracking_reference != null) updates.tracking_reference = tracking_reference;
-    if (shipping_carrier != null) updates.shipping_carrier = shipping_carrier;
 
     if (!order_id || Object.keys(updates).length === 0) {
       return NextResponse.json(
