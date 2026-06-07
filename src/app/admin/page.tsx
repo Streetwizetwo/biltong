@@ -319,12 +319,22 @@ function OrderRow({
                 <div>
                   <p className="text-[0.55rem] text-[#FEF3DF]/40 uppercase tracking-wider mb-1">Delivery</p>
                   <div className="flex items-center gap-1.5">
-                    {order.delivery_mode === "deliver" ? (
-                      <Truck className="w-3.5 h-3.5 text-amber-400" />
-                    ) : (
+                    {order.delivery_mode === "collect" ? (
                       <MapPin className="w-3.5 h-3.5 text-green-400" />
+                    ) : (
+                      <Truck className="w-3.5 h-3.5 text-amber-400" />
                     )}
-                    <span className="text-sm text-[#FEF3DF] capitalize">{order.delivery_mode}</span>
+                    <span className="text-sm text-[#FEF3DF]">
+                      {order.delivery_mode === "collect"
+                        ? "Collection"
+                        : order.delivery_mode === "stanger"
+                          ? "Stanger Delivery"
+                          : order.delivery_mode === "nationwide"
+                            ? "Nationwide Delivery"
+                            : order.delivery_mode === "deliver"
+                              ? "Delivery"
+                              : order.delivery_mode}
+                    </span>
                   </div>
                   {order.delivery_address && (
                     <p className="text-xs text-[#FEF3DF]/60 mt-0.5">{order.delivery_address}</p>

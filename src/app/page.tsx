@@ -922,15 +922,17 @@ function CartDrawer({ open, onClose, onCheckout }: { open: boolean; onClose: () 
               )}
             </div>
 
-            {/* Delivery Mode Toggle */}
+            {/* Delivery Mode Toggle — 3 Options */}
             <div className="px-5 py-3 border-t border-white/10">
-              <div className="flex gap-2">
+              <p className="text-[0.55rem] tracking-[0.15em] uppercase text-[#FEF3DF]/40 mb-2">Delivery Option</p>
+              <div className="flex flex-col gap-2">
                 {[{ mode: "collect" as DeliveryMode, icon: MapPin, label: "COLLECT", sub: "Free · Stanger" },
-                  { mode: "deliver" as DeliveryMode, icon: Truck, label: "DELIVER", sub: `R${settingsDeliveryFee} Stanger · R${settingsNationwideFee} SA` }].map(({ mode, icon: Icon, label, sub }) => (
+                  { mode: "stanger" as DeliveryMode, icon: Truck, label: "STANGER DELIVERY", sub: `R${settingsDeliveryFee}` },
+                  { mode: "nationwide" as DeliveryMode, icon: Truck, label: "NATIONWIDE DELIVERY", sub: `R${settingsNationwideFee}` }].map(({ mode, icon: Icon, label, sub }) => (
                   <motion.button key={mode} whileTap={{ scale: 0.97 }}
                     onClick={() => setDeliveryMode(mode)}
-                    className={`flex-1 py-2.5 text-center cursor-pointer rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
-                      deliveryMode === mode ? "bg-[#E5B83C] text-[#0A0301]" : "bg-white/5 text-[#FEF3DF]/70"
+                    className={`w-full py-2.5 text-center cursor-pointer rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-2 ${
+                      deliveryMode === mode ? "bg-[#E5B83C] text-[#0A0301]" : "bg-white/5 text-[#FEF3DF]/70 hover:bg-white/10"
                     }`}>
                     <Icon className="w-3.5 h-3.5" /> {label} <span className="opacity-70">({sub})</span>
                   </motion.button>
@@ -1093,7 +1095,7 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
         items_summary: items.map((i) => `${i.qty}x ${i.name}`).join(", "),
         subtotal, delivery_fee: deliveryFee, total,
         delivery_mode: deliveryMode,
-        delivery_address: deliveryMode === "deliver" ? deliveryAddress : null,
+        delivery_address: deliveryMode !== "collect" ? deliveryAddress : null,
         payment_method: paymentMethod,
         payment_status: paymentMethod === "ikhokha" ? "pending" : "cash_on_delivery",
         order_status: "new",
@@ -1123,7 +1125,7 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
   const validate = useCallback((): boolean => {
     if (!name.trim()) { toast.error("Please enter your name"); return false; }
     if (!phone.trim()) { toast.error("Please enter your phone number"); return false; }
-    if (deliveryMode === "deliver" && !deliveryAddress.trim()) { toast.error("Please enter your delivery address"); return false; }
+    if (deliveryMode !== "collect" && !deliveryAddress.trim()) { toast.error("Please enter your delivery address"); return false; }
     return true;
   }, [name, phone, deliveryMode, deliveryAddress]);
 
@@ -1225,7 +1227,7 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
   // Can proceed from step 0 to step 1?
   const canContinueToPayment = name.trim() && phone.trim() &&
     (deliveryMode === "collect" ||
-      (deliveryMode === "deliver" && deliveryAddress.trim().length >= 3));
+      (deliveryMode !== "collect" && deliveryAddress.trim().length >= 3));
 
   return (
     <AnimatePresence>
@@ -1297,6 +1299,23 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
                         </div>
                       ) : (
                         <div className="space-y-3">
+                          {/* Delivery zone confirmation */}
+                          <div className={`rounded-xl p-3 border ${
+                            deliveryMode === "stanger"
+                              ? "bg-[#2E7D32]/10 border-[#2E7D32]/30"
+                              : "bg-[#E07A2C]/10 border-[#E07A2C]/30"
+                          }`}>
+                            <p className={`text-sm font-semibold flex items-center gap-2 ${
+                              deliveryMode === "stanger" ? "text-[#2E7D32]" : "text-[#E07A2C]"
+                            }`}>
+                              <Truck className="w-4 h-4" />
+                              {deliveryMode === "stanger" ? `Stanger Delivery — R${settingsDeliveryFee}` : `Nationwide Delivery — R${settingsNationwideFee}`}
+                            </p>
+                            <p className="text-[#FEF3DF]/40 text-xs mt-0.5">
+                              {deliveryMode === "stanger" ? "Local delivery within Stanger / KwaDukuza area" : "Delivery anywhere in South Africa"}
+                            </p>
+                          </div>
+
                           {/* Delivery Address Input */}
                           <div>
                             <label className="text-xs text-[#FEF3DF]/70 font-semibold mb-1.5 block">Delivery Address</label>
@@ -1306,28 +1325,13 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
                                 type="text"
                                 value={deliveryAddress}
                                 onChange={(e) => setDeliveryAddress(e.target.value)}
-                                placeholder="Enter your full address (e.g. 12 Main Rd, Durban, KZN)"
+                                placeholder={deliveryMode === "stanger" ? "e.g. 12 Main Rd, Stanger, KZN" : "e.g. 45 Florida Rd, Durban, KZN, 4001"}
                                 className="w-full bg-white/8 border border-[#E5B83C]/30 rounded-xl pl-10 pr-4 py-3 text-[#FEF3DF] text-sm placeholder:text-[#FEF3DF]/25 focus:outline-none focus:border-[#E5B83C] focus:bg-white/12 transition-all"
                                 autoComplete="street-address"
                               />
                             </div>
                             <p className="text-[0.6rem] text-[#FEF3DF]/35 mt-1.5 flex items-center gap-1.5">
                               Format: Street, Suburb, City, Province, Postal Code
-                            </p>
-                          </div>
-
-                          {/* Delivery fee info */}
-                          <div className="bg-[#E5B83C]/8 border border-[#E5B83C]/20 rounded-xl p-3">
-                            <p className="text-[#E5B83C] text-sm font-semibold flex items-center gap-2">
-                              <Truck className="w-4 h-4" /> Delivery — R{deliveryFee}
-                            </p>
-                            <p className="text-[#FEF3DF]/40 text-xs mt-0.5">
-                              {deliveryAddress && /stanger|kwa[d\-]ukuza|kukuza|mandeni/i.test(deliveryAddress)
-                                ? "Stanger local delivery"
-                                : deliveryAddress.trim().length >= 3
-                                  ? "Nationwide delivery"
-                                  : `R${settingsDeliveryFee} Stanger · R${settingsNationwideFee} Nationwide`
-                              }
                             </p>
                           </div>
                         </div>
@@ -1392,7 +1396,7 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
                           <span className="text-[#FEF3DF]/60">Delivery</span><span>R{deliveryFee}</span>
                         </div>
                       )}
-                      {deliveryMode === "deliver" && deliveryAddress && (
+                      {deliveryMode !== "collect" && deliveryAddress && (
                         <div className="flex justify-between text-xs py-1 border-t border-white/10 mt-1">
                           <span className="text-[#FEF3DF]/60">Deliver to</span>
                           <span className="text-[#FEF3DF]/80 text-right max-w-[60%] truncate">{deliveryAddress}</span>

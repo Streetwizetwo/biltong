@@ -15,7 +15,7 @@ export interface CartItem {
   img: string;
 }
 
-export type DeliveryMode = "collect" | "deliver";
+export type DeliveryMode = "collect" | "stanger" | "nationwide";
 export type PaymentMethod = "ikhokha" | "cash";
 export type OrderStatus = "new" | "payment_initiated" | "paid" | "confirmed";
 
@@ -174,16 +174,14 @@ export const useCartStore = create<CartStore>()(
       subtotal: () => get().items.reduce((s, i) => s + i.price * i.qty, 0),
 
       deliveryFee: () => {
-        if (get().deliveryMode !== "deliver") return 0;
+        const mode = get().deliveryMode;
+        if (mode === "collect") return 0;
         // No delivery fee until an address is entered
         if (!get().deliveryAddress || get().deliveryAddress.trim().length < 3) return 0;
-        // Check if address is in Stanger (local) or nationwide
-        const addr = get().deliveryAddress.toLowerCase();
-        const isStanger = /stanger|kwa[d\-]ukuza|kukuza|mandeni/i.test(addr);
         const settings = useSettingsStore.getState();
-        return isStanger
-          ? (settings?.deliveryFee || 40)
-          : (settings?.nationwideDeliveryFee || 150);
+        if (mode === "stanger") return settings?.deliveryFee || 40;
+        if (mode === "nationwide") return settings?.nationwideDeliveryFee || 150;
+        return 0;
       },
 
       total: () => get().subtotal() + get().deliveryFee(),
@@ -191,8 +189,13 @@ export const useCartStore = create<CartStore>()(
     {
       name: CART_STORAGE_KEY,
       storage: hashedStorage,
-      version: 3,
+      version: 4,
       migrate: (persisted: unknown, version: number) => {
+        const state = persisted as Record<string, unknown>;
+        // v3 and below: map old "deliver" mode to "stanger" as default
+        if (version < 4 && state.deliveryMode === "deliver") {
+          state.deliveryMode = "stanger";
+        }
         // v1/v2 had Courier Guy shipping state — remove it all
         if (version < 3) {
           const state = persisted as Record<string, unknown>;

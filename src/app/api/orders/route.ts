@@ -88,12 +88,16 @@ export async function POST(request: NextRequest) {
       verifiedSubtotal += serverPrice * item.qty;
     }
 
-    // Verify delivery fee — R40 Stanger / R150 nationwide based on address
+    // Verify delivery fee based on chosen delivery mode
     let verifiedDeliveryFee = 0;
+    if (orderData.delivery_mode === "stanger") {
+      verifiedDeliveryFee = deliveryFee;
+    } else if (orderData.delivery_mode === "nationwide") {
+      verifiedDeliveryFee = nationwideDeliveryFee;
+    }
+    // "collect" or legacy "deliver" → 0 (or map "deliver" to stanger for old carts)
     if (orderData.delivery_mode === "deliver") {
-      const addr = (orderData.delivery_address || "").toLowerCase();
-      const isStanger = /stanger|kwa[d\-]ukuza|kukuza|mandeni/i.test(addr);
-      verifiedDeliveryFee = isStanger ? deliveryFee : nationwideDeliveryFee;
+      verifiedDeliveryFee = deliveryFee; // backwards compat
     }
 
     // Recompute total

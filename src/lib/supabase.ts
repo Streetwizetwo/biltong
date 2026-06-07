@@ -51,7 +51,11 @@ export function buildWhatsAppMessage(orderData: OrderData): string {
   if (orderData.customer_phone)
     msg += `\n📱 Phone: ${orderData.customer_phone}`;
 
-  if (orderData.delivery_mode === "deliver") {
+  if (orderData.delivery_mode === "stanger") {
+    msg += `\n🏠 Stanger Delivery: ${orderData.delivery_address || "TBD"}`;
+  } else if (orderData.delivery_mode === "nationwide") {
+    msg += `\n🏠 Nationwide Delivery: ${orderData.delivery_address || "TBD"}`;
+  } else if (orderData.delivery_mode === "deliver") {
     msg += `\n🏠 Delivery: ${orderData.delivery_address || "TBD"}`;
   } else {
     msg += `\n📍 Collection in Stanger`;
@@ -63,7 +67,7 @@ export function buildWhatsAppMessage(orderData: OrderData): string {
     msg += `\n📌 Reference: ${orderData.order_id}`;
   } else {
     msg += `\n\n💵 Payment: Cash/Card on ${
-      orderData.delivery_mode === "deliver" ? "delivery" : "collection"
+      orderData.delivery_mode !== "collect" ? "delivery" : "collection"
     }`;
   }
 
