@@ -1438,15 +1438,27 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
                           className={`w-full bg-[#1DB954] text-white py-3.5 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-sm mb-3 hover:shadow-[0_8px_25px_rgba(29,185,84,0.4)] flex items-center justify-center gap-2 ${ikhokhaLoading ? 'opacity-60 cursor-not-allowed' : ''}`}>
                           {ikhokhaLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />} {ikhokhaLoading ? 'CREATING PAYMENT...' : 'PAY WITH IKHOKHA'}
                         </motion.button>
-                        <div className="flex items-center gap-3 my-1">
-                          <div className="flex-1 h-px bg-white/15" />
-                          <span className="text-[0.55rem] text-white/40 uppercase tracking-[0.1em]">or</span>
-                          <div className="flex-1 h-px bg-white/15" />
-                        </div>
-                        <motion.button whileTap={{ scale: 0.97 }} onClick={handleWhatsAppCash}
-                          className="w-full bg-[#25D366] text-white py-3 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-xs mb-3 hover:shadow-[0_8px_25px_rgba(37,211,102,0.4)] flex items-center justify-center gap-2">
-                          <MessageCircle className="w-3.5 h-3.5" /> WHATSAPP (Cash/Card)
-                        </motion.button>
+                        {/* WhatsApp Cash — only for collection orders */}
+                        {deliveryMode === "collect" && (
+                          <>
+                            <div className="flex items-center gap-3 my-1">
+                              <div className="flex-1 h-px bg-white/15" />
+                              <span className="text-[0.55rem] text-white/40 uppercase tracking-[0.1em]">or</span>
+                              <div className="flex-1 h-px bg-white/15" />
+                            </div>
+                            <motion.button whileTap={{ scale: 0.97 }} onClick={handleWhatsAppCash}
+                              className="w-full bg-[#25D366] text-white py-3 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-xs mb-3 hover:shadow-[0_8px_25px_rgba(37,211,102,0.4)] flex items-center justify-center gap-2">
+                              <MessageCircle className="w-3.5 h-3.5" /> WHATSAPP (Cash/Card on Collection)
+                            </motion.button>
+                          </>
+                        )}
+                        {deliveryMode !== "collect" && (
+                          <div className="bg-[#E07A2C]/10 border border-[#E07A2C]/25 rounded-xl p-3 mt-1">
+                            <p className="text-[0.65rem] text-[#E07A2C]/80 text-center">
+                              Delivery orders require online payment via iKhokha for security.
+                            </p>
+                          </div>
+                        )}
                       </>
                     ) : (
                       <>
@@ -1469,7 +1481,7 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
 
                     <p className="text-[0.6rem] text-white/35 text-center mt-2 leading-relaxed">
                       iKhokha: Secure card payment in a new tab.
-                      <br />WhatsApp: For cash or card on collection/delivery.
+                      {deliveryMode === "collect" && <><br />WhatsApp: Pay cash or card when you collect.</>}
                     </p>
                   </motion.div>
                 )}
