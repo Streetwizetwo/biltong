@@ -775,6 +775,23 @@ function HowToOrderSection() {
     { icon: Truck, title: "Collect or Delivery", desc: `R${deliveryFee} Stanger · R${nationwideFee} SA · Free collect`, num: "4" },
   ];
 
+  // Made-to-order preparation notice
+  const PreparationNotice = () => (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      className="max-w-[1100px] mx-auto mt-8"
+    >
+      <div className="bg-[#E5B83C]/8 border border-[#E5B83C]/20 rounded-xl p-4 flex items-start gap-3">
+        <Sparkles className="w-5 h-5 text-[#E5B83C] flex-shrink-0 mt-0.5" />
+        <p className="text-[#FEF3DF]/70 text-sm leading-relaxed">
+          To ensure the highest quality and freshness, our biltong is <span className="text-[#E5B83C] font-semibold">made to order</span>. Please allow up to <span className="text-[#E5B83C] font-semibold">3 days</span> for preparation before shipping.
+        </p>
+      </div>
+    </motion.div>
+  );
+
   return (
     <section id="how-to-order" className="py-16 md:py-24 px-4 md:px-[6%] relative z-20">
       <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} className="text-center mb-10">
@@ -801,6 +818,7 @@ function HowToOrderSection() {
           </motion.div>
         ))}
       </div>
+      <PreparationNotice />
     </section>
   );
 }
@@ -1296,6 +1314,10 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
                             <MapPin className="w-4 h-4" /> Collection from Stanger — Free
                           </p>
                           <p className="text-[#FEF3DF]/40 text-xs mt-1">Pick up your order in Stanger town</p>
+                          <div className="mt-2 bg-[#E5B83C]/8 border border-[#E5B83C]/15 rounded-lg p-2 flex items-start gap-2">
+                            <Sparkles className="w-3.5 h-3.5 text-[#E5B83C] flex-shrink-0 mt-0.5" />
+                            <p className="text-[#FEF3DF]/50 text-[0.6rem] leading-relaxed">Made to order — please allow up to 3 days for preparation.</p>
+                          </div>
                         </div>
                       ) : (
                         <div className="space-y-3">
@@ -1333,6 +1355,13 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
                             <p className="text-[0.6rem] text-[#FEF3DF]/35 mt-1.5 flex items-center gap-1.5">
                               Format: Street, Suburb, City, Province, Postal Code
                             </p>
+                            {/* Made to order notice */}
+                            <div className="mt-3 bg-[#E5B83C]/8 border border-[#E5B83C]/15 rounded-lg p-2.5 flex items-start gap-2">
+                              <Sparkles className="w-3.5 h-3.5 text-[#E5B83C] flex-shrink-0 mt-0.5" />
+                              <p className="text-[#FEF3DF]/50 text-[0.6rem] leading-relaxed">
+                                Our biltong is made to order for peak freshness. Please allow up to 3 days for preparation before dispatch.
+                              </p>
+                            </div>
                           </div>
                         </div>
                       )}
@@ -1582,7 +1611,7 @@ function Footer() {
             </div>
             <div className="mt-1.5 flex items-center justify-center md:justify-start gap-1.5 text-[#FEF3DF]/40 text-xs">
               <Truck className="w-3.5 h-3.5" />
-              <span>R{deliveryFee} flat delivery fee nationwide</span>
+              <span>Stanger R{deliveryFee} · Nationwide R{nationwideFee} · Collection Free</span>
             </div>
           </div>
 
@@ -1604,7 +1633,7 @@ function Footer() {
             &copy; 2025 Biltong &amp; Bytes · Made with ❤️ in Stanger
           </p>
           <p className="text-[#FEF3DF]/20 text-[0.55rem] tracking-wider uppercase">
-            Premium Halaal Biltong · Hand-Cured with Love
+            Premium Halaal Biltong · Hand-Cured with Love · Made to Order
           </p>
         </div>
       </div>

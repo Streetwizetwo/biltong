@@ -176,8 +176,7 @@ export const useCartStore = create<CartStore>()(
       deliveryFee: () => {
         const mode = get().deliveryMode;
         if (mode === "collect") return 0;
-        // No delivery fee until an address is entered
-        if (!get().deliveryAddress || get().deliveryAddress.trim().length < 3) return 0;
+        // Show fee immediately based on selected delivery zone
         const settings = useSettingsStore.getState();
         if (mode === "stanger") return settings?.deliveryFee || 40;
         if (mode === "nationwide") return settings?.nationwideDeliveryFee || 150;
