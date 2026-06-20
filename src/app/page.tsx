@@ -54,7 +54,6 @@ import {
   IKHOKHA_PAYMENT_URL,
   WHATSAPP_NUMBER,
   generateOrderId,
-  buildWhatsAppMessage,
   type OrderData,
 } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -1006,12 +1005,14 @@ function OrderSuccess({ orderId, paymentMethod, onClose }: { orderId: string; pa
         <PartyPopper className="w-16 h-16 text-[#E5B83C] mx-auto" />
       </motion.div>
       <motion.h3 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
-        className="font-['Cormorant_Garamond'] text-3xl text-[#E5B83C] mt-4">Order Placed!</motion.h3>
+        className="font-['Cormorant_Garamond'] text-3xl text-[#E5B83C] mt-4">
+        {paymentMethod === "ikhokha" ? "Payment Approved!" : "Order Placed!"}
+      </motion.h3>
       <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}
         className="text-[#FEF3DF]/70 mt-2 text-sm">
         {paymentMethod === "ikhokha"
-          ? "Please complete payment in the iKhokha tab, then confirm on WhatsApp."
-          : "We will confirm your order on WhatsApp shortly!"}
+          ? "Payment received! Your order is confirmed — we'll start preparing your biltong fresh."
+          : "Your order is in our system. Pay cash or card when you collect in Stanger."}
       </motion.p>
 
       {/* Order Tracker */}
@@ -1100,7 +1101,6 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
   const [pollSeconds, setPollSeconds] = useState(0);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollStartRef = useRef<number>(0);
-  const whatsappSentRef = useRef(false);
 
   // Save order to Supabase via API
   // Returns the orderData if successful, or null if the save FAILED.
@@ -1177,15 +1177,12 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
     setCheckoutStep(1);
   };
 
-  const handleWhatsAppCash = async () => {
+  const handleCashOnCollection = async () => {
     if (!validate()) return;
     const orderData = await saveOrder("cash");
-    if (!orderData) return; // ABORT if order failed to save — no payment without an order record
+    if (!orderData) return; // ABORT if order failed to save — no order record
     setLastPaymentMethod("cash");
-
-    const msg = buildWhatsAppMessage(orderData);
-    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, "_blank");
-    toast.success(`Order ${orderData.order_id} sent!`, { icon: "🥩" });
+    toast.success(`Order ${orderData.order_id} placed!`, { icon: "🥩" });
     setOrderSuccess(true);
     setCheckoutStep(2);
   };
@@ -1194,7 +1191,6 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
     if (!validate()) return;
     setIkhokhaLoading(true);
     // Reset per-order flags
-    whatsappSentRef.current = false;
     if (pollIntervalRef.current) { clearInterval(pollIntervalRef.current); pollIntervalRef.current = null; }
     setPaymentVerification("idle");
     try {
@@ -1202,10 +1198,6 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
       if (!orderData) return; // ABORT — do NOT redirect to iKhokha if order failed to save
       setLastPaymentMethod("ikhokha");
       setPendingIkhokhaOrder(orderData as unknown as Record<string, unknown>);
-
-      // IMMEDIATELY send order to seller's WhatsApp so they're notified of the pending order.
-      // (This opens WhatsApp Web/app addressed to the seller with a pre-filled message.)
-      sendOrderToWhatsApp(orderData, "pending");
 
       const res = await fetch("/api/ikhokha/create-payment", {
         method: "POST",
@@ -1248,7 +1240,6 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
       if (!orderData) return; // ABORT — no payment without order record
       setLastPaymentMethod("ikhokha");
       setPendingIkhokhaOrder(orderData as unknown as Record<string, unknown>);
-      sendOrderToWhatsApp(orderData, "pending");
       const amountUrl = `${IKHOKHA_PAYMENT_URL}?amount=${total.toFixed(2)}`;
       setPaylinkUrl(amountUrl);
       window.open(amountUrl, "_blank");
@@ -1260,31 +1251,38 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
     }
   };
 
-  const handleConfirmWhatsApp = () => {
+  // Manual "I've Paid" fallback — used when polling times out (e.g. webhook delay).
+  // Marks the order as paid in the admin panel directly, no WhatsApp involved.
+  const handleConfirmPaid = async () => {
     const pendingOrder = useCartStore.getState().pendingIkhokhaOrder;
     if (!pendingOrder) { toast.error("No pending order found"); return; }
     const orderData = pendingOrder as unknown as OrderData;
 
-    const msg = buildWhatsAppMessage(orderData) + "\n\n✅ Payment completed via iKhokha!";
-    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, "_blank");
-    toast.success("Confirmation sent!", { icon: "✅" });
-    setOrderSuccess(true);
-    setCheckoutStep(2);
-  };
+    try {
+      await fetch("/api/orders", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          order_id: orderData.order_id,
+          payment_status: "paid",
+          order_status: "confirmed",
+        }),
+      });
+    } catch {
+      /* non-critical — order is already saved locally + in admin panel */
+    }
 
-  // Send the order to the seller's WhatsApp immediately (only once per order).
-  // Called as soon as the customer is redirected to iKhokha, so the seller is
-  // notified of a pending order even before payment is confirmed.
-  const sendOrderToWhatsApp = useCallback((orderData: OrderData, status: "pending" | "paid") => {
-    if (whatsappSentRef.current) return; // only send once
-    whatsappSentRef.current = true;
-    const suffix = status === "paid"
-      ? "\n\n✅ Payment confirmed via iKhokha."
-      : "\n\n⏳ Awaiting iKhokha payment confirmation.";
-    const msg = buildWhatsAppMessage(orderData) + suffix;
-    // Open WhatsApp in a new tab addressed to the SELLER (not the customer)
-    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, "_blank");
-  }, []);
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+    setPaymentVerification("approved");
+    toast.success("Payment confirmed! Order placed.", { icon: "✅", duration: 5000 });
+    setTimeout(() => {
+      setOrderSuccess(true);
+      setCheckoutStep(2);
+    }, 1200);
+  };
 
   // Start polling the public order-status endpoint for payment confirmation.
   // The iKhokha webhook PATCHes the order's payment_status to "paid" on success.
@@ -1322,8 +1320,6 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
           }
           setPaymentVerification("approved");
           setLastPaymentMethod("ikhokha");
-          // Send WhatsApp confirmation to seller (with "paid" suffix)
-          sendOrderToWhatsApp(orderData, "paid");
           toast.success("Payment approved! Order confirmed.", { icon: "✅", duration: 5000 });
           // Move to success screen after a short delay so customer can see the approval
           setTimeout(() => {
@@ -1346,7 +1342,7 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
     // Poll immediately, then every 5 seconds
     poll();
     pollIntervalRef.current = setInterval(poll, 5000);
-  }, [sendOrderToWhatsApp]);
+  }, []);
 
   // Cleanup polling on unmount
   useEffect(() => {
@@ -1591,7 +1587,7 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
                           className={`w-full bg-[#1DB954] text-white py-3.5 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-sm mb-3 hover:shadow-[0_8px_25px_rgba(29,185,84,0.4)] flex items-center justify-center gap-2 ${ikhokhaLoading ? 'opacity-60 cursor-not-allowed' : ''}`}>
                           {ikhokhaLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />} {ikhokhaLoading ? 'CREATING PAYMENT...' : 'PAY WITH IKHOKHA'}
                         </motion.button>
-                        {/* WhatsApp Cash — only for collection orders */}
+                        {/* Cash / Card on Collection — only for collection orders */}
                         {deliveryMode === "collect" && (
                           <>
                             <div className="flex items-center gap-3 my-1">
@@ -1599,9 +1595,9 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
                               <span className="text-[0.55rem] text-white/40 uppercase tracking-[0.1em]">or</span>
                               <div className="flex-1 h-px bg-white/15" />
                             </div>
-                            <motion.button whileTap={{ scale: 0.97 }} onClick={handleWhatsAppCash}
+                            <motion.button whileTap={{ scale: 0.97 }} onClick={handleCashOnCollection}
                               className="w-full bg-[#25D366] text-white py-3 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-xs mb-3 hover:shadow-[0_8px_25px_rgba(37,211,102,0.4)] flex items-center justify-center gap-2">
-                              <MessageCircle className="w-3.5 h-3.5" /> WHATSAPP (Cash/Card on Collection)
+                              <MessageCircle className="w-3.5 h-3.5" /> CASH / CARD ON COLLECTION
                             </motion.button>
                           </>
                         )}
@@ -1631,7 +1627,7 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
                               <CheckCircle2 className="w-8 h-8 text-white" />
                             </motion.div>
                             <p className="font-['Cormorant_Garamond'] text-xl text-[#2E7D32] font-bold">Payment Approved!</p>
-                            <p className="text-xs text-[#FEF3DF]/60 mt-1">Your order is confirmed. We've notified the team on WhatsApp.</p>
+                            <p className="text-xs text-[#FEF3DF]/60 mt-1">Your order is confirmed. We'll start preparing your biltong fresh.</p>
                             <p className="text-[0.6rem] text-[#FEF3DF]/40 mt-2">Redirecting to confirmation...</p>
                           </motion.div>
                         ) : paymentVerification === "failed" ? (
@@ -1640,9 +1636,9 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
                             <p className="text-xs text-[#FEF3DF]/60 mt-1">
                               We couldn't verify your payment automatically. If you've paid, please tap below to confirm.
                             </p>
-                            <motion.button whileTap={{ scale: 0.97 }} onClick={handleConfirmWhatsApp}
-                              className="w-full mt-3 bg-[#25D366] text-white py-3 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-xs hover:shadow-[0_8px_25px_rgba(37,211,102,0.4)] flex items-center justify-center gap-2">
-                              <MessageCircle className="w-4 h-4" /> I'VE PAID — CONFIRM ON WHATSAPP
+                            <motion.button whileTap={{ scale: 0.97 }} onClick={handleConfirmPaid}
+                              className="w-full mt-3 bg-[#2E7D32] text-white py-3 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-xs hover:shadow-[0_8px_25px_rgba(46,125,50,0.4)] flex items-center justify-center gap-2">
+                              <CheckCircle2 className="w-4 h-4" /> I'VE PAID — CONFIRM ORDER
                             </motion.button>
                           </div>
                         ) : (
@@ -1692,7 +1688,7 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
 
                     <p className="text-[0.6rem] text-white/35 text-center mt-2 leading-relaxed">
                       iKhokha: Secure card payment in a new tab.
-                      {deliveryMode === "collect" && <><br />WhatsApp: Pay cash or card when you collect.</>}
+                      {deliveryMode === "collect" && <><br />Cash / Card: Pay when you collect in Stanger.</>}
                     </p>
                   </motion.div>
                 )}
