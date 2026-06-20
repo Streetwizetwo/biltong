@@ -1095,6 +1095,12 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [lastPaymentMethod, setLastPaymentMethod] = useState("cash");
   const [checkoutStep, setCheckoutStep] = useState(0); // 0=shipping, 1=payment, 2=done
+  // Payment polling state — tracks whether iKhokha webhook has confirmed payment
+  const [paymentVerification, setPaymentVerification] = useState<"idle" | "waiting" | "approved" | "failed">("idle");
+  const [pollSeconds, setPollSeconds] = useState(0);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollStartRef = useRef<number>(0);
+  const whatsappSentRef = useRef(false);
 
   // Save order to Supabase via API
   // Returns the orderData if successful, or null if the save FAILED.
@@ -1187,11 +1193,19 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
   const handleIkhokha = async () => {
     if (!validate()) return;
     setIkhokhaLoading(true);
+    // Reset per-order flags
+    whatsappSentRef.current = false;
+    if (pollIntervalRef.current) { clearInterval(pollIntervalRef.current); pollIntervalRef.current = null; }
+    setPaymentVerification("idle");
     try {
       const orderData = await saveOrder("ikhokha");
       if (!orderData) return; // ABORT — do NOT redirect to iKhokha if order failed to save
       setLastPaymentMethod("ikhokha");
       setPendingIkhokhaOrder(orderData as unknown as Record<string, unknown>);
+
+      // IMMEDIATELY send order to seller's WhatsApp so they're notified of the pending order.
+      // (This opens WhatsApp Web/app addressed to the seller with a pre-filled message.)
+      sendOrderToWhatsApp(orderData, "pending");
 
       const res = await fetch("/api/ikhokha/create-payment", {
         method: "POST",
@@ -1208,7 +1222,7 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
       if (res.ok && paymentData.success && paymentData.paylinkUrl) {
         setPaylinkUrl(paymentData.paylinkUrl);
         window.open(paymentData.paylinkUrl, "_blank");
-        toast.info("iKhokha payment page opened! Complete payment, then confirm below.", { icon: "💳", duration: 5000 });
+        toast.info("iKhokha payment page opened. Complete your payment — we'll confirm automatically.", { icon: "💳", duration: 6000 });
 
         try {
           await fetch("/api/orders", {
@@ -1222,21 +1236,25 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
         const amountUrl = `${IKHOKHA_PAYMENT_URL}?amount=${total.toFixed(2)}`;
         setPaylinkUrl(amountUrl);
         window.open(amountUrl, "_blank");
-        toast.info(`iKhokha opened with R${total.toFixed(2)}. Complete payment, then confirm below.`, { icon: "💳", duration: 5000 });
+        toast.info(`iKhokha opened with R${total.toFixed(2)}. Complete your payment — we'll confirm automatically.`, { icon: "💳", duration: 6000 });
       }
 
       setIkhokhaStep(true);
+      // Start polling for payment confirmation from the iKhokha webhook
+      startPaymentPolling(orderData.order_id, orderData);
     } catch {
       // Network failure on create-payment — try saving order again with static fallback
       const orderData = await saveOrder("ikhokha");
       if (!orderData) return; // ABORT — no payment without order record
       setLastPaymentMethod("ikhokha");
       setPendingIkhokhaOrder(orderData as unknown as Record<string, unknown>);
+      sendOrderToWhatsApp(orderData, "pending");
       const amountUrl = `${IKHOKHA_PAYMENT_URL}?amount=${total.toFixed(2)}`;
       setPaylinkUrl(amountUrl);
       window.open(amountUrl, "_blank");
-      toast.info(`iKhokha opened with R${total.toFixed(2)}. Complete payment, then confirm below.`, { icon: "💳", duration: 5000 });
+      toast.info(`iKhokha opened with R${total.toFixed(2)}. Complete your payment — we'll confirm automatically.`, { icon: "💳", duration: 6000 });
       setIkhokhaStep(true);
+      startPaymentPolling(orderData.order_id, orderData);
     } finally {
       setIkhokhaLoading(false);
     }
@@ -1253,6 +1271,89 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
     setOrderSuccess(true);
     setCheckoutStep(2);
   };
+
+  // Send the order to the seller's WhatsApp immediately (only once per order).
+  // Called as soon as the customer is redirected to iKhokha, so the seller is
+  // notified of a pending order even before payment is confirmed.
+  const sendOrderToWhatsApp = useCallback((orderData: OrderData, status: "pending" | "paid") => {
+    if (whatsappSentRef.current) return; // only send once
+    whatsappSentRef.current = true;
+    const suffix = status === "paid"
+      ? "\n\n✅ Payment confirmed via iKhokha."
+      : "\n\n⏳ Awaiting iKhokha payment confirmation.";
+    const msg = buildWhatsAppMessage(orderData) + suffix;
+    // Open WhatsApp in a new tab addressed to the SELLER (not the customer)
+    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, "_blank");
+  }, []);
+
+  // Start polling the public order-status endpoint for payment confirmation.
+  // The iKhokha webhook PATCHes the order's payment_status to "paid" on success.
+  const startPaymentPolling = useCallback((orderIdToPoll: string, orderData: OrderData) => {
+    // Clear any existing poller
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    pollStartRef.current = Date.now();
+    setPaymentVerification("waiting");
+    setPollSeconds(0);
+
+    const poll = async () => {
+      const elapsed = Math.floor((Date.now() - pollStartRef.current) / 1000);
+      setPollSeconds(elapsed);
+
+      // Stop polling after 15 minutes — customer can still confirm manually
+      if (elapsed > 15 * 60) {
+        if (pollIntervalRef.current) {
+          clearInterval(pollIntervalRef.current);
+          pollIntervalRef.current = null;
+        }
+        setPaymentVerification("failed");
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/orders/status?order_id=${encodeURIComponent(orderIdToPoll)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+
+        if (data.payment_status === "paid" || data.order_status === "confirmed") {
+          // PAYMENT APPROVED!
+          if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+          }
+          setPaymentVerification("approved");
+          setLastPaymentMethod("ikhokha");
+          // Send WhatsApp confirmation to seller (with "paid" suffix)
+          sendOrderToWhatsApp(orderData, "paid");
+          toast.success("Payment approved! Order confirmed.", { icon: "✅", duration: 5000 });
+          // Move to success screen after a short delay so customer can see the approval
+          setTimeout(() => {
+            setOrderSuccess(true);
+            setCheckoutStep(2);
+          }, 1800);
+        } else if (data.payment_status === "failed" || data.order_status === "payment_failed") {
+          if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+          }
+          setPaymentVerification("failed");
+          toast.error("Payment failed or was cancelled.", { duration: 5000 });
+        }
+      } catch {
+        // Network blip — keep polling
+      }
+    };
+
+    // Poll immediately, then every 5 seconds
+    poll();
+    pollIntervalRef.current = setInterval(poll, 5000);
+  }, [sendOrderToWhatsApp]);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    };
+  }, []);
 
   const handleClose = () => {
     if (orderSuccess) clearCart();
@@ -1514,14 +1615,72 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
                       </>
                     ) : (
                       <>
-                        <motion.button whileTap={{ scale: 0.97 }} onClick={handleConfirmWhatsApp}
-                          className="w-full bg-[#25D366] text-white py-3.5 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-sm mb-3 hover:shadow-[0_8px_25px_rgba(37,211,102,0.4)] flex items-center justify-center gap-2">
-                          <MessageCircle className="w-4 h-4" /> CONFIRM ON WHATSAPP
-                        </motion.button>
-                        <motion.button whileTap={{ scale: 0.97 }} onClick={() => window.open(paylinkUrl || IKHOKHA_PAYMENT_URL, "_blank")}
-                          className="w-full border border-[#E5B83C]/40 text-[#E5B83C] py-2.5 font-bold tracking-[0.1em] uppercase cursor-pointer rounded-xl text-xs mb-3 hover:bg-[#E5B83C]/10 flex items-center justify-center gap-2">
-                          <CreditCard className="w-3.5 h-3.5" /> RE-OPEN PAYMENT
-                        </motion.button>
+                        {/* PAYMENT VERIFICATION STATUS BLOCK */}
+                        {paymentVerification === "approved" ? (
+                          <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            className="bg-[#2E7D32]/15 border-2 border-[#2E7D32] rounded-xl p-5 text-center mb-4"
+                          >
+                            <motion.div
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              transition={{ type: "spring", damping: 12, stiffness: 200, delay: 0.1 }}
+                              className="w-14 h-14 rounded-full bg-[#2E7D32] flex items-center justify-center mx-auto mb-3"
+                            >
+                              <CheckCircle2 className="w-8 h-8 text-white" />
+                            </motion.div>
+                            <p className="font-['Cormorant_Garamond'] text-xl text-[#2E7D32] font-bold">Payment Approved!</p>
+                            <p className="text-xs text-[#FEF3DF]/60 mt-1">Your order is confirmed. We've notified the team on WhatsApp.</p>
+                            <p className="text-[0.6rem] text-[#FEF3DF]/40 mt-2">Redirecting to confirmation...</p>
+                          </motion.div>
+                        ) : paymentVerification === "failed" ? (
+                          <div className="bg-[#B23A1A]/15 border border-[#B23A1A]/40 rounded-xl p-4 text-center mb-4">
+                            <p className="font-['Cormorant_Garamond'] text-lg text-[#B23A1A] font-bold">Payment Not Confirmed</p>
+                            <p className="text-xs text-[#FEF3DF]/60 mt-1">
+                              We couldn't verify your payment automatically. If you've paid, please tap below to confirm.
+                            </p>
+                            <motion.button whileTap={{ scale: 0.97 }} onClick={handleConfirmWhatsApp}
+                              className="w-full mt-3 bg-[#25D366] text-white py-3 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-xs hover:shadow-[0_8px_25px_rgba(37,211,102,0.4)] flex items-center justify-center gap-2">
+                              <MessageCircle className="w-4 h-4" /> I'VE PAID — CONFIRM ON WHATSAPP
+                            </motion.button>
+                          </div>
+                        ) : (
+                          /* WAITING state — default when redirected to iKhokha */
+                          <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="bg-[#E5B83C]/8 border border-[#E5B83C]/30 rounded-xl p-4 text-center mb-4"
+                          >
+                            <div className="flex items-center justify-center gap-2 mb-2">
+                              <Loader2 className="w-5 h-5 text-[#E5B83C] animate-spin" />
+                              <p className="font-['Cormorant_Garamond'] text-lg text-[#E5B83C] font-bold">
+                                Waiting for payment confirmation...
+                              </p>
+                            </div>
+                            <p className="text-xs text-[#FEF3DF]/70 leading-relaxed">
+                              Complete your payment on the iKhokha page. Your order will be <span className="text-[#2E7D32] font-semibold">automatically confirmed</span> the moment payment is approved.
+                            </p>
+                            <p className="text-[0.6rem] text-[#FEF3DF]/40 mt-2">
+                              Elapsed: {Math.floor(pollSeconds / 60)}:{String(pollSeconds % 60).padStart(2, "0")} · Order ref: {orderId}
+                            </p>
+                          </motion.div>
+                        )}
+
+                        {/* Re-open payment link (always available while waiting) */}
+                        {paymentVerification !== "approved" && (
+                          <motion.button whileTap={{ scale: 0.97 }} onClick={() => window.open(paylinkUrl || IKHOKHA_PAYMENT_URL, "_blank")}
+                            className="w-full border border-[#E5B83C]/40 text-[#E5B83C] py-2.5 font-bold tracking-[0.1em] uppercase cursor-pointer rounded-xl text-xs mb-3 hover:bg-[#E5B83C]/10 flex items-center justify-center gap-2">
+                            <CreditCard className="w-3.5 h-3.5" /> RE-OPEN PAYMENT PAGE
+                          </motion.button>
+                        )}
+
+                        {/* Manual confirm — only shown after polling times out (failed state) */}
+                        {paymentVerification === "failed" && (
+                          <p className="text-[0.6rem] text-white/35 text-center mt-2 leading-relaxed">
+                            Already confirmed above? We'll process your order as soon as we verify payment.
+                          </p>
+                        )}
                       </>
                     )}
 
