@@ -89,3 +89,47 @@ Stage Summary:
 - All order details still saved to Supabase and visible in admin panel (unchanged)
 - 1 file changed, 44 insertions, 48 deletions (net -4 lines)
 - Pushed to GitHub; Vercel auto-deploy triggered
+
+---
+Task ID: 3
+Agent: Main Agent
+Task: Add email notifications via Resend — customer + merchant emails on every order
+
+Work Log:
+- Asked user clarifying questions: chose onboarding@resend.dev sender (test mode, no DNS setup)
+- User provided Resend API key: re_hvN86L63_...
+- Installed `resend` npm package
+- Created /home/z/my-project/.env.local (gitignored) with:
+  * RESEND_API_KEY
+  * MERCHANT_EMAIL=khadertahir@gmail.com (initially set to orders@biltongandbytes.co.za, then corrected after Resend revealed account email)
+  * RESEND_FROM_EMAIL=onboarding@resend.dev
+- Created /api/email/order-confirmation/route.ts with:
+  * Two branded HTML email templates (customer + merchant)
+  * Site palette: dark brown background (#0A0301), gold accents (#E5B83C), cream text (#FEF3DF)
+  * Order summary table with items, flavors, qty, line totals, delivery fee, total
+  * Customer email: order ref card, delivery details, "Payment Approved!" or "Order Received!" heading based on payment_status, 3-day prep note
+  * Merchant email: full customer details (name/phone/email/address), order ID, payment + status badges, link to admin panel
+  * Graceful degradation: returns 200 even on email failure, never blocks order flow
+  * Skips customer email if customer_email is null
+- Wired sendOrderEmails() helper into all 3 order flows in page.tsx:
+  * handleCashOnCollection: fires immediately when cash order placed (payment_status='cash_on_delivery')
+  * startPaymentPolling: fires when iKhokha webhook confirms payment (overlays payment_status='paid' on orderData)
+  * handleConfirmPaid: fires when customer manually confirms payment (overlays payment_status='paid')
+- Updated email field placeholder in checkout form: "Your Email (for order confirmation)"
+- Tested end-to-end via scripts/test-email.ts:
+  * First test: Resend returned 403 validation_error — confirmed API key is valid, revealed account email is khadertahir@gmail.com
+  * Corrected MERCHANT_EMAIL in .env.local
+  * Second test: BOTH customer + merchant emails sent successfully (got email IDs from Resend API)
+- Build succeeded: /api/email/order-confirmation route registered as dynamic server-rendered endpoint
+- Committed + pushed to GitHub (63c1ce2..c5bbd6a main -> main) — Vercel will auto-deploy
+
+Stage Summary:
+- Email notifications fully wired for both cash + iKhokha order flows
+- Both emails tested successfully end-to-end via Resend API
+- Currently in TEST MODE: onboarding@resend.dev sender only delivers to khadertahir@gmail.com
+- To enable production emails to any customer inbox: verify biltongandbytes.co.za in Resend dashboard, add DNS records, change RESEND_FROM_EMAIL env var on Vercel
+- All order details still saved to admin panel (unchanged)
+- All previous WhatsApp revert logic preserved (no regression)
+- 5 files changed, 550 insertions, 2 deletions
+- Pushed to GitHub; Vercel auto-deploy triggered
+- ACTION REQUIRED: User must add RESEND_API_KEY, MERCHANT_EMAIL, RESEND_FROM_EMAIL env vars on Vercel Project Settings -> Environment Variables
