@@ -1097,8 +1097,10 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
   const [checkoutStep, setCheckoutStep] = useState(0); // 0=shipping, 1=payment, 2=done
 
   // Save order to Supabase via API
+  // Returns the orderData if successful, or null if the save FAILED.
+  // The caller MUST check the return value and abort the payment flow on null.
   const saveOrder = useCallback(
-    async (paymentMethod: string) => {
+    async (paymentMethod: string): Promise<OrderData | null> => {
       const newOrderId = generateOrderId();
       setOrderId(newOrderId);
       setCurrentOrderId(newOrderId);
@@ -1131,11 +1133,28 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(orderData),
         });
-        setSavingStatus(res.ok ? "saved" : "error");
-      } catch {
+        if (res.ok) {
+          setSavingStatus("saved");
+          return orderData;
+        } else {
+          // CRITICAL: order failed to save — return null so caller can ABORT payment
+          const errBody = await res.json().catch(() => ({}));
+          console.error("[Checkout] Order save failed:", res.status, errBody);
+          setSavingStatus("error");
+          toast.error(
+            errBody?.error
+              ? `Order could not be saved: ${errBody.error}. Please contact us on WhatsApp.`
+              : "Order could not be saved. Please contact us on WhatsApp.",
+            { duration: 6000 }
+          );
+          return null;
+        }
+      } catch (err) {
+        console.error("[Checkout] Order save network error:", err);
         setSavingStatus("error");
+        toast.error("Network error — order could not be saved. Please try again or contact us on WhatsApp.", { duration: 6000 });
+        return null;
       }
-      return orderData;
     },
     [name, phone, email, items, subtotal, deliveryFee, total, deliveryMode, deliveryAddress, setCustomerInfo, setCurrentOrderId]
   );
@@ -1155,6 +1174,7 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
   const handleWhatsAppCash = async () => {
     if (!validate()) return;
     const orderData = await saveOrder("cash");
+    if (!orderData) return; // ABORT if order failed to save — no payment without an order record
     setLastPaymentMethod("cash");
 
     const msg = buildWhatsAppMessage(orderData);
@@ -1169,6 +1189,7 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
     setIkhokhaLoading(true);
     try {
       const orderData = await saveOrder("ikhokha");
+      if (!orderData) return; // ABORT — do NOT redirect to iKhokha if order failed to save
       setLastPaymentMethod("ikhokha");
       setPendingIkhokhaOrder(orderData as unknown as Record<string, unknown>);
 
@@ -1206,7 +1227,9 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
 
       setIkhokhaStep(true);
     } catch {
+      // Network failure on create-payment — try saving order again with static fallback
       const orderData = await saveOrder("ikhokha");
+      if (!orderData) return; // ABORT — no payment without order record
       setLastPaymentMethod("ikhokha");
       setPendingIkhokhaOrder(orderData as unknown as Record<string, unknown>);
       const amountUrl = `${IKHOKHA_PAYMENT_URL}?amount=${total.toFixed(2)}`;

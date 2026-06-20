@@ -74,10 +74,23 @@ export async function POST(request: NextRequest) {
     const { productPrices, deliveryFee, nationwideDeliveryFee } = await getLivePrices();
 
     // Recalculate subtotal from items using server-side prices
+    // Cart stores item.name as "ProductName Weight" (e.g. "Snack Pack 150g"),
+    // so we match by checking if the cart item name STARTS WITH a known product name.
     let verifiedSubtotal = 0;
+    const knownProductNames = Object.keys(productPrices);
     for (const item of orderData.items) {
-      const serverPrice = productPrices[item.name];
+      // Try exact match first, then prefix match (e.g. "Snack Pack 150g" → "Snack Pack")
+      let matchedName: string | undefined = knownProductNames.find(
+        (p) => p === item.name
+      );
+      if (!matchedName) {
+        matchedName = knownProductNames.find(
+          (p) => item.name === p || item.name.startsWith(p + " ")
+        );
+      }
+      const serverPrice = matchedName ? productPrices[matchedName] : undefined;
       if (serverPrice == null) {
+        console.error(`[Orders] Unknown product: "${item.name}". Known: ${knownProductNames.join(", ")}`);
         return NextResponse.json(
           { error: `Unknown product: ${item.name}` },
           { status: 400 }
