@@ -1185,6 +1185,8 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
     toast.success(`Order ${orderData.order_id} placed!`, { icon: "🥩" });
     setOrderSuccess(true);
     setCheckoutStep(2);
+    // Fire-and-forget email notifications (customer + merchant)
+    sendOrderEmails(orderData);
   };
 
   const handleIkhokha = async () => {
@@ -1278,11 +1280,25 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
     }
     setPaymentVerification("approved");
     toast.success("Payment confirmed! Order placed.", { icon: "✅", duration: 5000 });
+    // Fire emails — mark as paid so the customer email says "Payment Approved!"
+    sendOrderEmails({ ...orderData, payment_status: "paid", order_status: "confirmed" });
     setTimeout(() => {
       setOrderSuccess(true);
       setCheckoutStep(2);
     }, 1200);
   };
+
+  // Fire-and-forget: send customer + merchant order confirmation emails.
+  // Failures are logged server-side; the customer order flow is never blocked.
+  const sendOrderEmails = useCallback((orderData: OrderData) => {
+    fetch("/api/email/order-confirmation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(orderData),
+    }).catch((err) => {
+      console.error("[Checkout] Email send failed:", err);
+    });
+  }, []);
 
   // Start polling the public order-status endpoint for payment confirmation.
   // The iKhokha webhook PATCHes the order's payment_status to "paid" on success.
@@ -1321,6 +1337,8 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
           setPaymentVerification("approved");
           setLastPaymentMethod("ikhokha");
           toast.success("Payment approved! Order confirmed.", { icon: "✅", duration: 5000 });
+          // Fire emails — mark as paid so the customer email says "Payment Approved!"
+          sendOrderEmails({ ...orderData, payment_status: "paid", order_status: "confirmed" });
           // Move to success screen after a short delay so customer can see the approval
           setTimeout(() => {
             setOrderSuccess(true);
@@ -1342,7 +1360,7 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
     // Poll immediately, then every 5 seconds
     poll();
     pollIntervalRef.current = setInterval(poll, 5000);
-  }, []);
+  }, [sendOrderEmails]);
 
   // Cleanup polling on unmount
   useEffect(() => {
@@ -1420,7 +1438,7 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
                         className="w-full bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-3 text-[#FEF3DF] text-sm placeholder:text-[#FEF3DF]/25 focus:outline-none focus:border-[#E5B83C] focus:bg-white/12 transition-all" />
                       <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Your Phone Number *"
                         className="w-full bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-3 text-[#FEF3DF] text-sm placeholder:text-[#FEF3DF]/25 focus:outline-none focus:border-[#E5B83C] focus:bg-white/12 transition-all" />
-                      <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Your Email (for receipt)"
+                      <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Your Email (for order confirmation)"
                         className="w-full bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-3 text-[#FEF3DF] text-sm placeholder:text-[#FEF3DF]/25 focus:outline-none focus:border-[#E5B83C] focus:bg-white/12 transition-all" />
                     </div>
 
