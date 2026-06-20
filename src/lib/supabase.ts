@@ -13,7 +13,7 @@ export interface OrderData {
   customer_name: string;
   customer_phone: string;
   customer_email: string | null;
-  items: { name: string; price: number; qty: number }[];
+  items: { name: string; flavor: string; price: number; qty: number }[];
   items_summary: string;
   subtotal: number;
   delivery_fee: number;
@@ -39,7 +39,8 @@ export function buildWhatsAppMessage(orderData: OrderData): string {
   msg += `📋 Order ID: ${orderData.order_id}\n\n`;
 
   orderData.items.forEach((item) => {
-    msg += `• ${item.qty}x ${item.name} — R${item.price * item.qty}\n`;
+    const flavorStr = item.flavor ? ` [${item.flavor}]` : "";
+    msg += `• ${item.qty}x ${item.name}${flavorStr} — R${item.price * item.qty}\n`;
   });
 
   msg += `\n💰 Subtotal: R${orderData.subtotal}`;

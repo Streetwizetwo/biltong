@@ -36,6 +36,7 @@ import { PRODUCTS } from "@/lib/supabase";
 // ============================================
 interface OrderItem {
   name: string;
+  flavor?: string;
   price: number;
   qty: number;
 }
@@ -347,7 +348,7 @@ function OrderRow({
                 <p className="text-[0.55rem] text-[#FEF3DF]/40 uppercase tracking-wider mb-1">Items</p>
                 {order.items.map((item, i) => (
                   <div key={i} className="flex justify-between text-xs py-0.5">
-                    <span className="text-[#FEF3DF]/80">{item.qty}x {item.name}</span>
+                    <span className="text-[#FEF3DF]/80">{item.qty}x {item.name} <span className="text-[#E5B83C]/80">[{item.flavor || "Traditional"}]</span></span>
                     <span className="text-[#F8E5B0]">R{item.price * item.qty}</span>
                   </div>
                 ))}
