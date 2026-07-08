@@ -23,7 +23,8 @@ const nextConfig: NextConfig = {
             value: "camera=(), microphone=(), geolocation=(), payment=()",
           },
           // Content Security Policy — biggest XSS mitigation
-          // Allows: self, inline styles, Vercel analytics, Google Fonts, iKhokha payment redirects
+          // Allows: self, inline styles, Vercel analytics, Google Fonts, iKhokha payment redirects,
+          // and any *.supabase.co project (so swapping projects doesn't require a code change).
           {
             key: "Content-Security-Policy",
             value: [
@@ -31,8 +32,8 @@ const nextConfig: NextConfig = {
               "script-src 'self' 'unsafe-inline' 'unsafe-eval' va.vercel-scripts.com",
               "style-src 'self' 'unsafe-inline' fonts.googleapis.com",
               "font-src 'self' fonts.gstatic.com",
-              "img-src 'self' data: blob: https://fltjcycovhslqupmalfj.supabase.co",
-              "connect-src 'self' https://fltjcycovhslqupmalfj.supabase.co https://api.ikhokha.com",
+              "img-src 'self' data: blob: https://*.supabase.co",
+              "connect-src 'self' https://*.supabase.co https://api.ikhokha.com",
               "form-action 'self'",
               "frame-ancestors 'none'",
               "base-uri 'self'",

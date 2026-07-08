@@ -1,7 +1,12 @@
 // Supabase configuration for Biltong & Bytes
 // Orders are saved via the API route to keep the anon key server-side
 
-export const SUPABASE_URL = "https://fltjcycovhslqupmalfj.supabase.co";
+// Supabase project URL — read from env so swapping projects doesn't require code changes.
+// Set NEXT_PUBLIC_SUPABASE_URL in Vercel Project Settings → Environment Variables.
+export const SUPABASE_URL =
+  process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  process.env.SUPABASE_URL ||
+  "https://placeholder.supabase.co";
 
 export const IKHOKHA_PAYMENT_URL =
   "https://pay.ikhokha.com/biltongandbytes/mpr/online";

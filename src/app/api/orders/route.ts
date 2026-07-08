@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const SUPABASE_URL = "https://fltjcycovhslqupmalfj.supabase.co";
-const SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZsdGpjeWNvdmhzbHF1cG1hbGZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyOTc0OTksImV4cCI6MjA5NDg3MzQ5OX0.nBWxfRfxWGEwE2EU8Me4q8DnD_9EGc-LN0MfCsag-YU";
+// Read Supabase config from env so swapping projects doesn't require code changes.
+// Set SUPABASE_URL + SUPABASE_ANON_KEY in Vercel Project Settings → Environment Variables.
+const SUPABASE_URL =
+  process.env.SUPABASE_URL ||
+  process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  "";
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || "";
 
 // Default product prices (fallback if settings table doesn't exist OR Supabase is unreachable)
 const DEFAULT_PRICES: Record<string, number> = {

@@ -4,9 +4,12 @@ import CryptoJS from "crypto-js";
 const IKHOKHA_APP_ID = process.env.IKHOKHA_APP_ID || "";
 const IKHOKHA_APP_SECRET = process.env.IKHOKHA_APP_SECRET || "";
 
-const SUPABASE_URL = "https://fltjcycovhslqupmalfj.supabase.co";
-const SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZsdGpjeWNvdmhzbHF1cG1hbGZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyOTc0OTksImV4cCI6MjA5NDg3MzQ5OX0.nBWxfRfxWGEwE2EU8Me4q8DnD_9EGc-LN0MfCsag-YU";
+// Read Supabase config from env so swapping projects doesn't require code changes.
+const SUPABASE_URL =
+  process.env.SUPABASE_URL ||
+  process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  "";
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || "";
 
 // Verify webhook signature
 function verifySignature(path: string, body: string, signature: string, secret: string): boolean {
