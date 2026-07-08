@@ -4,7 +4,7 @@ const SUPABASE_URL = "https://fltjcycovhslqupmalfj.supabase.co";
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZsdGpjeWNvdmhzbHF1cG1hbGZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkyOTc0OTksImV4cCI6MjA5NDg3MzQ5OX0.nBWxfRfxWGEwE2EU8Me4q8DnD_9EGc-LN0MfCsag-YU";
 
-// Default product prices (fallback if settings table doesn't exist)
+// Default product prices (fallback if settings table doesn't exist OR Supabase is unreachable)
 const DEFAULT_PRICES: Record<string, number> = {
   "The Taster": 35,
   "Snack Pack": 100,
@@ -23,6 +23,7 @@ async function getLivePrices(): Promise<{
   productPrices: Record<string, number>;
   deliveryFee: number;
   nationwideDeliveryFee: number;
+  supabaseReachable: boolean;
 }> {
   try {
     const res = await fetch(
@@ -33,6 +34,8 @@ async function getLivePrices(): Promise<{
           apikey: SUPABASE_ANON_KEY,
           Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
         },
+        // Don't let this hang the whole checkout — 5s budget
+        signal: AbortSignal.timeout(5000),
       }
     );
 
@@ -52,14 +55,28 @@ async function getLivePrices(): Promise<{
           productPrices,
           deliveryFee: row.delivery_fee ?? DEFAULT_DELIVERY_FEE,
           nationwideDeliveryFee,
+          supabaseReachable: true,
         };
       }
     }
-  } catch {
-    // Fall through to defaults
+    // res.ok was false — Supabase responded but with an error
+    console.warn("[Orders] Supabase settings fetch returned non-OK status:", res.status);
+    return {
+      productPrices: DEFAULT_PRICES,
+      deliveryFee: DEFAULT_DELIVERY_FEE,
+      nationwideDeliveryFee: DEFAULT_NATIONWIDE_FEE,
+      supabaseReachable: false,
+    };
+  } catch (err) {
+    // Network error — Supabase is unreachable (paused, deleted, DNS issue, etc.)
+    console.warn("[Orders] Supabase unreachable, using default prices. Error:", err instanceof Error ? err.message : String(err));
+    return {
+      productPrices: DEFAULT_PRICES,
+      deliveryFee: DEFAULT_DELIVERY_FEE,
+      nationwideDeliveryFee: DEFAULT_NATIONWIDE_FEE,
+      supabaseReachable: false,
+    };
   }
-
-  return { productPrices: DEFAULT_PRICES, deliveryFee: DEFAULT_DELIVERY_FEE, nationwideDeliveryFee: DEFAULT_NATIONWIDE_FEE };
 }
 
 export async function POST(request: NextRequest) {
@@ -70,10 +87,11 @@ export async function POST(request: NextRequest) {
     // SERVER-SIDE PRICE VERIFICATION
     // Recalculate prices from live settings to prevent
     // clients from submitting tampered cart data.
+    // Falls back to hardcoded defaults if Supabase is unreachable.
     // ============================================
-    const { productPrices, deliveryFee, nationwideDeliveryFee } = await getLivePrices();
+    const { productPrices, deliveryFee, nationwideDeliveryFee, supabaseReachable } = await getLivePrices();
 
-    // Recalculate subtotal from items using server-side prices
+    // Recalculate subtotal from items using server-side prices.
     // Cart stores item.name as "ProductName Weight" (e.g. "Snack Pack 150g"),
     // so we match by checking if the cart item name STARTS WITH a known product name.
     let verifiedSubtotal = 0;
@@ -121,61 +139,72 @@ export async function POST(request: NextRequest) {
     orderData.delivery_fee = verifiedDeliveryFee;
     orderData.total = verifiedTotal;
 
-    // Log if there was a discrepancy (potential tampering)
-    if (
-      Math.abs(verifiedTotal - (orderData.total || 0)) > 1 ||
-      Math.abs(verifiedSubtotal - (orderData.subtotal || 0)) > 1
-    ) {
-      console.warn(
-        `[Order] Price discrepancy detected for ${orderData.order_id}. ` +
-        `Client total: R${orderData.total}, Server total: R${verifiedTotal}. ` +
-        `Using server-verified prices.`
-      );
-    }
-
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/orders`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        Prefer: "return=representation",
-      },
-      body: JSON.stringify([
-        {
-          order_id: orderData.order_id,
-          customer_name: orderData.customer_name,
-          customer_phone: orderData.customer_phone,
-          customer_email: orderData.customer_email || null,
-          items: orderData.items,
-          items_summary: orderData.items_summary,
-          subtotal: verifiedSubtotal,
-          delivery_fee: verifiedDeliveryFee,
-          total: verifiedTotal,
-          delivery_mode: orderData.delivery_mode,
-          delivery_address: orderData.delivery_address || null,
-          payment_method: orderData.payment_method,
-          payment_status: orderData.payment_status,
-          order_status: orderData.order_status || "new",
+    // ============================================
+    // SUPABASE WRITE — gracefully degrade if unreachable
+    // ============================================
+    // If Supabase is down/deleted, we still let the order succeed so the customer
+    // can proceed to payment. The merchant gets an email notification (Resend
+    // doesn't depend on Supabase). The admin panel won't show the order until
+    // Supabase is restored, but at least the customer isn't blocked.
+    try {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/orders`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          Prefer: "return=representation",
         },
-      ]),
-    });
+        body: JSON.stringify([
+          {
+            order_id: orderData.order_id,
+            customer_name: orderData.customer_name,
+            customer_phone: orderData.customer_phone,
+            customer_email: orderData.customer_email || null,
+            items: orderData.items,
+            items_summary: orderData.items_summary,
+            subtotal: verifiedSubtotal,
+            delivery_fee: verifiedDeliveryFee,
+            total: verifiedTotal,
+            delivery_mode: orderData.delivery_mode,
+            delivery_address: orderData.delivery_address || null,
+            payment_method: orderData.payment_method,
+            payment_status: orderData.payment_status,
+            order_status: orderData.order_status || "new",
+          },
+        ]),
+        signal: AbortSignal.timeout(8000),
+      });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Supabase error:", errorText);
-      return NextResponse.json(
-        { error: "Failed to save order", details: errorText },
-        { status: 500 }
-      );
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => "<no body>");
+        console.error(`[Orders] Supabase insert failed for ${orderData.order_id}. Status: ${response.status}. Body: ${errorText}`);
+        // DEGRADE: still return success so the customer can proceed
+        return NextResponse.json({
+          success: true,
+          data: orderData,
+          degraded: true,
+          warning: "Order saved locally but not synced to admin panel (database unavailable). Merchant will still receive email notification.",
+        });
+      }
+
+      const data = await response.json();
+      return NextResponse.json({ success: true, data, supabaseReachable });
+    } catch (fetchErr) {
+      // Supabase fetch threw — network/DNS/timeout. Degrade gracefully.
+      console.error(`[Orders] Supabase unreachable for ${orderData.order_id}:`, fetchErr instanceof Error ? fetchErr.message : String(fetchErr));
+      return NextResponse.json({
+        success: true,
+        data: orderData,
+        degraded: true,
+        warning: "Order saved locally but not synced to admin panel (database unreachable). Merchant will still receive email notification.",
+      });
     }
-
-    const data = await response.json();
-    return NextResponse.json({ success: true, data });
   } catch (error) {
-    console.error("Order API error:", error);
+    // Outer catch — only triggers for bugs in the handler itself (e.g. bad JSON parse)
+    console.error("[Orders] POST handler error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Internal server error", details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }
@@ -198,32 +227,47 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/orders?order_id=eq.${order_id}`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify(updates),
-      }
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      return NextResponse.json(
-        { error: "Failed to update order", details: errorText },
-        { status: 500 }
+    // ============================================
+    // SUPABASE UPDATE — gracefully degrade if unreachable
+    // ============================================
+    // The PATCH is called from three places:
+    //   1. handleIkhokha — marks order as payment_initiated (non-critical)
+    //   2. handleConfirmPaid — marks order as paid (customer's manual confirmation)
+    //   3. iKhokha webhook — marks order as paid (automatic confirmation)
+    // In all three cases, if Supabase is unreachable, the customer flow should
+    // still succeed. The merchant gets the email regardless.
+    try {
+      const response = await fetch(
+        `${SUPABASE_URL}/rest/v1/orders?order_id=eq.${encodeURIComponent(order_id)}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify(updates),
+          signal: AbortSignal.timeout(8000),
+        }
       );
-    }
 
-    return NextResponse.json({ success: true });
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => "<no body>");
+        console.error(`[Orders] Supabase PATCH failed for ${order_id}. Status: ${response.status}. Body: ${errorText}`);
+        // Degrade — return success so the client UI proceeds
+        return NextResponse.json({ success: true, degraded: true });
+      }
+
+      return NextResponse.json({ success: true });
+    } catch (fetchErr) {
+      console.error(`[Orders] Supabase unreachable during PATCH for ${order_id}:`, fetchErr instanceof Error ? fetchErr.message : String(fetchErr));
+      // Degrade — return success so the client UI proceeds
+      return NextResponse.json({ success: true, degraded: true });
+    }
   } catch (error) {
-    console.error("Order update error:", error);
+    console.error("[Orders] PATCH handler error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Internal server error", details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }
