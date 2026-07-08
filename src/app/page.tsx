@@ -1196,33 +1196,13 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
     if (pollIntervalRef.current) { clearInterval(pollIntervalRef.current); pollIntervalRef.current = null; }
     setPaymentVerification("idle");
 
-    // CRITICAL: Open a blank tab SYNCHRONOUSLY in the user-gesture context.
-    // Browsers block window.open() calls made AFTER awaits (popup blocker),
-    // so we open the tab now and redirect it once we have the payment URL.
-    const popup = window.open("", "_blank");
-    if (popup) {
-      // Loading placeholder so the blank tab isn't confusing
-      popup.document.write(
-        '<!DOCTYPE html><html><head><title>Opening iKhokha...</title>' +
-        '<style>body{background:#0A0301;color:#E5B83C;font-family:Georgia,serif;' +
-        'display:flex;align-items:center;justify-content:center;height:100vh;margin:0;}' +
-        'p{font-size:18px;letter-spacing:0.1em;}</style></head>' +
-        '<body><p>Preparing your secure payment page…</p></body></html>'
-      );
-      popup.document.close();
-    }
-
     try {
       const orderData = await saveOrder("ikhokha");
-      if (!orderData) {
-        // Order save failed — close the popup, abort
-        if (popup) popup.close();
-        return;
-      }
+      if (!orderData) return; // ABORT — do NOT redirect to iKhokha if order failed to save
       setLastPaymentMethod("ikhokha");
       setPendingIkhokhaOrder(orderData as unknown as Record<string, unknown>);
 
-      let finalPaylinkUrl: string | null = null;
+      let finalPaylinkUrl: string;
 
       try {
         const res = await fetch("/api/ikhokha/create-payment", {
@@ -1248,37 +1228,24 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
             });
           } catch { /* non-critical */ }
         } else {
-          console.warn("iKhokha API failed or not configured, using static URL with amount");
+          console.warn("[iKhokha] API not configured or failed, using static URL");
           finalPaylinkUrl = `${IKHOKHA_PAYMENT_URL}?amount=${total.toFixed(2)}`;
         }
       } catch {
         // Network failure on create-payment — fall back to static URL
-        console.warn("create-payment network error, using static URL with amount");
+        console.warn("[iKhokha] create-payment network error, using static URL");
         finalPaylinkUrl = `${IKHOKHA_PAYMENT_URL}?amount=${total.toFixed(2)}`;
       }
 
-      if (!finalPaylinkUrl) {
-        if (popup) popup.close();
-        toast.error("Could not open payment page. Please try again.");
-        return;
-      }
-
-      // Redirect the pre-opened popup to the payment URL
+      // Store the payment URL and switch to the "waiting" step.
+      // The customer taps the big "OPEN PAYMENT PAGE" button themselves —
+      // a real <a target="_blank"> click is never blocked by popup blockers.
       setPaylinkUrl(finalPaylinkUrl);
-      if (popup) {
-        popup.location.href = finalPaylinkUrl;
-        toast.info("iKhokha payment page opened. Complete your payment — we'll confirm automatically.", { icon: "💳", duration: 6000 });
-      } else {
-        // Popup was blocked — show a clickable button as fallback
-        toast.error("Popup blocked. Tap 'Re-open Payment Page' below to pay.", { duration: 8000 });
-      }
-
       setIkhokhaStep(true);
+      toast.info("Tap 'Open Payment Page' to pay via iKhokha.", { icon: "💳", duration: 6000 });
       // Start polling for payment confirmation from the iKhokha webhook
       startPaymentPolling(orderData.order_id, orderData);
     } catch {
-      // Catastrophic failure — close popup if still open
-      if (popup) popup.close();
       toast.error("Something went wrong. Please try again or contact us.");
     } finally {
       setIkhokhaLoading(false);
@@ -1692,33 +1659,44 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
                             </motion.button>
                           </div>
                         ) : (
-                          /* WAITING state — default when redirected to iKhokha */
+                          /* WAITING state — customer needs to tap the button to open iKhokha */
                           <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             className="bg-[#E5B83C]/8 border border-[#E5B83C]/30 rounded-xl p-4 text-center mb-4"
                           >
-                            <div className="flex items-center justify-center gap-2 mb-2">
-                              <Loader2 className="w-5 h-5 text-[#E5B83C] animate-spin" />
-                              <p className="font-['Cormorant_Garamond'] text-lg text-[#E5B83C] font-bold">
-                                Waiting for payment confirmation...
-                              </p>
-                            </div>
-                            <p className="text-xs text-[#FEF3DF]/70 leading-relaxed">
-                              Complete your payment on the iKhokha page. Your order will be <span className="text-[#2E7D32] font-semibold">automatically confirmed</span> the moment payment is approved.
+                            <p className="font-['Cormorant_Garamond'] text-lg text-[#E5B83C] font-bold mb-1">
+                              Step 1: Open the payment page
                             </p>
-                            <p className="text-[0.6rem] text-[#FEF3DF]/40 mt-2">
-                              Elapsed: {Math.floor(pollSeconds / 60)}:{String(pollSeconds % 60).padStart(2, "0")} · Order ref: {orderId}
+                            <p className="text-xs text-[#FEF3DF]/70 leading-relaxed mb-3">
+                              Tap the green button below to open iKhokha and pay R{total}. Your order will be <span className="text-[#2E7D32] font-semibold">automatically confirmed</span> the moment payment is approved.
+                            </p>
+                            <p className="text-[0.6rem] text-[#FEF3DF]/40">
+                              Order ref: {orderId}
                             </p>
                           </motion.div>
                         )}
 
-                        {/* Re-open payment link (always available while waiting) */}
-                        {paymentVerification !== "approved" && (
-                          <motion.button whileTap={{ scale: 0.97 }} onClick={() => window.open(paylinkUrl || IKHOKHA_PAYMENT_URL, "_blank")}
-                            className="w-full border border-[#E5B83C]/40 text-[#E5B83C] py-2.5 font-bold tracking-[0.1em] uppercase cursor-pointer rounded-xl text-xs mb-3 hover:bg-[#E5B83C]/10 flex items-center justify-center gap-2">
-                            <CreditCard className="w-3.5 h-3.5" /> RE-OPEN PAYMENT PAGE
-                          </motion.button>
+                        {/* BIG primary "OPEN PAYMENT PAGE" button — an <a> tag is never blocked by popup blockers */}
+                        {paymentVerification !== "approved" && paylinkUrl && (
+                          <motion.a
+                            whileTap={{ scale: 0.97 }}
+                            whileHover={{ scale: 1.01 }}
+                            href={paylinkUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full bg-[#1DB954] text-white py-4 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-sm mb-3 hover:shadow-[0_8px_25px_rgba(29,185,84,0.5)] flex items-center justify-center gap-2 animate-pulse"
+                          >
+                            <CreditCard className="w-5 h-5" /> OPEN PAYMENT PAGE
+                          </motion.a>
+                        )}
+
+                        {/* Status line showing polling progress */}
+                        {paymentVerification === "waiting" && (
+                          <p className="text-[0.65rem] text-[#E5B83C]/70 text-center mb-3 flex items-center justify-center gap-1.5">
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            Waiting for payment... {Math.floor(pollSeconds / 60)}:{String(pollSeconds % 60).padStart(2, "0")}
+                          </p>
                         )}
 
                         {/* Manual confirm — only shown after polling times out (failed state) */}
