@@ -1195,59 +1195,91 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
     // Reset per-order flags
     if (pollIntervalRef.current) { clearInterval(pollIntervalRef.current); pollIntervalRef.current = null; }
     setPaymentVerification("idle");
+
+    // CRITICAL: Open a blank tab SYNCHRONOUSLY in the user-gesture context.
+    // Browsers block window.open() calls made AFTER awaits (popup blocker),
+    // so we open the tab now and redirect it once we have the payment URL.
+    const popup = window.open("", "_blank");
+    if (popup) {
+      // Loading placeholder so the blank tab isn't confusing
+      popup.document.write(
+        '<!DOCTYPE html><html><head><title>Opening iKhokha...</title>' +
+        '<style>body{background:#0A0301;color:#E5B83C;font-family:Georgia,serif;' +
+        'display:flex;align-items:center;justify-content:center;height:100vh;margin:0;}' +
+        'p{font-size:18px;letter-spacing:0.1em;}</style></head>' +
+        '<body><p>Preparing your secure payment page…</p></body></html>'
+      );
+      popup.document.close();
+    }
+
     try {
       const orderData = await saveOrder("ikhokha");
-      if (!orderData) return; // ABORT — do NOT redirect to iKhokha if order failed to save
+      if (!orderData) {
+        // Order save failed — close the popup, abort
+        if (popup) popup.close();
+        return;
+      }
       setLastPaymentMethod("ikhokha");
       setPendingIkhokhaOrder(orderData as unknown as Record<string, unknown>);
 
-      const res = await fetch("/api/ikhokha/create-payment", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: total,
-          orderId: orderData.order_id,
-          description: `Biltong & Bytes - ${orderData.items_summary}`,
-        }),
-      });
+      let finalPaylinkUrl: string | null = null;
 
-      const paymentData = await res.json();
+      try {
+        const res = await fetch("/api/ikhokha/create-payment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            amount: total,
+            orderId: orderData.order_id,
+            description: `Biltong & Bytes - ${orderData.items_summary}`,
+          }),
+        });
 
-      if (res.ok && paymentData.success && paymentData.paylinkUrl) {
-        setPaylinkUrl(paymentData.paylinkUrl);
-        window.open(paymentData.paylinkUrl, "_blank");
+        const paymentData = await res.json();
+
+        if (res.ok && paymentData.success && paymentData.paylinkUrl) {
+          finalPaylinkUrl = paymentData.paylinkUrl;
+          // Mark order as payment_initiated
+          try {
+            await fetch("/api/orders", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ order_id: orderData.order_id, order_status: "payment_initiated" }),
+            });
+          } catch { /* non-critical */ }
+        } else {
+          console.warn("iKhokha API failed or not configured, using static URL with amount");
+          finalPaylinkUrl = `${IKHOKHA_PAYMENT_URL}?amount=${total.toFixed(2)}`;
+        }
+      } catch {
+        // Network failure on create-payment — fall back to static URL
+        console.warn("create-payment network error, using static URL with amount");
+        finalPaylinkUrl = `${IKHOKHA_PAYMENT_URL}?amount=${total.toFixed(2)}`;
+      }
+
+      if (!finalPaylinkUrl) {
+        if (popup) popup.close();
+        toast.error("Could not open payment page. Please try again.");
+        return;
+      }
+
+      // Redirect the pre-opened popup to the payment URL
+      setPaylinkUrl(finalPaylinkUrl);
+      if (popup) {
+        popup.location.href = finalPaylinkUrl;
         toast.info("iKhokha payment page opened. Complete your payment — we'll confirm automatically.", { icon: "💳", duration: 6000 });
-
-        try {
-          await fetch("/api/orders", {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ order_id: orderData.order_id, order_status: "payment_initiated" }),
-          });
-        } catch { /* non-critical */ }
       } else {
-        console.warn("iKhokha API failed or not configured, using static URL with amount");
-        const amountUrl = `${IKHOKHA_PAYMENT_URL}?amount=${total.toFixed(2)}`;
-        setPaylinkUrl(amountUrl);
-        window.open(amountUrl, "_blank");
-        toast.info(`iKhokha opened with R${total.toFixed(2)}. Complete your payment — we'll confirm automatically.`, { icon: "💳", duration: 6000 });
+        // Popup was blocked — show a clickable button as fallback
+        toast.error("Popup blocked. Tap 'Re-open Payment Page' below to pay.", { duration: 8000 });
       }
 
       setIkhokhaStep(true);
       // Start polling for payment confirmation from the iKhokha webhook
       startPaymentPolling(orderData.order_id, orderData);
     } catch {
-      // Network failure on create-payment — try saving order again with static fallback
-      const orderData = await saveOrder("ikhokha");
-      if (!orderData) return; // ABORT — no payment without order record
-      setLastPaymentMethod("ikhokha");
-      setPendingIkhokhaOrder(orderData as unknown as Record<string, unknown>);
-      const amountUrl = `${IKHOKHA_PAYMENT_URL}?amount=${total.toFixed(2)}`;
-      setPaylinkUrl(amountUrl);
-      window.open(amountUrl, "_blank");
-      toast.info(`iKhokha opened with R${total.toFixed(2)}. Complete your payment — we'll confirm automatically.`, { icon: "💳", duration: 6000 });
-      setIkhokhaStep(true);
-      startPaymentPolling(orderData.order_id, orderData);
+      // Catastrophic failure — close popup if still open
+      if (popup) popup.close();
+      toast.error("Something went wrong. Please try again or contact us.");
     } finally {
       setIkhokhaLoading(false);
     }
