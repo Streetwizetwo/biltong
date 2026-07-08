@@ -1196,13 +1196,20 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
     if (pollIntervalRef.current) { clearInterval(pollIntervalRef.current); pollIntervalRef.current = null; }
     setPaymentVerification("idle");
 
+    let orderData: OrderData | null = null;
+
     try {
-      const orderData = await saveOrder("ikhokha");
-      if (!orderData) return; // ABORT — do NOT redirect to iKhokha if order failed to save
+      orderData = await saveOrder("ikhokha");
+      if (!orderData) {
+        setIkhokhaLoading(false);
+        return; // ABORT — do NOT redirect to iKhokha if order failed to save
+      }
       setLastPaymentMethod("ikhokha");
       setPendingIkhokhaOrder(orderData as unknown as Record<string, unknown>);
 
-      let finalPaylinkUrl: string;
+      // Build the iKhokha payment URL.
+      // Since no iKhokha API credentials are configured, we use the static MPR URL.
+      let finalPaylinkUrl: string = `${IKHOKHA_PAYMENT_URL}?amount=${total.toFixed(2)}`;
 
       try {
         const res = await fetch("/api/ikhokha/create-payment", {
@@ -1227,28 +1234,22 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
               body: JSON.stringify({ order_id: orderData.order_id, order_status: "payment_initiated" }),
             });
           } catch { /* non-critical */ }
-        } else {
-          console.warn("[iKhokha] API not configured or failed, using static URL");
-          finalPaylinkUrl = `${IKHOKHA_PAYMENT_URL}?amount=${total.toFixed(2)}`;
         }
       } catch {
-        // Network failure on create-payment — fall back to static URL
-        console.warn("[iKhokha] create-payment network error, using static URL");
-        finalPaylinkUrl = `${IKHOKHA_PAYMENT_URL}?amount=${total.toFixed(2)}`;
+        // Network failure — use static URL
       }
 
       // Store the payment URL and switch to the "waiting" step.
-      // The customer taps the big "OPEN PAYMENT PAGE" button themselves —
-      // a real <a target="_blank"> click is never blocked by popup blockers.
       setPaylinkUrl(finalPaylinkUrl);
       setIkhokhaStep(true);
-      toast.info("Tap 'Open Payment Page' to pay via iKhokha.", { icon: "💳", duration: 6000 });
+      setIkhokhaLoading(false);
+      toast.success("Order saved! Tap the green button below to pay.", { icon: "💳", duration: 5000 });
+
       // Start polling for payment confirmation from the iKhokha webhook
       startPaymentPolling(orderData.order_id, orderData);
     } catch {
-      toast.error("Something went wrong. Please try again or contact us.");
-    } finally {
       setIkhokhaLoading(false);
+      toast.error("Something went wrong. Please try again or contact us.");
     }
   };
 
@@ -1660,35 +1661,30 @@ function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: ()
                           </div>
                         ) : (
                           /* WAITING state — customer needs to tap the button to open iKhokha */
-                          <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            className="bg-[#E5B83C]/8 border border-[#E5B83C]/30 rounded-xl p-4 text-center mb-4"
-                          >
+                          <div className="bg-[#E5B83C]/8 border border-[#E5B83C]/30 rounded-xl p-4 text-center mb-4">
                             <p className="font-['Cormorant_Garamond'] text-lg text-[#E5B83C] font-bold mb-1">
-                              Step 1: Open the payment page
+                              Order Saved — Pay Now
                             </p>
                             <p className="text-xs text-[#FEF3DF]/70 leading-relaxed mb-3">
-                              Tap the green button below to open iKhokha and pay R{total}. Your order will be <span className="text-[#2E7D32] font-semibold">automatically confirmed</span> the moment payment is approved.
+                              Tap the green button below to open iKhokha and pay <strong className="text-[#E5B83C]">R{total}</strong>. Your order will be automatically confirmed the moment payment is approved.
                             </p>
                             <p className="text-[0.6rem] text-[#FEF3DF]/40">
-                              Order ref: {orderId}
+                              Order ref: <strong>{orderId}</strong>
                             </p>
-                          </motion.div>
+                          </div>
                         )}
 
-                        {/* BIG primary "OPEN PAYMENT PAGE" button — an <a> tag is never blocked by popup blockers */}
+                        {/* BIG primary "OPEN PAYMENT PAGE" button — plain <a> tag, no framer-motion, never blocked */}
                         {paymentVerification !== "approved" && paylinkUrl && (
-                          <motion.a
-                            whileTap={{ scale: 0.97 }}
-                            whileHover={{ scale: 1.01 }}
+                          <a
                             href={paylinkUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="w-full bg-[#1DB954] text-white py-4 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-sm mb-3 hover:shadow-[0_8px_25px_rgba(29,185,84,0.5)] flex items-center justify-center gap-2 animate-pulse"
+                            style={{ display: "block", textDecoration: "none" }}
+                            className="w-full bg-[#1DB954] text-white py-4 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-base mb-3 hover:bg-[#1DB954]/90 flex items-center justify-center gap-2"
                           >
-                            <CreditCard className="w-5 h-5" /> OPEN PAYMENT PAGE
-                          </motion.a>
+                            <CreditCard className="w-5 h-5" /> OPEN PAYMENT PAGE →
+                          </a>
                         )}
 
                         {/* Status line showing polling progress */}

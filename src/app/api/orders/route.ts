@@ -184,11 +184,12 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json();
-    const { order_id, order_status } = body;
+    const { order_id, order_status, payment_status } = body;
 
     // Build update object with only provided fields
     const updates: Record<string, unknown> = {};
     if (order_status != null) updates.order_status = order_status;
+    if (payment_status != null) updates.payment_status = payment_status;
 
     if (!order_id || Object.keys(updates).length === 0) {
       return NextResponse.json(
