@@ -174,3 +174,50 @@ Stage Summary:
 - Committed locally (e4e88de)
 - PUSH FAILED: cached GitHub token expired — user needs to update remote URL with a new PAT, OR I need to use a different auth method
 - ACTION REQUIRED: User must push manually or provide a new GitHub PAT
+
+---
+Task ID: 5
+Agent: Main Agent
+Task: Fix stuck checkout — both iKhokha and Cash buttons not working
+
+Work Log:
+- User reported both iKhokha and Cash buttons "don't work" on checkout
+- Checked git log: prior fixes (commits 14a7e58, 6379ff2, e4e88de) addressed popup-blocker / plain <a> tag / PATCH payment_status — all already pushed
+- Tested production API directly with curl:
+  * POST https://biltongandbytes.co.za/api/orders → 500 "Internal server error"
+  * POST https://biltongandbytes.co.za/api/ikhokha/create-payment → 200 success (real paylink URL returned — iKhokha integration works)
+- Root cause hunt: tested Supabase project reachability
+  * nslookup fltjcycovhslqupmalfj.supabase.co on Cloudflare (1.1.1.1), Google (8.8.8.8, 8.8.4.4), Quad9 (9.9.9.9) → ALL return NXDOMAIN
+  * Conclusion: Supabase project has been deleted (or DNS records removed)
+- Why this broke checkout: saveOrder() calls POST /api/orders. The route's outer catch returned 500 on fetch failure → saveOrder() returned null → handleIkhokha and handleCashOnCollection both aborted silently. Buttons appeared dead.
+- Fix applied (graceful degradation):
+  * src/app/api/orders/route.ts POST: wraps Supabase fetch in its own try/catch with 8s AbortSignal timeout. On failure returns {success:true, data:orderData, degraded:true} so the customer can still proceed to payment. The merchant still gets email notification (Resend doesn't depend on Supabase).
+  * src/app/api/orders/route.ts PATCH: same pattern. Returns {success:true, degraded:true} on Supabase failure. This unblocks the manual "I've Paid — Confirm Order" button and the iKhokha webhook callback.
+  * src/app/api/orders/status/route.ts GET: returns {found:true, degraded:true, payment_status:"pending"} on Supabase failure. This keeps the polling loop alive — after 15 min the customer sees the "I've Paid — Confirm Order" fallback UI.
+  * All 3 endpoints now also include the actual error message in dev logs and 500 responses for easier future debugging.
+  * getLivePrices() now also returns a supabaseReachable flag and uses a 5s AbortSignal timeout.
+- Build verified clean (npx next build, 13 routes generated)
+- Committed + pushed to GitHub (6793d02) — Vercel auto-deploy triggered
+- Verified fix is LIVE on production:
+  * POST /api/orders → 200 {success:true, degraded:true}
+  * PATCH /api/orders → 200 {success:true, degraded:true}
+  * GET /api/orders/status?order_id=BB260708-TEST1 → 200 {found:true, degraded:true, payment_status:"pending"}
+
+Stage Summary:
+- Checkout is now UNBLOCKED — both iKhokha and Cash buttons will work
+- Customer journey in degraded mode:
+  1. Click "PAY WITH IKHOKHA" → order saved (degraded) → "OPEN PAYMENT PAGE" button appears
+  2. Click "OPEN PAYMENT PAGE" → goes to iKhokha secure payment (real iKhokha API works)
+  3. After paying, polling can't auto-confirm (webhook can't update Supabase)
+  4. After 15 min OR immediately if customer taps "I'VE PAID — CONFIRM ORDER" → order is marked paid locally, customer sees "Payment Approved!"
+  5. Merchant receives order email via Resend (works independently of Supabase)
+- KNOWN LIMITATION: admin panel won't show new orders until Supabase is restored
+- ACTION REQUIRED for full fix:
+  * User must recreate the Supabase project (or unpause if just paused)
+  * Run schema migrations (orders + settings tables)
+  * If a new project URL is needed, update SUPABASE_URL + SUPABASE_ANON_KEY in:
+    - src/app/api/orders/route.ts
+    - src/app/api/orders/status/route.ts
+    - src/app/api/ikhokha/webhook/route.ts
+    - src/app/api/admin/orders/route.ts
+- Files changed: 2, +186 lines, -114 lines
