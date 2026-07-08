@@ -221,3 +221,43 @@ Stage Summary:
     - src/app/api/ikhokha/webhook/route.ts
     - src/app/api/admin/orders/route.ts
 - Files changed: 2, +186 lines, -114 lines
+
+---
+Task ID: 6
+Agent: Main Agent
+Task: Add product management (CRUD) + dynamic pricing to admin panel
+
+Work Log:
+- Created SQL migration: supabase/migration-products-table.sql (products table with RLS + seed of 4 existing products)
+- Updated supabase/schema.sql to include products table for fresh installs
+- Created src/app/api/products/route.ts: GET (public, supports ?include_inactive=1 for admin) + POST (admin auth, creates product)
+- Created src/app/api/products/[id]/route.ts: PATCH (admin auth, updates product) + DELETE (admin auth, deletes product)
+- Updated src/app/api/orders/route.ts getLivePrices(): now fetches prices from products table (keyed by name) instead of settings.product_prices JSON. Falls back to legacy settings.product_prices if products table unreachable.
+- Updated src/lib/supabase.ts: added Product interface, kept PRODUCTS array as fallback only (now properly typed)
+- Updated src/app/page.tsx storefront:
+  * Added Product type import
+  * ProductsSection now fetches live products from /api/products on mount, falls back to hardcoded PRODUCTS if fetch fails
+  * Shows skeleton placeholders while loading
+  * ProductCard now reads badge from product.badge field (was hardcoded by product.id)
+  * ProductCard price now comes directly from the API (was using settings store getPrice helper)
+  * Added support for custom badges (any text besides "Popular"/"Best Value")
+- Updated src/app/admin/page.tsx:
+  * Added "products" to DashboardTab type
+  * Added Products tab button between Orders and Settings
+  * Created ProductsPanel component: lists all products (active + inactive) with image/name/weight/price/badge/visibility, plus ADD PRODUCT button, edit/hide/delete actions per row
+  * Created ProductEditor modal: full form with name, weight, grams, price, sort_order, description, image URL (with live preview), badge selector (None/Popular/Best Value), visibility toggle
+  * Updated SettingsPanel: removed per-product price inputs (now in Products tab), kept delivery fees only, added note pointing users to Products tab
+  * Updated /api/products GET to accept ?include_inactive=1 query param for admin
+- Build verified clean (npx next build, 14 routes registered including /api/products and /api/products/[id])
+- Committed + pushed to GitHub
+
+Stage Summary:
+- Admin panel now has 3 tabs: Orders, Products, Settings
+- Products tab supports full CRUD: add new products, edit any field, hide/show (soft toggle), delete (hard)
+- Storefront fetches products dynamically — new products appear immediately without code changes
+- Prices verified server-side from products table on order submission (prevents tampering)
+- Existing 4 products preserved (seeded via SQL migration)
+- Image = URL input (paste from anywhere). Future enhancement: file upload to Supabase Storage.
+- Flavors stay global (hardcoded Traditional/Chilli/Hot Honey Glazed). Future enhancement: per-product flavors.
+- ACTION REQUIRED: User must run supabase/migration-products-table.sql in Supabase SQL Editor to create the products table
+- Files changed: 7 modified + 3 new, ~700 lines added

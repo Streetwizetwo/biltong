@@ -26,10 +26,16 @@ import {
   ClipboardList,
   Save,
   DollarSign,
+  Plus,
+  Pencil,
+  X,
+  Image as ImageIcon,
+  Tag,
+  Star,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { PRODUCTS } from "@/lib/supabase";
+import { PRODUCTS, type Product } from "@/lib/supabase";
 
 // ============================================
 // TYPES
@@ -453,12 +459,11 @@ function OrderRow({
 // ============================================
 // SETTINGS PANEL
 // ============================================
+// SETTINGS PANEL — delivery fees only (product prices now in Products tab)
+// ============================================
 function SettingsPanel() {
   const [deliveryFeeInput, setDeliveryFeeInput] = useState("40");
   const [nationwideFeeInput, setNationwideFeeInput] = useState("150");
-  const [productPriceInputs, setProductPriceInputs] = useState<Record<string, string>>({
-    "0": "35", "1": "100", "2": "300", "3": "550",
-  });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -469,8 +474,6 @@ function SettingsPanel() {
         const data = await res.json();
         setDeliveryFeeInput(String(data.deliveryFee ?? 40));
         setNationwideFeeInput(String(data.nationwideDeliveryFee ?? 150));
-        const prices = data.productPrices ?? { "0": 35, "1": 100, "2": 300, "3": 550 };
-        setProductPriceInputs(Object.fromEntries(Object.entries(prices).map(([k, v]) => [k, String(v)])));
       }
     } catch (err) {
       console.error("Failed to fetch settings:", err);
@@ -488,20 +491,22 @@ function SettingsPanel() {
     try {
       const deliveryFee = parseInt(deliveryFeeInput, 10) || 0;
       const nationwideDeliveryFee = parseInt(nationwideFeeInput, 10) || 0;
-      const productPrices: Record<string, number> = {};
-      for (const [id, val] of Object.entries(productPriceInputs)) {
-        productPrices[id] = parseInt(val, 10) || 0;
-      }
 
       const res = await fetch("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ deliveryFee, nationwideDeliveryFee, productPrices }),
+        body: JSON.stringify({
+          deliveryFee,
+          nationwideDeliveryFee,
+          // Keep product_prices in sync with the products table — read current products
+          // and send their prices so the legacy field stays consistent.
+          productPrices: {},
+        }),
       });
 
       if (res.ok) {
-        toast.success("Settings saved successfully!", { icon: "✅" });
+        toast.success("Delivery fees saved!", { icon: "✅" });
       } else {
         const data = await res.json();
         toast.error(data.error || "Failed to save settings");
@@ -510,13 +515,6 @@ function SettingsPanel() {
       toast.error("Failed to save settings");
     } finally {
       setSaving(false);
-    }
-  };
-
-  const updateProductPrice = (id: string, value: string) => {
-    // Allow empty string or digits only
-    if (value === "" || /^\d+$/.test(value)) {
-      setProductPriceInputs((prev) => ({ ...prev, [id]: value }));
     }
   };
 
@@ -576,50 +574,14 @@ function SettingsPanel() {
         </div>
       </div>
 
-      {/* Product Prices */}
-      <div>
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-[#E5B83C]/10 border border-[#E5B83C]/30 rounded-lg flex items-center justify-center">
-            <DollarSign className="w-5 h-5 text-[#E5B83C]" />
-          </div>
-          <div>
-            <h3 className="font-['Cormorant_Garamond'] text-lg text-[#FEF3DF]">Product Prices</h3>
-            <p className="text-[0.6rem] text-[#FEF3DF]/40 tracking-wider uppercase">Update menu pricing</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {PRODUCTS.map((product) => (
-            <div
-              key={product.id}
-              className="bg-white/4 border border-white/8 rounded-xl p-4 flex items-center gap-4"
-            >
-              <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
-                <img
-                  src={product.img}
-                  alt={product.name}
-                  className="w-full h-full object-cover brightness-[0.7]"
-                />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-['Cormorant_Garamond'] text-sm font-bold text-[#FEF3DF] truncate">
-                  {product.name}
-                </p>
-                <p className="text-[0.6rem] text-[#FEF3DF]/40">{product.weight}</p>
-              </div>
-              <div className="flex items-center gap-1 flex-shrink-0">
-                <span className="text-[#FEF3DF]/60 text-xs font-bold">R</span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={productPriceInputs[String(product.id)] ?? String(product.price)}
-                  onChange={(e) => updateProductPrice(String(product.id), e.target.value)}
-                  className="w-20 bg-white/8 border border-[#E5B83C]/30 rounded-lg px-2.5 py-2 text-[#FEF3DF] text-sm font-['Bebas_Neue'] tracking-wider focus:outline-none focus:border-[#E5B83C] transition-all text-right"
-                />
-              </div>
-            </div>
-          ))}
-        </div>
+      {/* Note about product prices */}
+      <div className="bg-[#E5B83C]/8 border border-[#E5B83C]/25 rounded-xl p-4 flex items-start gap-3">
+        <Tag className="w-4 h-4 text-[#E5B83C] flex-shrink-0 mt-0.5" />
+        <p className="text-xs text-[#FEF3DF]/70 leading-relaxed">
+          Product prices, names, images, and badges are now managed in the
+          <strong className="text-[#E5B83C]"> Products</strong> tab. Add new products, edit pricing,
+          or hide out-of-stock items from there.
+        </p>
       </div>
 
       {/* Save Button */}
@@ -636,7 +598,7 @@ function SettingsPanel() {
         {saving ? (
           <><Loader2 className="w-4 h-4 animate-spin" /> SAVING...</>
         ) : (
-          <><Save className="w-4 h-4" /> SAVE SETTINGS</>
+          <><Save className="w-4 h-4" /> SAVE DELIVERY FEES</>
         )}
       </motion.button>
     </div>
@@ -644,9 +606,522 @@ function SettingsPanel() {
 }
 
 // ============================================
+// PRODUCTS PANEL — full CRUD for the product catalog
+// ============================================
+interface AdminProduct extends Product {
+  is_active: boolean;
+  sort_order: number;
+}
+
+function ProductsPanel() {
+  const [products, setProducts] = useState<AdminProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+
+  const fetchProducts = useCallback(async () => {
+    try {
+      // Fetch ALL products (active + inactive) — admin needs to see hidden ones too.
+      // The /api/products endpoint accepts ?include_inactive=1 to return hidden rows.
+      // (RLS allows public SELECT; admin auth is enforced on POST/PATCH/DELETE only.)
+      const res = await fetch("/api/products?include_inactive=1");
+      if (res.ok) {
+        const data = await res.json();
+        setProducts(data.products || []);
+      } else {
+        // Fallback: just use what the public endpoint returns (active only)
+        const fallbackRes = await fetch("/api/products");
+        if (fallbackRes.ok) {
+          const data = await fallbackRes.json();
+          setProducts(data.products || []);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch products:", err);
+      toast.error("Failed to load products");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
+
+  const handleSaveProduct = async (product: AdminProduct) => {
+    try {
+      const url = isCreating ? "/api/products" : `/api/products/${product.id}`;
+      const method = isCreating ? "POST" : "PATCH";
+      const body = isCreating
+        ? {
+            name: product.name,
+            weight: product.weight,
+            grams: product.grams,
+            price: product.price,
+            description: product.description,
+            img: product.img,
+            badge: product.badge || null,
+            is_active: product.is_active,
+            sort_order: product.sort_order,
+          }
+        : {
+            name: product.name,
+            weight: product.weight,
+            grams: product.grams,
+            price: product.price,
+            description: product.description,
+            img: product.img,
+            badge: product.badge || null,
+            is_active: product.is_active,
+            sort_order: product.sort_order,
+          };
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
+
+      if (res.ok) {
+        toast.success(isCreating ? "Product created!" : "Product updated!", { icon: "✅" });
+        setEditingProduct(null);
+        setIsCreating(false);
+        fetchProducts();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error || "Failed to save product");
+      }
+    } catch {
+      toast.error("Failed to save product");
+    }
+  };
+
+  const handleDeleteProduct = async (id: number) => {
+    if (!confirm("Delete this product? This cannot be undone. Consider hiding it instead (toggle Active off).")) return;
+    try {
+      const res = await fetch(`/api/products/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (res.ok) {
+        toast.success("Product deleted", { icon: "🗑️" });
+        fetchProducts();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error || "Failed to delete product");
+      }
+    } catch {
+      toast.error("Failed to delete product");
+    }
+  };
+
+  const handleToggleActive = async (product: AdminProduct) => {
+    // Quick toggle without opening the editor
+    try {
+      const res = await fetch(`/api/products/${product.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ is_active: !product.is_active }),
+      });
+      if (res.ok) {
+        toast.success(product.is_active ? "Product hidden" : "Product visible", { icon: "✅" });
+        fetchProducts();
+      } else {
+        toast.error("Failed to toggle product");
+      }
+    } catch {
+      toast.error("Failed to toggle product");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="text-center py-20">
+        <Loader2 className="w-8 h-8 text-[#E5B83C] animate-spin mx-auto mb-3" />
+        <p className="text-sm text-[#FEF3DF]/50">Loading products...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Header row */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-[#E5B83C]/10 border border-[#E5B83C]/30 rounded-lg flex items-center justify-center">
+            <Package className="w-5 h-5 text-[#E5B83C]" />
+          </div>
+          <div>
+            <h3 className="font-['Cormorant_Garamond'] text-lg text-[#FEF3DF]">Product Catalog</h3>
+            <p className="text-[0.6rem] text-[#FEF3DF]/40 tracking-wider uppercase">Add, edit, hide, or delete products</p>
+          </div>
+        </div>
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          onClick={() => {
+            setEditingProduct({
+              id: 0,
+              name: "",
+              weight: "",
+              grams: 0,
+              price: 0,
+              description: "",
+              img: "",
+              badge: null,
+              is_active: true,
+              sort_order: products.length,
+            });
+            setIsCreating(true);
+          }}
+          className="bg-[#1DB954] text-white px-4 py-2.5 rounded-xl text-xs font-bold tracking-wider uppercase cursor-pointer hover:bg-[#1DB954]/90 flex items-center gap-2 transition-all"
+        >
+          <Plus className="w-4 h-4" /> ADD PRODUCT
+        </motion.button>
+      </div>
+
+      {/* Product list */}
+      {products.length === 0 ? (
+        <div className="text-center py-16 bg-white/4 border border-white/8 rounded-xl">
+          <Package className="w-12 h-12 text-[#FEF3DF]/15 mx-auto mb-3" />
+          <p className="text-[#FEF3DF]/40 text-sm">No products yet</p>
+          <p className="text-[#FEF3DF]/25 text-xs mt-1">Click ADD PRODUCT to create your first one</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {products.map((product) => (
+            <div
+              key={product.id}
+              className={`bg-white/4 border rounded-xl p-4 flex items-center gap-4 ${
+                product.is_active ? "border-white/8" : "border-[#B23A1A]/30 opacity-60"
+              }`}
+            >
+              {/* Image */}
+              <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 bg-white/5 flex items-center justify-center">
+                {product.img ? (
+                  <img src={product.img} alt={product.name} className="w-full h-full object-cover brightness-[0.85]" />
+                ) : (
+                  <ImageIcon className="w-5 h-5 text-[#FEF3DF]/30" />
+                )}
+              </div>
+
+              {/* Info */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-['Cormorant_Garamond'] text-base font-bold text-[#FEF3DF] truncate">
+                    {product.name}
+                  </p>
+                  {product.badge && (
+                    <span className="bg-[#E5B83C]/15 text-[#E5B83C] text-[0.55rem] px-2 py-0.5 rounded-full font-bold tracking-wider uppercase flex items-center gap-1">
+                      <Star className="w-2.5 h-2.5" /> {product.badge}
+                    </span>
+                  )}
+                  {!product.is_active && (
+                    <span className="bg-[#B23A1A]/15 text-[#B23A1A] text-[0.55rem] px-2 py-0.5 rounded-full font-bold tracking-wider uppercase">
+                      HIDDEN
+                    </span>
+                  )}
+                </div>
+                <p className="text-[0.65rem] text-[#FEF3DF]/40 mt-0.5">
+                  {product.weight} · {product.grams}g · R{(product.grams > 0 ? product.price / product.grams : 0).toFixed(2)}/g
+                </p>
+                {product.description && (
+                  <p className="text-[0.65rem] text-[#FEF3DF]/30 mt-0.5 truncate">{product.description}</p>
+                )}
+              </div>
+
+              {/* Price */}
+              <div className="flex-shrink-0 text-right">
+                <p className="font-['Bebas_Neue'] text-2xl text-[#E5B83C]">R{product.price}</p>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button
+                  onClick={() => handleToggleActive(product)}
+                  title={product.is_active ? "Hide from storefront" : "Show on storefront"}
+                  className="w-9 h-9 rounded-lg bg-white/5 hover:bg-white/10 text-[#FEF3DF]/60 hover:text-[#E5B83C] flex items-center justify-center cursor-pointer transition-all"
+                >
+                  {product.is_active ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+                <button
+                  onClick={() => {
+                    setEditingProduct(product);
+                    setIsCreating(false);
+                  }}
+                  title="Edit"
+                  className="w-9 h-9 rounded-lg bg-white/5 hover:bg-white/10 text-[#FEF3DF]/60 hover:text-[#E5B83C] flex items-center justify-center cursor-pointer transition-all"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => handleDeleteProduct(product.id)}
+                  title="Delete"
+                  className="w-9 h-9 rounded-lg bg-white/5 hover:bg-[#B23A1A]/20 text-[#FEF3DF]/60 hover:text-[#B23A1A] flex items-center justify-center cursor-pointer transition-all"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Editor Modal */}
+      <AnimatePresence>
+        {editingProduct && (
+          <ProductEditor
+            product={editingProduct}
+            isCreating={isCreating}
+            onSave={handleSaveProduct}
+            onCancel={() => {
+              setEditingProduct(null);
+              setIsCreating(false);
+            }}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ============================================
+// PRODUCT EDITOR MODAL
+// ============================================
+function ProductEditor({
+  product,
+  isCreating,
+  onSave,
+  onCancel,
+}: {
+  product: AdminProduct;
+  isCreating: boolean;
+  onSave: (p: AdminProduct) => void;
+  onCancel: () => void;
+}) {
+  const [form, setForm] = useState<AdminProduct>(product);
+  const [saving, setSaving] = useState(false);
+
+  const update = (field: keyof AdminProduct, value: string | number | boolean | null) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmit = async () => {
+    if (!form.name.trim()) { toast.error("Name is required"); return; }
+    if (!form.weight.trim()) { toast.error("Weight is required (e.g. '150g')"); return; }
+    if (form.price < 0) { toast.error("Price cannot be negative"); return; }
+    setSaving(true);
+    await onSave(form);
+    setSaving(false);
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+      onClick={onCancel}
+    >
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.95, opacity: 0, y: 20 }}
+        transition={{ duration: 0.2 }}
+        onClick={(e) => e.stopPropagation()}
+        className="bg-[#0C0502] border border-[#E5B83C]/30 rounded-2xl p-6 w-full max-w-lg my-8 max-h-[90vh] overflow-y-auto"
+      >
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="font-['Cormorant_Garamond'] text-2xl text-[#E5B83C] font-bold">
+            {isCreating ? "Add Product" : "Edit Product"}
+          </h3>
+          <button onClick={onCancel} className="text-[#FEF3DF]/60 hover:text-white cursor-pointer">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          {/* Name */}
+          <div>
+            <label className="block text-[0.6rem] text-[#FEF3DF]/40 tracking-wider uppercase mb-1.5">Name *</label>
+            <input
+              type="text"
+              value={form.name}
+              onChange={(e) => update("name", e.target.value)}
+              placeholder="e.g. Snack Pack"
+              className="w-full bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-2.5 text-[#FEF3DF] text-sm focus:outline-none focus:border-[#E5B83C] transition-all"
+            />
+          </div>
+
+          {/* Weight + Grams */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[0.6rem] text-[#FEF3DF]/40 tracking-wider uppercase mb-1.5">Weight (display) *</label>
+              <input
+                type="text"
+                value={form.weight}
+                onChange={(e) => update("weight", e.target.value)}
+                placeholder="e.g. 150g"
+                className="w-full bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-2.5 text-[#FEF3DF] text-sm focus:outline-none focus:border-[#E5B83C] transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-[0.6rem] text-[#FEF3DF]/40 tracking-wider uppercase mb-1.5">Grams (for price/g)</label>
+              <input
+                type="number"
+                inputMode="numeric"
+                value={form.grams}
+                onChange={(e) => update("grams", parseInt(e.target.value, 10) || 0)}
+                placeholder="150"
+                className="w-full bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-2.5 text-[#FEF3DF] text-sm focus:outline-none focus:border-[#E5B83C] transition-all"
+              />
+            </div>
+          </div>
+
+          {/* Price + Sort order */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[0.6rem] text-[#FEF3DF]/40 tracking-wider uppercase mb-1.5">Price (R) *</label>
+              <div className="flex items-center gap-2 bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-2.5 focus-within:border-[#E5B83C] transition-all">
+                <span className="text-[#FEF3DF]/60 text-sm font-bold">R</span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={form.price}
+                  onChange={(e) => update("price", parseInt(e.target.value, 10) || 0)}
+                  placeholder="100"
+                  className="flex-1 bg-transparent text-[#FEF3DF] text-sm focus:outline-none"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-[0.6rem] text-[#FEF3DF]/40 tracking-wider uppercase mb-1.5">Sort Order</label>
+              <input
+                type="number"
+                inputMode="numeric"
+                value={form.sort_order}
+                onChange={(e) => update("sort_order", parseInt(e.target.value, 10) || 0)}
+                placeholder="0"
+                className="w-full bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-2.5 text-[#FEF3DF] text-sm focus:outline-none focus:border-[#E5B83C] transition-all"
+              />
+              <p className="text-[0.55rem] text-[#FEF3DF]/30 mt-1">Lower = shows first</p>
+            </div>
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-[0.6rem] text-[#FEF3DF]/40 tracking-wider uppercase mb-1.5">Description</label>
+            <textarea
+              value={form.description}
+              onChange={(e) => update("description", e.target.value)}
+              placeholder="Short, appetizing description"
+              rows={2}
+              className="w-full bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-2.5 text-[#FEF3DF] text-sm focus:outline-none focus:border-[#E5B83C] transition-all resize-none"
+            />
+          </div>
+
+          {/* Image URL */}
+          <div>
+            <label className="block text-[0.6rem] text-[#FEF3DF]/40 tracking-wider uppercase mb-1.5">Image URL</label>
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-white/5 flex items-center justify-center border border-white/10">
+                {form.img ? (
+                  <img src={form.img} alt="preview" className="w-full h-full object-cover" />
+                ) : (
+                  <ImageIcon className="w-5 h-5 text-[#FEF3DF]/30" />
+                )}
+              </div>
+              <input
+                type="text"
+                value={form.img}
+                onChange={(e) => update("img", e.target.value)}
+                placeholder="/images/your-pic.jpg or https://..."
+                className="flex-1 bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-2.5 text-[#FEF3DF] text-sm focus:outline-none focus:border-[#E5B83C] transition-all"
+              />
+            </div>
+            <p className="text-[0.55rem] text-[#FEF3DF]/30 mt-1">
+              Use a local path (e.g. /images/foo.jpg) or any image URL. Leave blank for placeholder.
+            </p>
+          </div>
+
+          {/* Badge */}
+          <div>
+            <label className="block text-[0.6rem] text-[#FEF3DF]/40 tracking-wider uppercase mb-1.5">Badge</label>
+            <div className="flex gap-2 flex-wrap">
+              {[null, "Popular", "Best Value"].map((b) => (
+                <button
+                  key={b ?? "none"}
+                  type="button"
+                  onClick={() => update("badge", b)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold tracking-wider uppercase cursor-pointer transition-all ${
+                    form.badge === b
+                      ? "bg-[#E5B83C] text-[#0A0301]"
+                      : "bg-white/5 text-[#FEF3DF]/60 hover:bg-white/10"
+                  }`}
+                >
+                  {b ?? "None"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Active toggle */}
+          <div className="flex items-center justify-between bg-white/4 border border-white/8 rounded-xl px-4 py-3">
+            <div>
+              <p className="text-sm text-[#FEF3DF] font-bold">Visible on storefront</p>
+              <p className="text-[0.6rem] text-[#FEF3DF]/40">Hide out-of-stock items without deleting</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => update("is_active", !form.is_active)}
+              className={`w-12 h-6 rounded-full p-0.5 cursor-pointer transition-all ${
+                form.is_active ? "bg-[#2E7D32]" : "bg-white/10"
+              }`}
+            >
+              <div
+                className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                  form.is_active ? "translate-x-6" : "translate-x-0"
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-3 mt-6">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-3 rounded-xl text-xs font-bold tracking-wider uppercase bg-white/5 text-[#FEF3DF]/60 hover:bg-white/10 cursor-pointer transition-all"
+          >
+            CANCEL
+          </button>
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={handleSubmit}
+            disabled={saving}
+            className={`flex-1 py-3 rounded-xl text-xs font-bold tracking-wider uppercase flex items-center justify-center gap-2 transition-all ${
+              saving
+                ? "bg-[#E5B83C]/50 text-[#0A0301]/70 cursor-not-allowed"
+                : "bg-[#E5B83C] text-[#0A0301] hover:bg-[#E5B83C]/90 cursor-pointer"
+            }`}
+          >
+            {saving ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /> SAVING...</>
+            ) : (
+              <><Save className="w-4 h-4" /> {isCreating ? "CREATE" : "SAVE CHANGES"}</>
+            )}
+          </motion.button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ============================================
 // DASHBOARD
 // ============================================
-type DashboardTab = "orders" | "settings";
+type DashboardTab = "orders" | "products" | "settings";
 
 function Dashboard({ onLogout }: { onLogout: () => void }) {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -784,6 +1259,16 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
             <ClipboardList className="w-4 h-4" /> Orders
           </button>
           <button
+            onClick={() => setActiveTab("products")}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-xs font-semibold tracking-wider uppercase cursor-pointer transition-all ${
+              activeTab === "products"
+                ? "bg-[#E5B83C] text-[#0A0301]"
+                : "text-[#FEF3DF]/60 hover:text-[#FEF3DF] hover:bg-white/5"
+            }`}
+          >
+            <Package className="w-4 h-4" /> Products
+          </button>
+          <button
             onClick={() => setActiveTab("settings")}
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-xs font-semibold tracking-wider uppercase cursor-pointer transition-all ${
               activeTab === "settings"
@@ -807,6 +1292,16 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
               transition={{ duration: 0.2 }}
             >
               <SettingsPanel />
+            </motion.div>
+          ) : activeTab === "products" ? (
+            <motion.div
+              key="products"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              <ProductsPanel />
             </motion.div>
           ) : (
             <motion.div

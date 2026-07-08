@@ -81,7 +81,31 @@ export function buildWhatsAppMessage(orderData: OrderData): string {
   return msg;
 }
 
-export const PRODUCTS = [
+// ============================================
+// PRODUCT TYPE
+// ============================================
+// Matches the row returned by /api/products (and the products table in Supabase).
+// `badge` is null or one of: "Popular", "Best Value" — drives the storefront badge UI.
+export interface Product {
+  id: number;
+  name: string;
+  weight: string;
+  grams: number;
+  price: number;
+  description: string;
+  img: string;
+  badge: string | null;
+  is_active?: boolean;
+  sort_order?: number;
+}
+
+// ============================================
+// FALLBACK PRODUCTS
+// ============================================
+// Used only if /api/products is unreachable. The storefront fetches live
+// products on mount; this is a safety net so the page still renders if
+// Supabase is down.
+export const PRODUCTS: Product[] = [
   {
     id: 0,
     name: "The Taster",
@@ -90,6 +114,9 @@ export const PRODUCTS = [
     price: 35,
     img: "/images/taster-50g.webp",
     description: "Perfect bite-sized sample of our premium wet biltong",
+    badge: null,
+    is_active: true,
+    sort_order: 0,
   },
   {
     id: 1,
@@ -99,6 +126,9 @@ export const PRODUCTS = [
     price: 100,
     img: "/images/snack-pack-150g.jpeg",
     description: "Ideal for snacking — great for on-the-go cravings",
+    badge: null,
+    is_active: true,
+    sort_order: 1,
   },
   {
     id: 2,
@@ -108,6 +138,9 @@ export const PRODUCTS = [
     price: 300,
     img: "/images/family-batch-500g.webp",
     description: "Share with the family — the crowd favourite size",
+    badge: "Popular",
+    is_active: true,
+    sort_order: 2,
   },
   {
     id: 3,
@@ -117,6 +150,9 @@ export const PRODUCTS = [
     price: 550,
     img: "/images/feast-1kg.jpeg",
     description: "The ultimate biltong experience — best value per gram",
+    badge: "Best Value",
+    is_active: true,
+    sort_order: 3,
   },
 ];
 

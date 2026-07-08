@@ -20,8 +20,13 @@ const DEFAULT_DELIVERY_FEE = 40;
 const DEFAULT_NATIONWIDE_FEE = 150;
 
 /**
- * Fetch live product prices and delivery fees from the settings table.
- * Falls back to hardcoded defaults if Supabase is unreachable.
+ * Fetch live product prices (from the products table) and delivery fees
+ * (from the settings table). Falls back to hardcoded defaults if Supabase
+ * is unreachable.
+ *
+ * Prices are keyed by product NAME (e.g. "Snack Pack") — the cart stores
+ * item.name as "ProductName Weight" (e.g. "Snack Pack 150g"), so the
+ * caller matches by name prefix.
  */
 async function getLivePrices(): Promise<{
   productPrices: Record<string, number>;
@@ -29,8 +34,20 @@ async function getLivePrices(): Promise<{
   nationwideDeliveryFee: number;
   supabaseReachable: boolean;
 }> {
-  try {
-    const res = await fetch(
+  // Run both fetches in parallel for speed
+  const [productsRes, settingsRes] = await Promise.allSettled([
+    fetch(
+      `${SUPABASE_URL}/rest/v1/products?select=name,price&is_active=eq.true`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+        signal: AbortSignal.timeout(5000),
+      }
+    ),
+    fetch(
       `${SUPABASE_URL}/rest/v1/settings?id=eq.1&select=delivery_fee,product_prices`,
       {
         headers: {
@@ -38,49 +55,73 @@ async function getLivePrices(): Promise<{
           apikey: SUPABASE_ANON_KEY,
           Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
         },
-        // Don't let this hang the whole checkout — 5s budget
         signal: AbortSignal.timeout(5000),
       }
-    );
+    ),
+  ]);
 
-    if (res.ok) {
-      const data = await res.json();
+  // Parse products table → productPrices map (keyed by name)
+  let productPrices: Record<string, number> = { ...DEFAULT_PRICES };
+  let productsReachable = false;
+  if (productsRes.status === "fulfilled" && productsRes.value.ok) {
+    try {
+      const rows: { name: string; price: number }[] = await productsRes.value.json();
+      if (rows && rows.length > 0) {
+        productPrices = {};
+        for (const row of rows) {
+          productPrices[row.name] = row.price;
+        }
+        productsReachable = true;
+      }
+    } catch {
+      // fall through to defaults
+    }
+  } else if (productsRes.status === "rejected") {
+    console.warn("[Orders] Products fetch failed:", productsRes.reason instanceof Error ? productsRes.reason.message : String(productsRes.reason));
+  }
+
+  // Parse settings table → delivery fees (and legacy product_prices fallback)
+  let deliveryFee = DEFAULT_DELIVERY_FEE;
+  let nationwideDeliveryFee = DEFAULT_NATIONWIDE_FEE;
+  let settingsReachable = false;
+  if (settingsRes.status === "fulfilled" && settingsRes.value.ok) {
+    try {
+      const data = await settingsRes.value.json();
       if (data && data.length > 0) {
         const row = data[0];
+        deliveryFee = row.delivery_fee ?? DEFAULT_DELIVERY_FEE;
         const priceById: Record<string, number> = row.product_prices || {};
-        const productPrices: Record<string, number> = {
-          "The Taster": priceById["0"] ?? DEFAULT_PRICES["The Taster"],
-          "Snack Pack": priceById["1"] ?? DEFAULT_PRICES["Snack Pack"],
-          "Family Batch": priceById["2"] ?? DEFAULT_PRICES["Family Batch"],
-          "The Feast": priceById["3"] ?? DEFAULT_PRICES["The Feast"],
-        };
-        const nationwideDeliveryFee = priceById.nationwide_delivery_fee ?? DEFAULT_NATIONWIDE_FEE;
-        return {
-          productPrices,
-          deliveryFee: row.delivery_fee ?? DEFAULT_DELIVERY_FEE,
-          nationwideDeliveryFee,
-          supabaseReachable: true,
-        };
+        nationwideDeliveryFee = priceById.nationwide_delivery_fee ?? DEFAULT_NATIONWIDE_FEE;
+        settingsReachable = true;
+
+        // If products table was unreachable, fall back to legacy settings.product_prices
+        if (!productsReachable) {
+          productPrices = {
+            "The Taster": priceById["0"] ?? DEFAULT_PRICES["The Taster"],
+            "Snack Pack": priceById["1"] ?? DEFAULT_PRICES["Snack Pack"],
+            "Family Batch": priceById["2"] ?? DEFAULT_PRICES["Family Batch"],
+            "The Feast": priceById["3"] ?? DEFAULT_PRICES["The Feast"],
+          };
+        }
       }
+    } catch {
+      // fall through to defaults
     }
-    // res.ok was false — Supabase responded but with an error
-    console.warn("[Orders] Supabase settings fetch returned non-OK status:", res.status);
-    return {
-      productPrices: DEFAULT_PRICES,
-      deliveryFee: DEFAULT_DELIVERY_FEE,
-      nationwideDeliveryFee: DEFAULT_NATIONWIDE_FEE,
-      supabaseReachable: false,
-    };
-  } catch (err) {
-    // Network error — Supabase is unreachable (paused, deleted, DNS issue, etc.)
-    console.warn("[Orders] Supabase unreachable, using default prices. Error:", err instanceof Error ? err.message : String(err));
-    return {
-      productPrices: DEFAULT_PRICES,
-      deliveryFee: DEFAULT_DELIVERY_FEE,
-      nationwideDeliveryFee: DEFAULT_NATIONWIDE_FEE,
-      supabaseReachable: false,
-    };
+  } else if (settingsRes.status === "rejected") {
+    console.warn("[Orders] Settings fetch failed:", settingsRes.reason instanceof Error ? settingsRes.reason.message : String(settingsRes.reason));
   }
+
+  const supabaseReachable = productsReachable || settingsReachable;
+  if (!supabaseReachable) {
+    console.warn("[Orders] Supabase fully unreachable, using hardcoded defaults.");
+  }
+
+  return {
+    productPrices,
+    deliveryFee,
+    nationwideDeliveryFee,
+    supabaseReachable,
+  };
 }
 
 export async function POST(request: NextRequest) {

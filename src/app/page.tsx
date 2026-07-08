@@ -55,6 +55,7 @@ import {
   WHATSAPP_NUMBER,
   generateOrderId,
   type OrderData,
+  type Product,
 } from "@/lib/supabase";
 import { toast } from "sonner";
 
@@ -573,18 +574,20 @@ function FlavorIcon({ flavor }: { flavor: string }) {
 // ============================================
 // PRODUCT CARD — Exciting mobile version
 // ============================================
-function ProductCard({ product, index, onAdd, cardRef }: { product: (typeof PRODUCTS)[0]; index: number; onAdd?: () => void; cardRef?: React.RefObject<HTMLDivElement | null> }) {
+function ProductCard({ product, index, onAdd, cardRef }: { product: Product; index: number; onAdd?: () => void; cardRef?: React.RefObject<HTMLDivElement | null> }) {
   const [selectedFlavor, setSelectedFlavor] = useState(FLAVORS[0]);
   const [qty, setQty] = useState(1);
   const [justAdded, setJustAdded] = useState(false);
   const addItem = useCartStore((s) => s.addItem);
-  const getPrice = useSettingsStore((s) => s.getPrice);
 
-  const currentPrice = getPrice(product.id, product.price);
+  // Always use the price that came from the API (server-side verified). The
+  // settings store's getPrice() helper is kept for backward compat but
+  // products-table prices are authoritative now.
+  const currentPrice = product.price;
 
-  const isPopular = product.id === 2; // Family Batch is the most popular
-  const isBestValue = product.id === 3; // 1kg is best value per gram
-  const pricePerGram = (currentPrice / product.grams).toFixed(2);
+  const isPopular = product.badge === "Popular";
+  const isBestValue = product.badge === "Best Value";
+  const pricePerGram = product.grams > 0 ? (currentPrice / product.grams).toFixed(2) : "0.00";
 
   const handleAdd = () => {
     addItem({
@@ -622,6 +625,11 @@ function ProductCard({ product, index, onAdd, cardRef }: { product: (typeof PROD
         {isBestValue && (
           <span className="bg-[#2E7D32] text-white text-[0.55rem] px-2.5 py-1 rounded-full font-bold tracking-wider uppercase flex items-center gap-1">
             <Crown className="w-3 h-3" /> BEST VALUE
+          </span>
+        )}
+        {product.badge && product.badge !== "Popular" && product.badge !== "Best Value" && (
+          <span className="bg-[#E5B83C] text-[#0A0301] text-[0.55rem] px-2.5 py-1 rounded-full font-bold tracking-wider uppercase flex items-center gap-1">
+            <Sparkles className="w-3 h-3" /> {product.badge.toUpperCase()}
           </span>
         )}
       </div>
@@ -698,6 +706,30 @@ function ProductCard({ product, index, onAdd, cardRef }: { product: (typeof PROD
 // PRODUCTS SECTION
 // ============================================
 function ProductsSection({ onItemAdd, productRefs }: { onItemAdd?: () => void; productRefs?: React.RefObject<(HTMLDivElement | null)[]> }) {
+  // Fetch live products from /api/products. Falls back to hardcoded PRODUCTS
+  // if the API is unreachable (e.g. Supabase down) so the page still renders.
+  const [products, setProducts] = useState<Product[]>(PRODUCTS);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/products");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && Array.isArray(data.products) && data.products.length > 0) {
+          setProducts(data.products);
+        }
+      } catch {
+        // Silent — fallback to hardcoded PRODUCTS already in state
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   return (
     <section id="products" className="py-16 md:py-24 px-4 md:px-[6%] relative z-20">
       <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} className="text-center">
@@ -709,9 +741,21 @@ function ProductsSection({ onItemAdd, productRefs }: { onItemAdd?: () => void; p
 
       <motion.div variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-30px" }}
         className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 max-w-[1400px] mx-auto">
-        {PRODUCTS.map((prod, i) => (
-          <ProductCard key={prod.id} product={prod} index={i} onAdd={onItemAdd} cardRef={productRefs ? { current: productRefs.current?.[i] ?? null } as React.RefObject<HTMLDivElement | null> : undefined} />
-        ))}
+        {loading ? (
+          // Skeleton placeholders while fetching
+          Array.from({ length: 4 }).map((_, i) => (
+            <div key={`skeleton-${i}`} className="bg-white/4 border border-white/8 rounded-2xl p-6 animate-pulse">
+              <div className="w-full h-40 md:h-52 bg-white/6 rounded-xl mb-3" />
+              <div className="h-5 bg-white/6 rounded mb-2 w-3/4" />
+              <div className="h-3 bg-white/4 rounded mb-4 w-full" />
+              <div className="h-8 bg-white/6 rounded w-1/2" />
+            </div>
+          ))
+        ) : (
+          products.map((prod, i) => (
+            <ProductCard key={prod.id} product={prod} index={i} onAdd={onItemAdd} cardRef={productRefs ? { current: productRefs.current?.[i] ?? null } as React.RefObject<HTMLDivElement | null> : undefined} />
+          ))
+        )}
       </motion.div>
     </section>
   );
