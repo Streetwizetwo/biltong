@@ -51,11 +51,13 @@ import { useSettingsStore } from "@/lib/settings-store";
 import {
   PRODUCTS,
   FLAVORS,
+  DEALS,
   IKHOKHA_PAYMENT_URL,
   WHATSAPP_NUMBER,
   generateOrderId,
   type OrderData,
   type Product,
+  type Deal,
 } from "@/lib/supabase";
 import { toast } from "sonner";
 
@@ -330,6 +332,7 @@ function Navbar({ onCartOpen, cartRef }: { onCartOpen: () => void; cartRef: Reac
 
   const navLinks = [
     { href: "#products", label: "MENU", icon: Package },
+    { href: "#deals", label: "DEALS", icon: Zap },
     { href: "#story", label: "STORY", icon: Flame },
     { href: "#how-to-order", label: "ORDER", icon: CreditCard },
     { href: "#contact", label: "CONTACT", icon: MessageCircle },
@@ -567,6 +570,7 @@ function FlavorIcon({ flavor }: { flavor: string }) {
   switch (flavor) {
     case "Chilli": return <Flame className="w-3.5 h-3.5" />;
     case "Hot Honey Glazed": return <Droplets className="w-3.5 h-3.5" />;
+    case "Bundle": return <Package className="w-3.5 h-3.5" />;
     default: return <Leaf className="w-3.5 h-3.5" />;
   }
 }
@@ -754,6 +758,195 @@ function ProductsSection({ onItemAdd, productRefs }: { onItemAdd?: () => void; p
         ) : (
           products.map((prod, i) => (
             <ProductCard key={prod.id} product={prod} index={i} onAdd={onItemAdd} cardRef={productRefs ? { current: productRefs.current?.[i] ?? null } as React.RefObject<HTMLDivElement | null> : undefined} />
+          ))
+        )}
+      </motion.div>
+    </section>
+  );
+}
+
+// ============================================
+// DEAL CARD — Bundle / combo offers
+// ============================================
+function DealCard({ deal, index, onAdd }: { deal: Deal; index: number; onAdd?: () => void }) {
+  const [qty, setQty] = useState(1);
+  const [justAdded, setJustAdded] = useState(false);
+  const addItem = useCartStore((s) => s.addItem);
+
+  const handleAdd = () => {
+    // Deals are added as a single cart line item with flavor = "Bundle".
+    // The orders API recognizes this and verifies the price against the
+    // deals table (not the products table).
+    addItem({
+      name: deal.name,
+      weight: "",
+      flavor: "Bundle",
+      price: deal.price,
+      qty,
+      img: deal.img,
+    });
+    setJustAdded(true);
+    toast.success(`${qty}x ${deal.name} added!`, { icon: "🎁", duration: 2000 });
+    onAdd?.();
+    setTimeout(() => setJustAdded(false), 1200);
+    setQty(1);
+  };
+
+  // Build a compact items summary, e.g. "3 × Taster + 2 × Snack Pack"
+  const itemsSummary = deal.items
+    .map((it) => `${it.quantity} × ${it.product_name}`)
+    .join(" + ");
+
+  return (
+    <motion.div
+      variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-30px" }}
+      custom={index * 0.1}
+      className="bg-gradient-to-br from-[#1A0A04]/95 to-[#0C0502]/95 backdrop-blur-sm p-4 md:p-5 rounded-2xl border border-[#E07A2C]/30 hover:border-[#E07A2C]/70 transition-all relative overflow-hidden group hover:shadow-[0_0_30px_rgba(224,122,44,0.18),0_0_60px_rgba(224,122,44,0.06)]"
+    >
+      {/* Inner radial glow on hover */}
+      <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+        style={{ background: "radial-gradient(circle at 50% 30%, rgba(224,122,44,0.10) 0%, transparent 70%)" }} />
+
+      {/* Savings badge */}
+      {deal.savings > 0 && (
+        <div className="absolute top-3 left-3 z-10">
+          <span className="bg-[#E07A2C] text-white text-[0.55rem] px-2.5 py-1 rounded-full font-bold tracking-wider uppercase flex items-center gap-1 shadow-lg">
+            <Zap className="w-3 h-3" /> SAVE R{deal.savings}
+          </span>
+        </div>
+      )}
+
+      {/* Image */}
+      <div className="relative overflow-hidden rounded-xl mb-3 mt-2">
+        <motion.img whileHover={{ scale: 1.05 }} transition={{ duration: 0.4 }}
+          src={deal.img} alt={deal.name}
+          className="w-full h-32 md:h-40 object-cover brightness-[0.78] rounded-xl" />
+        {deal.badge && (
+          <div className="absolute bottom-3 right-3 bg-[#0A0301]/80 backdrop-blur-md text-[#E5B83C] px-3 py-1 rounded-full text-[0.65rem] font-bold tracking-wider uppercase">
+            {deal.badge}
+          </div>
+        )}
+      </div>
+
+      {/* Name + description */}
+      <h3 className="font-['Cormorant_Garamond'] text-lg md:text-xl font-bold text-[#FEF3DF] leading-tight">
+        {deal.name}
+      </h3>
+      <p className="text-[0.65rem] md:text-xs text-[#FEF3DF]/50 mt-1 leading-relaxed">{deal.description}</p>
+
+      {/* Items summary */}
+      <div className="mt-2.5 flex items-center gap-1.5 flex-wrap">
+        {deal.items.map((it, i) => (
+          <span key={i} className="bg-white/5 border border-white/10 text-[#FEF3DF]/70 px-2 py-0.5 rounded-full text-[0.6rem] font-medium flex items-center gap-1">
+            <Package className="w-2.5 h-2.5" /> {it.quantity} × {it.product_name}{it.weight ? ` (${it.weight})` : ""}
+          </span>
+        ))}
+      </div>
+
+      {/* Price row */}
+      <div className="flex items-end justify-between mt-3">
+        <div>
+          {deal.original_price > deal.price && (
+            <p className="text-[0.65rem] text-[#FEF3DF]/40 line-through font-medium">R{deal.original_price}</p>
+          )}
+          <div className="font-['Bebas_Neue'] text-3xl md:text-4xl text-[#F8E5B0] leading-none">R{deal.price}</div>
+        </div>
+
+        {/* Quantity + add */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            <motion.button whileTap={{ scale: 0.8 }}
+              onClick={() => setQty(Math.max(1, qty - 1))}
+              className="bg-white/8 w-8 h-8 rounded-full flex items-center justify-center text-[#FEF3DF] cursor-pointer hover:bg-[#E07A2C] hover:text-white transition-colors">
+              <Minus className="w-3.5 h-3.5" />
+            </motion.button>
+            <motion.span key={qty} initial={{ scale: 1.3 }} animate={{ scale: 1 }}
+              className="font-['Bebas_Neue'] text-xl min-w-[32px] text-center">{qty}</motion.span>
+            <motion.button whileTap={{ scale: 0.8 }}
+              onClick={() => setQty(qty + 1)}
+              className="bg-white/8 w-8 h-8 rounded-full flex items-center justify-center text-[#FEF3DF] cursor-pointer hover:bg-[#E07A2C] hover:text-white transition-colors">
+              <Plus className="w-3.5 h-3.5" />
+            </motion.button>
+          </div>
+        </div>
+      </div>
+
+      {/* Add to cart button */}
+      <motion.button
+        whileTap={{ scale: 0.96 }}
+        onClick={handleAdd}
+        className={`w-full mt-3 py-2.5 rounded-xl text-xs font-bold tracking-[0.15em] uppercase cursor-pointer transition-all flex items-center justify-center gap-2 ${
+          justAdded
+            ? "bg-[#2E7D32] text-white"
+            : "bg-[#E07A2C] text-white hover:bg-[#E07A2C]/90 hover:shadow-[0_4px_20px_rgba(224,122,44,0.3)]"
+        }`}
+      >
+        {justAdded ? (
+          <><CheckCircle2 className="w-4 h-4" /> ADDED!</>
+        ) : (
+          <><ShoppingCart className="w-4 h-4" /> ADD BUNDLE</>
+        )}
+      </motion.button>
+    </motion.div>
+  );
+}
+
+// ============================================
+// DEALS SECTION
+// ============================================
+function DealsSection({ onItemAdd }: { onItemAdd?: () => void }) {
+  const [deals, setDeals] = useState<Deal[]>(DEALS);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/deals");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && Array.isArray(data.deals) && data.deals.length > 0) {
+          setDeals(data.deals);
+        }
+      } catch {
+        // Silent — fallback to hardcoded DEALS already in state
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  if (!loading && deals.length === 0) return null;
+
+  return (
+    <section id="deals" className="py-16 md:py-24 px-4 md:px-[6%] relative z-20">
+      <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} className="text-center">
+        <p className="text-[0.6rem] tracking-[0.4em] uppercase text-[#E07A2C] mb-3 flex items-center justify-center gap-2">
+          <Zap className="w-3.5 h-3.5" /> BUNDLE &amp; SAVE
+        </p>
+        <h2 className="font-['Cormorant_Garamond'] text-[2.5rem] md:text-[4.5rem] font-light leading-tight mb-3">
+          Mix &amp; <em className="italic text-[#E07A2C] font-semibold">Match</em> Deals
+        </h2>
+        <p className="text-xs md:text-sm text-[#FEF3DF]/50 max-w-xl mx-auto">
+          Grab a ready-made bundle and save. Mix of tasters, snack packs, family batches and feasts — built for sharing.
+        </p>
+      </motion.div>
+
+      <motion.div variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-30px" }}
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5 max-w-[1400px] mx-auto mt-8">
+        {loading ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <div key={`deal-skeleton-${i}`} className="bg-white/4 border border-white/8 rounded-2xl p-5 animate-pulse">
+              <div className="w-full h-32 md:h-40 bg-white/6 rounded-xl mb-3" />
+              <div className="h-5 bg-white/6 rounded mb-2 w-3/4" />
+              <div className="h-3 bg-white/4 rounded mb-4 w-full" />
+              <div className="h-8 bg-white/6 rounded w-1/2" />
+            </div>
+          ))
+        ) : (
+          deals.map((deal, i) => (
+            <DealCard key={deal.id} deal={deal} index={i} onAdd={onItemAdd} />
           ))
         )}
       </motion.div>
@@ -1977,6 +2170,8 @@ export default function BiltongAndBytes() {
       <PhotoStrip />
       <SectionDivider />
       <ProductsSection onItemAdd={handleItemAdd} productRefs={productRefs} />
+      <SectionDivider />
+      <DealsSection onItemAdd={handleItemAdd} />
       <SectionDivider />
       <StorySection />
       <SectionDivider />

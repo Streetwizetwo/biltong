@@ -156,4 +156,103 @@ export const PRODUCTS: Product[] = [
   },
 ];
 
+// ============================================
+// DEAL TYPE
+// ============================================
+// A bundle deal (e.g. "3 × Taster Packs – R139, save R8").
+// `items` is denormalized so the storefront can render deal cards without
+// joining the products table — the admin editor writes product_id + name +
+// weight + img together so deleting a product later doesn't break the card.
+export interface DealItem {
+  product_id: number;
+  product_name: string;
+  quantity: number;
+  weight: string;
+  img: string;
+}
+
+export interface Deal {
+  id: number;
+  name: string;
+  description: string;
+  items: DealItem[];
+  price: number;
+  original_price: number;
+  savings: number;
+  img: string;
+  badge: string | null;
+  is_active?: boolean;
+  sort_order?: number;
+}
+
+// ============================================
+// FALLBACK DEALS
+// ============================================
+// Used only if /api/deals is unreachable. The storefront fetches live
+// deals on mount; this is a safety net so the deals section still renders
+// if Supabase is down. Prices here match the seed in supabase/schema.sql.
+export const DEALS: Deal[] = [
+  {
+    id: 1,
+    name: "Triple Taster Saver",
+    description: "Three taster packs of our premium wet biltong — perfect to share or stock your snack drawer.",
+    items: [
+      { product_id: 1, product_name: "The Taster", quantity: 3, weight: "50g", img: "/images/taster-50g.webp" },
+    ],
+    price: 139,
+    original_price: 147,
+    savings: 8,
+    img: "/images/taster-50g.webp",
+    badge: "Save R8",
+    is_active: true,
+    sort_order: 0,
+  },
+  {
+    id: 2,
+    name: "Double Snack Pack",
+    description: "Two snack packs — double the flavour, less the price. Great for on-the-go cravings.",
+    items: [
+      { product_id: 2, product_name: "Snack Pack", quantity: 2, weight: "150g", img: "/images/snack-pack-150g.jpeg" },
+    ],
+    price: 249,
+    original_price: 258,
+    savings: 9,
+    img: "/images/snack-pack-150g.jpeg",
+    badge: "Save R9",
+    is_active: true,
+    sort_order: 1,
+  },
+  {
+    id: 3,
+    name: "Family + Taster Combo",
+    description: "A family batch for the household plus two taster packs to try something new.",
+    items: [
+      { product_id: 3, product_name: "Family Batch", quantity: 1, weight: "500g", img: "/images/family-batch-500g.webp" },
+      { product_id: 1, product_name: "The Taster", quantity: 2, weight: "50g", img: "/images/taster-50g.webp" },
+    ],
+    price: 439,
+    original_price: 447,
+    savings: 8,
+    img: "/images/family-batch-500g.webp",
+    badge: "Save R8",
+    is_active: true,
+    sort_order: 2,
+  },
+  {
+    id: 4,
+    name: "Double Feast",
+    description: "Two kilograms of the ultimate biltong experience — best value per gram, doubled.",
+    items: [
+      { product_id: 4, product_name: "The Feast", quantity: 2, weight: "1kg", img: "/images/feast-1kg.jpeg" },
+    ],
+    price: 1250,
+    original_price: 1298,
+    savings: 48,
+    img: "/images/feast-1kg.jpeg",
+    badge: "Save R48",
+    is_active: true,
+    sort_order: 3,
+  },
+];
+
 export const FLAVORS = ["Traditional", "Chilli", "Hot Honey Glazed"];

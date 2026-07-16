@@ -16,26 +16,41 @@ const DEFAULT_PRICES: Record<string, number> = {
   "The Feast": 550,
 };
 
+// Default deal prices (fallback if deals table doesn't exist yet — the
+// storefront shows hardcoded DEALS from src/lib/supabase.ts, so customers
+// can still order them. These prices MUST match the DEALS array exactly.)
+const DEFAULT_DEAL_PRICES: Record<string, number> = {
+  "Triple Taster Saver": 139,
+  "Double Snack Pack": 249,
+  "Family + Taster Combo": 439,
+  "Double Feast": 1250,
+};
+
 const DEFAULT_DELIVERY_FEE = 40;
 const DEFAULT_NATIONWIDE_FEE = 150;
 
 /**
- * Fetch live product prices (from the products table) and delivery fees
- * (from the settings table). Falls back to hardcoded defaults if Supabase
- * is unreachable.
+ * Fetch live product prices (from the products table), deal prices (from the
+ * deals table), and delivery fees (from the settings table). Falls back to
+ * hardcoded defaults if Supabase is unreachable.
  *
- * Prices are keyed by product NAME (e.g. "Snack Pack") — the cart stores
- * item.name as "ProductName Weight" (e.g. "Snack Pack 150g"), so the
+ * Product prices are keyed by product NAME (e.g. "Snack Pack") — the cart
+ * stores item.name as "ProductName Weight" (e.g. "Snack Pack 150g"), so the
  * caller matches by name prefix.
+ *
+ * Deal prices are keyed by deal NAME (exact match). Deal cart items are
+ * identified by item.flavor === "Bundle" (set by the storefront when a
+ * deal is added to the cart).
  */
 async function getLivePrices(): Promise<{
   productPrices: Record<string, number>;
+  dealPrices: Record<string, number>;
   deliveryFee: number;
   nationwideDeliveryFee: number;
   supabaseReachable: boolean;
 }> {
-  // Run both fetches in parallel for speed
-  const [productsRes, settingsRes] = await Promise.allSettled([
+  // Run all three fetches in parallel for speed
+  const [productsRes, settingsRes, dealsRes] = await Promise.allSettled([
     fetch(
       `${SUPABASE_URL}/rest/v1/products?select=name,price&is_active=eq.true`,
       {
@@ -49,6 +64,17 @@ async function getLivePrices(): Promise<{
     ),
     fetch(
       `${SUPABASE_URL}/rest/v1/settings?id=eq.1&select=delivery_fee,product_prices`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+        signal: AbortSignal.timeout(5000),
+      }
+    ),
+    fetch(
+      `${SUPABASE_URL}/rest/v1/deals?is_active=eq.true&select=name,price`,
       {
         headers: {
           "Content-Type": "application/json",
@@ -78,6 +104,33 @@ async function getLivePrices(): Promise<{
     }
   } else if (productsRes.status === "rejected") {
     console.warn("[Orders] Products fetch failed:", productsRes.reason instanceof Error ? productsRes.reason.message : String(productsRes.reason));
+  }
+
+  // Parse deals table → dealPrices map (keyed by deal name)
+  // Falls back to DEFAULT_DEAL_PRICES if the deals table doesn't exist yet
+  // (migration not run) or Supabase is unreachable. This lets customers order
+  // the hardcoded starter deals even before the migration is run.
+  let dealPrices: Record<string, number> = { ...DEFAULT_DEAL_PRICES };
+  if (dealsRes.status === "fulfilled" && dealsRes.value.ok) {
+    try {
+      const rows: { name: string; price: number }[] = await dealsRes.value.json();
+      if (rows && rows.length > 0) {
+        // Live deals found — replace the fallback map entirely
+        dealPrices = {};
+        for (const row of rows) {
+          dealPrices[row.name] = row.price;
+        }
+      }
+      // If rows is empty (table exists but no active deals), keep the fallback
+      // so the hardcoded storefront deals can still be verified. This is a
+      // trade-off: an admin who deletes ALL deals would expect deal ordering
+      // to stop, but the storefront would still show hardcoded deals. The
+      // admin should hide deals via is_active=false instead of deleting them.
+    } catch {
+      // keep fallback
+    }
+  } else if (dealsRes.status === "rejected") {
+    console.warn("[Orders] Deals fetch failed:", dealsRes.reason instanceof Error ? dealsRes.reason.message : String(dealsRes.reason));
   }
 
   // Parse settings table → delivery fees (and legacy product_prices fallback)
@@ -118,6 +171,7 @@ async function getLivePrices(): Promise<{
 
   return {
     productPrices,
+    dealPrices,
     deliveryFee,
     nationwideDeliveryFee,
     supabaseReachable,
@@ -134,31 +188,51 @@ export async function POST(request: NextRequest) {
     // clients from submitting tampered cart data.
     // Falls back to hardcoded defaults if Supabase is unreachable.
     // ============================================
-    const { productPrices, deliveryFee, nationwideDeliveryFee, supabaseReachable } = await getLivePrices();
+    const { productPrices, dealPrices, deliveryFee, nationwideDeliveryFee, supabaseReachable } = await getLivePrices();
 
     // Recalculate subtotal from items using server-side prices.
-    // Cart stores item.name as "ProductName Weight" (e.g. "Snack Pack 150g"),
-    // so we match by checking if the cart item name STARTS WITH a known product name.
+    // Two kinds of items can be in the cart:
+    //   1) DEAL items — identified by item.flavor === "Bundle". These are
+    //      matched by EXACT name against the deals table.
+    //   2) PRODUCT items — matched by name (exact, then prefix) against the
+    //      products table. Cart stores item.name as "ProductName Weight"
+    //      (e.g. "Snack Pack 150g"), so prefix matching handles the weight.
     let verifiedSubtotal = 0;
     const knownProductNames = Object.keys(productPrices);
+    const knownDealNames = Object.keys(dealPrices);
     for (const item of orderData.items) {
-      // Try exact match first, then prefix match (e.g. "Snack Pack 150g" → "Snack Pack")
-      let matchedName: string | undefined = knownProductNames.find(
-        (p) => p === item.name
-      );
-      if (!matchedName) {
-        matchedName = knownProductNames.find(
-          (p) => item.name === p || item.name.startsWith(p + " ")
+      let serverPrice: number | undefined;
+
+      if (item.flavor === "Bundle") {
+        // Deal item — exact name match against deals table
+        serverPrice = dealPrices[item.name];
+        if (serverPrice == null) {
+          console.error(`[Orders] Unknown deal: "${item.name}". Known deals: ${knownDealNames.join(", ") || "(none)"}`);
+          return NextResponse.json(
+            { error: `Unknown deal: ${item.name}` },
+            { status: 400 }
+          );
+        }
+      } else {
+        // Product item — try exact match first, then prefix match
+        let matchedName: string | undefined = knownProductNames.find(
+          (p) => p === item.name
         );
+        if (!matchedName) {
+          matchedName = knownProductNames.find(
+            (p) => item.name === p || item.name.startsWith(p + " ")
+          );
+        }
+        serverPrice = matchedName ? productPrices[matchedName] : undefined;
+        if (serverPrice == null) {
+          console.error(`[Orders] Unknown product: "${item.name}". Known: ${knownProductNames.join(", ")}`);
+          return NextResponse.json(
+            { error: `Unknown product: ${item.name}` },
+            { status: 400 }
+          );
+        }
       }
-      const serverPrice = matchedName ? productPrices[matchedName] : undefined;
-      if (serverPrice == null) {
-        console.error(`[Orders] Unknown product: "${item.name}". Known: ${knownProductNames.join(", ")}`);
-        return NextResponse.json(
-          { error: `Unknown product: ${item.name}` },
-          { status: 400 }
-        );
-      }
+
       // Use the SERVER price, not the client-submitted price
       item.price = serverPrice;
       verifiedSubtotal += serverPrice * item.qty;

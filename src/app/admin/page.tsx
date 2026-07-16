@@ -32,10 +32,11 @@ import {
   Image as ImageIcon,
   Tag,
   Star,
+  Zap,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { PRODUCTS, type Product } from "@/lib/supabase";
+import { PRODUCTS, type Product, type Deal, type DealItem } from "@/lib/supabase";
 
 // ============================================
 // TYPES
@@ -1121,7 +1122,648 @@ function ProductEditor({
 // ============================================
 // DASHBOARD
 // ============================================
-type DashboardTab = "orders" | "products" | "settings";
+type DashboardTab = "orders" | "products" | "deals" | "settings";
+
+// ============================================
+// DEALS PANEL
+// ============================================
+interface AdminDeal extends Deal {
+  is_active: boolean;
+  sort_order: number;
+}
+
+function DealsPanel() {
+  const [deals, setDeals] = useState<AdminDeal[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editingDeal, setEditingDeal] = useState<AdminDeal | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+
+  const fetchDeals = useCallback(async () => {
+    try {
+      const res = await fetch("/api/deals?include_inactive=1");
+      if (res.ok) {
+        const data = await res.json();
+        setDeals(data.deals || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch deals:", err);
+      toast.error("Failed to load deals");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Fetch products so the deal editor can offer a product picker
+  const fetchProducts = useCallback(async () => {
+    try {
+      const res = await fetch("/api/products?include_inactive=1");
+      if (res.ok) {
+        const data = await res.json();
+        setProducts(data.products || []);
+      }
+    } catch {
+      // non-critical — editor falls back to free-text entry
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDeals();
+    fetchProducts();
+  }, [fetchDeals, fetchProducts]);
+
+  const handleSaveDeal = async (deal: AdminDeal) => {
+    try {
+      const url = isCreating ? "/api/deals" : `/api/deals/${deal.id}`;
+      const method = isCreating ? "POST" : "PATCH";
+      const body = {
+        name: deal.name,
+        description: deal.description,
+        items: deal.items,
+        price: deal.price,
+        original_price: deal.original_price,
+        savings: deal.savings,
+        img: deal.img,
+        badge: deal.badge || null,
+        is_active: deal.is_active,
+        sort_order: deal.sort_order,
+      };
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
+
+      if (res.ok) {
+        toast.success(isCreating ? "Deal created!" : "Deal updated!", { icon: "✅" });
+        setEditingDeal(null);
+        setIsCreating(false);
+        fetchDeals();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error || "Failed to save deal");
+      }
+    } catch {
+      toast.error("Failed to save deal");
+    }
+  };
+
+  const handleDeleteDeal = async (id: number) => {
+    if (!confirm("Delete this deal? This cannot be undone. Consider hiding it instead (toggle Active off).")) return;
+    try {
+      const res = await fetch(`/api/deals/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (res.ok) {
+        toast.success("Deal deleted", { icon: "🗑️" });
+        fetchDeals();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error || "Failed to delete deal");
+      }
+    } catch {
+      toast.error("Failed to delete deal");
+    }
+  };
+
+  const handleToggleActive = async (deal: AdminDeal) => {
+    try {
+      const res = await fetch(`/api/deals/${deal.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ is_active: !deal.is_active }),
+      });
+      if (res.ok) {
+        toast.success(deal.is_active ? "Deal hidden" : "Deal visible", { icon: "✅" });
+        fetchDeals();
+      } else {
+        toast.error("Failed to toggle deal");
+      }
+    } catch {
+      toast.error("Failed to toggle deal");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="text-center py-20">
+        <Loader2 className="w-8 h-8 text-[#E5B83C] animate-spin mx-auto mb-3" />
+        <p className="text-sm text-[#FEF3DF]/50">Loading deals...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Header row */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-[#E07A2C]/10 border border-[#E07A2C]/30 rounded-lg flex items-center justify-center">
+            <Tag className="w-5 h-5 text-[#E07A2C]" />
+          </div>
+          <div>
+            <h3 className="font-['Cormorant_Garamond'] text-lg text-[#FEF3DF]">Bundle Deals</h3>
+            <p className="text-[0.6rem] text-[#FEF3DF]/40 tracking-wider uppercase">Mix &amp; match products into savings bundles</p>
+          </div>
+        </div>
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          onClick={() => {
+            setEditingDeal({
+              id: 0,
+              name: "",
+              description: "",
+              items: [],
+              price: 0,
+              original_price: 0,
+              savings: 0,
+              img: "",
+              badge: null,
+              is_active: true,
+              sort_order: deals.length,
+            });
+            setIsCreating(true);
+          }}
+          className="bg-[#1DB954] text-white px-4 py-2.5 rounded-xl text-xs font-bold tracking-wider uppercase cursor-pointer hover:bg-[#1DB954]/90 flex items-center gap-2 transition-all"
+        >
+          <Plus className="w-4 h-4" /> ADD DEAL
+        </motion.button>
+      </div>
+
+      {/* Deal list */}
+      {deals.length === 0 ? (
+        <div className="text-center py-16 bg-white/4 border border-white/8 rounded-xl">
+          <Tag className="w-12 h-12 text-[#FEF3DF]/15 mx-auto mb-3" />
+          <p className="text-[#FEF3DF]/40 text-sm">No deals yet</p>
+          <p className="text-[#FEF3DF]/25 text-xs mt-1">Click ADD DEAL to create your first bundle</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {deals.map((deal) => (
+            <div
+              key={deal.id}
+              className={`bg-white/4 border rounded-xl p-4 flex items-center gap-4 ${
+                deal.is_active ? "border-white/8" : "border-[#B23A1A]/30 opacity-60"
+              }`}
+            >
+              {/* Image */}
+              <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 bg-white/5 flex items-center justify-center">
+                {deal.img ? (
+                  <img src={deal.img} alt={deal.name} className="w-full h-full object-cover brightness-[0.85]" />
+                ) : (
+                  <Tag className="w-5 h-5 text-[#FEF3DF]/30" />
+                )}
+              </div>
+
+              {/* Info */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-['Cormorant_Garamond'] text-base font-bold text-[#FEF3DF] truncate">
+                    {deal.name}
+                  </p>
+                  {deal.savings > 0 && (
+                    <span className="bg-[#E07A2C]/15 text-[#E07A2C] text-[0.55rem] px-2 py-0.5 rounded-full font-bold tracking-wider uppercase flex items-center gap-1">
+                      <Zap className="w-2.5 h-2.5" /> SAVE R{deal.savings}
+                    </span>
+                  )}
+                  {!deal.is_active && (
+                    <span className="bg-[#B23A1A]/15 text-[#B23A1A] text-[0.55rem] px-2 py-0.5 rounded-full font-bold tracking-wider uppercase">
+                      HIDDEN
+                    </span>
+                  )}
+                </div>
+                <p className="text-[0.65rem] text-[#FEF3DF]/40 mt-0.5 truncate">
+                  {deal.items.map((it) => `${it.quantity} × ${it.product_name}`).join(" + ")}
+                </p>
+                {deal.description && (
+                  <p className="text-[0.65rem] text-[#FEF3DF]/30 mt-0.5 truncate">{deal.description}</p>
+                )}
+              </div>
+
+              {/* Price */}
+              <div className="flex-shrink-0 text-right">
+                <p className="font-['Bebas_Neue'] text-2xl text-[#E07A2C]">R{deal.price}</p>
+                {deal.original_price > deal.price && (
+                  <p className="text-[0.6rem] text-[#FEF3DF]/30 line-through">R{deal.original_price}</p>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button
+                  onClick={() => handleToggleActive(deal)}
+                  title={deal.is_active ? "Hide from storefront" : "Show on storefront"}
+                  className="w-9 h-9 rounded-lg bg-white/5 hover:bg-white/10 text-[#FEF3DF]/60 hover:text-[#E07A2C] flex items-center justify-center cursor-pointer transition-all"
+                >
+                  {deal.is_active ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+                <button
+                  onClick={() => {
+                    setEditingDeal(deal);
+                    setIsCreating(false);
+                  }}
+                  title="Edit"
+                  className="w-9 h-9 rounded-lg bg-white/5 hover:bg-white/10 text-[#FEF3DF]/60 hover:text-[#E07A2C] flex items-center justify-center cursor-pointer transition-all"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => handleDeleteDeal(deal.id)}
+                  title="Delete"
+                  className="w-9 h-9 rounded-lg bg-white/5 hover:bg-[#B23A1A]/20 text-[#FEF3DF]/60 hover:text-[#B23A1A] flex items-center justify-center cursor-pointer transition-all"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Editor Modal */}
+      <AnimatePresence>
+        {editingDeal && (
+          <DealEditor
+            deal={editingDeal}
+            products={products}
+            isCreating={isCreating}
+            onSave={handleSaveDeal}
+            onCancel={() => {
+              setEditingDeal(null);
+              setIsCreating(false);
+            }}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ============================================
+// DEAL EDITOR MODAL
+// ============================================
+function DealEditor({
+  deal,
+  products,
+  isCreating,
+  onSave,
+  onCancel,
+}: {
+  deal: AdminDeal;
+  products: Product[];
+  isCreating: boolean;
+  onSave: (d: AdminDeal) => void;
+  onCancel: () => void;
+}) {
+  const [form, setForm] = useState<AdminDeal>(deal);
+  const [saving, setSaving] = useState(false);
+
+  const update = <K extends keyof AdminDeal>(field: K, value: AdminDeal[K]) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  // Add a product to the deal items list — either from the product picker
+  // (if products are loaded) or as a blank row the admin fills in manually.
+  const addDealItem = () => {
+    const firstProduct = products[0];
+    const newItem: DealItem = firstProduct
+      ? { product_id: firstProduct.id, product_name: firstProduct.name, quantity: 1, weight: firstProduct.weight, img: firstProduct.img }
+      : { product_id: 0, product_name: "", quantity: 1, weight: "", img: "" };
+    update("items", [...form.items, newItem]);
+  };
+
+  const updateDealItem = (index: number, patch: Partial<DealItem>) => {
+    const next = form.items.map((it, i) => (i === index ? { ...it, ...patch } : it));
+    update("items", next);
+  };
+
+  // When the admin picks a product from the dropdown, auto-fill name/weight/img
+  // from the product record so the deal stays in sync if product details change.
+  const pickProduct = (index: number, productId: number) => {
+    const product = products.find((p) => p.id === productId);
+    if (product) {
+      updateDealItem(index, {
+        product_id: product.id,
+        product_name: product.name,
+        weight: product.weight,
+        img: product.img,
+      });
+    } else {
+      updateDealItem(index, { product_id: productId });
+    }
+  };
+
+  const removeDealItem = (index: number) => {
+    update("items", form.items.filter((_, i) => i !== index));
+  };
+
+  // Recompute original_price from live product prices + current items.
+  // Savings is derived as original_price - deal price.
+  const recomputeOriginal = () => {
+    let sum = 0;
+    for (const it of form.items) {
+      const product = products.find((p) => p.id === it.product_id || p.name === it.product_name);
+      const unit = product?.price ?? 0;
+      sum += unit * it.quantity;
+    }
+    const next = { ...form, original_price: sum, savings: Math.max(0, sum - form.price) };
+    setForm(next);
+    toast.success(`Recomputed: original R${sum}, save R${next.savings}`, { icon: "🧮" });
+  };
+
+  // When the admin edits the deal price, auto-update savings (if original_price is set)
+  const handlePriceChange = (price: number) => {
+    const savings = Math.max(0, form.original_price - price);
+    setForm((prev) => ({ ...prev, price, savings }));
+  };
+
+  const handleSubmit = async () => {
+    if (!form.name.trim()) { toast.error("Name is required"); return; }
+    if (form.items.length === 0) { toast.error("Add at least one item to the bundle"); return; }
+    for (const it of form.items) {
+      if (!it.product_name.trim()) { toast.error("Every item needs a product name"); return; }
+      if (it.quantity < 1) { toast.error("Every item needs quantity ≥ 1"); return; }
+    }
+    if (form.price < 0) { toast.error("Price cannot be negative"); return; }
+    setSaving(true);
+    await onSave(form);
+    setSaving(false);
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+      onClick={onCancel}
+    >
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.95, opacity: 0, y: 20 }}
+        transition={{ duration: 0.2 }}
+        onClick={(e) => e.stopPropagation()}
+        className="bg-[#0C0502] border border-[#E07A2C]/30 rounded-2xl p-6 w-full max-w-lg my-8 max-h-[90vh] overflow-y-auto"
+      >
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="font-['Cormorant_Garamond'] text-2xl text-[#E07A2C] font-bold">
+            {isCreating ? "Add Deal" : "Edit Deal"}
+          </h3>
+          <button onClick={onCancel} className="text-[#FEF3DF]/60 hover:text-white cursor-pointer">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          {/* Name */}
+          <div>
+            <label className="block text-[0.6rem] text-[#FEF3DF]/40 tracking-wider uppercase mb-1.5">Name *</label>
+            <input
+              type="text"
+              value={form.name}
+              onChange={(e) => update("name", e.target.value)}
+              placeholder="e.g. Triple Taster Saver"
+              className="w-full bg-white/8 border border-[#E07A2C]/30 rounded-xl px-4 py-2.5 text-[#FEF3DF] text-sm focus:outline-none focus:border-[#E07A2C] transition-all"
+            />
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-[0.6rem] text-[#FEF3DF]/40 tracking-wider uppercase mb-1.5">Description</label>
+            <textarea
+              value={form.description}
+              onChange={(e) => update("description", e.target.value)}
+              placeholder="Short, appetizing description shown on the deal card"
+              rows={2}
+              className="w-full bg-white/8 border border-[#E07A2C]/30 rounded-xl px-4 py-2.5 text-[#FEF3DF] text-sm focus:outline-none focus:border-[#E07A2C] transition-all resize-none"
+            />
+          </div>
+
+          {/* Items builder */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-[0.6rem] text-[#FEF3DF]/40 tracking-wider uppercase">Bundle Items *</label>
+              <button
+                type="button"
+                onClick={recomputeOriginal}
+                className="text-[0.55rem] text-[#E07A2C] hover:text-[#F8E5B0] cursor-pointer tracking-wider uppercase flex items-center gap-1"
+              >
+                <DollarSign className="w-3 h-3" /> Recompute prices
+              </button>
+            </div>
+            <div className="space-y-2">
+              {form.items.length === 0 && (
+                <p className="text-[0.65rem] text-[#FEF3DF]/30 text-center py-3 bg-white/4 rounded-xl border border-dashed border-white/10">
+                  No items yet. Click ADD ITEM below.
+                </p>
+              )}
+              {form.items.map((item, i) => (
+                <div key={i} className="bg-white/4 border border-white/8 rounded-xl p-2.5 flex items-center gap-2">
+                  {/* Product picker */}
+                  <div className="flex-1 min-w-0">
+                    {products.length > 0 ? (
+                      <select
+                        value={item.product_id || 0}
+                        onChange={(e) => pickProduct(i, parseInt(e.target.value, 10))}
+                        className="w-full bg-white/8 border border-white/10 rounded-lg px-2 py-1.5 text-[#FEF3DF] text-xs focus:outline-none focus:border-[#E07A2C] transition-all"
+                      >
+                        {products.map((p) => (
+                          <option key={p.id} value={p.id} className="bg-[#0C0502]">
+                            {p.name} ({p.weight}) — R{p.price}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        value={item.product_name}
+                        onChange={(e) => updateDealItem(i, { product_name: e.target.value, product_id: 0 })}
+                        placeholder="Product name"
+                        className="w-full bg-white/8 border border-white/10 rounded-lg px-2 py-1.5 text-[#FEF3DF] text-xs focus:outline-none focus:border-[#E07A2C] transition-all"
+                      />
+                    )}
+                  </div>
+                  {/* Quantity */}
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <span className="text-[0.6rem] text-[#FEF3DF]/40">×</span>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min={1}
+                      value={item.quantity}
+                      onChange={(e) => updateDealItem(i, { quantity: Math.max(1, parseInt(e.target.value, 10) || 1) })}
+                      className="w-12 bg-white/8 border border-white/10 rounded-lg px-2 py-1.5 text-[#FEF3DF] text-xs text-center focus:outline-none focus:border-[#E07A2C] transition-all"
+                    />
+                  </div>
+                  {/* Remove */}
+                  <button
+                    type="button"
+                    onClick={() => removeDealItem(i)}
+                    title="Remove item"
+                    className="w-7 h-7 rounded-lg bg-white/5 hover:bg-[#B23A1A]/20 text-[#FEF3DF]/50 hover:text-[#B23A1A] flex items-center justify-center cursor-pointer transition-all flex-shrink-0"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={addDealItem}
+              className="mt-2 w-full py-2 rounded-xl text-[0.65rem] font-bold tracking-wider uppercase bg-white/5 text-[#FEF3DF]/70 hover:bg-white/10 cursor-pointer transition-all flex items-center justify-center gap-1.5 border border-dashed border-white/10"
+            >
+              <Plus className="w-3.5 h-3.5" /> ADD ITEM
+            </button>
+          </div>
+
+          {/* Price + Original price + Savings */}
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <label className="block text-[0.6rem] text-[#FEF3DF]/40 tracking-wider uppercase mb-1.5">Deal Price (R) *</label>
+              <div className="flex items-center gap-1 bg-white/8 border border-[#E07A2C]/30 rounded-xl px-3 py-2.5 focus-within:border-[#E07A2C] transition-all">
+                <span className="text-[#FEF3DF]/60 text-xs font-bold">R</span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={form.price}
+                  onChange={(e) => handlePriceChange(parseInt(e.target.value, 10) || 0)}
+                  placeholder="139"
+                  className="flex-1 bg-transparent text-[#FEF3DF] text-sm focus:outline-none min-w-0"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-[0.6rem] text-[#FEF3DF]/40 tracking-wider uppercase mb-1.5">Original (R)</label>
+              <div className="flex items-center gap-1 bg-white/8 border border-white/10 rounded-xl px-3 py-2.5">
+                <span className="text-[#FEF3DF]/60 text-xs font-bold">R</span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={form.original_price}
+                  onChange={(e) => {
+                    const original = parseInt(e.target.value, 10) || 0;
+                    setForm((prev) => ({ ...prev, original_price: original, savings: Math.max(0, original - prev.price) }));
+                  }}
+                  placeholder="147"
+                  className="flex-1 bg-transparent text-[#FEF3DF] text-sm focus:outline-none min-w-0"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-[0.6rem] text-[#FEF3DF]/40 tracking-wider uppercase mb-1.5">Save (R)</label>
+              <div className="flex items-center gap-1 bg-[#E07A2C]/10 border border-[#E07A2C]/30 rounded-xl px-3 py-2.5">
+                <span className="text-[#E07A2C] text-xs font-bold">R</span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={form.savings}
+                  readOnly
+                  className="flex-1 bg-transparent text-[#E07A2C] text-sm focus:outline-none min-w-0 font-bold"
+                />
+              </div>
+            </div>
+          </div>
+          <p className="text-[0.55rem] text-[#FEF3DF]/30 -mt-2">
+            "Original" = sum of individual product prices. "Save" = Original − Deal Price. Click "Recompute prices" to auto-fill from live product prices.
+          </p>
+
+          {/* Image URL */}
+          <div>
+            <label className="block text-[0.6rem] text-[#FEF3DF]/40 tracking-wider uppercase mb-1.5">Image URL</label>
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-white/5 flex items-center justify-center border border-white/10">
+                {form.img ? (
+                  <img src={form.img} alt="preview" className="w-full h-full object-cover" />
+                ) : (
+                  <ImageIcon className="w-5 h-5 text-[#FEF3DF]/30" />
+                )}
+              </div>
+              <input
+                type="text"
+                value={form.img}
+                onChange={(e) => update("img", e.target.value)}
+                placeholder="/images/your-pic.jpg or https://..."
+                className="flex-1 bg-white/8 border border-[#E07A2C]/30 rounded-xl px-4 py-2.5 text-[#FEF3DF] text-sm focus:outline-none focus:border-[#E07A2C] transition-all"
+              />
+            </div>
+          </div>
+
+          {/* Badge */}
+          <div>
+            <label className="block text-[0.6rem] text-[#FEF3DF]/40 tracking-wider uppercase mb-1.5">Badge (optional)</label>
+            <input
+              type="text"
+              value={form.badge ?? ""}
+              onChange={(e) => update("badge", e.target.value || null)}
+              placeholder='e.g. "Save R8" or "Best Deal" — shows on the card'
+              className="w-full bg-white/8 border border-[#E07A2C]/30 rounded-xl px-4 py-2.5 text-[#FEF3DF] text-sm focus:outline-none focus:border-[#E07A2C] transition-all"
+            />
+          </div>
+
+          {/* Sort order + Active toggle */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[0.6rem] text-[#FEF3DF]/40 tracking-wider uppercase mb-1.5">Sort Order</label>
+              <input
+                type="number"
+                inputMode="numeric"
+                value={form.sort_order}
+                onChange={(e) => update("sort_order", parseInt(e.target.value, 10) || 0)}
+                placeholder="0"
+                className="w-full bg-white/8 border border-[#E07A2C]/30 rounded-xl px-4 py-2.5 text-[#FEF3DF] text-sm focus:outline-none focus:border-[#E07A2C] transition-all"
+              />
+              <p className="text-[0.55rem] text-[#FEF3DF]/30 mt-1">Lower = shows first</p>
+            </div>
+            <div>
+              <label className="block text-[0.6rem] text-[#FEF3DF]/40 tracking-wider uppercase mb-1.5">Visible</label>
+              <button
+                type="button"
+                onClick={() => update("is_active", !form.is_active)}
+                className={`w-full py-2.5 rounded-xl text-xs font-bold tracking-wider uppercase cursor-pointer transition-all flex items-center justify-center gap-2 ${
+                  form.is_active ? "bg-[#2E7D32]/20 text-[#5EBA62] border border-[#2E7D32]/40" : "bg-white/5 text-[#FEF3DF]/40 border border-white/10"
+                }`}
+              >
+                {form.is_active ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                {form.is_active ? "VISIBLE" : "HIDDEN"}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-3 mt-6">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-3 rounded-xl text-xs font-bold tracking-wider uppercase bg-white/5 text-[#FEF3DF]/60 hover:bg-white/10 cursor-pointer transition-all"
+          >
+            CANCEL
+          </button>
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={handleSubmit}
+            disabled={saving}
+            className={`flex-1 py-3 rounded-xl text-xs font-bold tracking-wider uppercase flex items-center justify-center gap-2 transition-all ${
+              saving
+                ? "bg-[#E07A2C]/50 text-[#0A0301]/70 cursor-not-allowed"
+                : "bg-[#E07A2C] text-white hover:bg-[#E07A2C]/90 cursor-pointer"
+            }`}
+          >
+            {saving ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /> SAVING...</>
+            ) : (
+              <><Save className="w-4 h-4" /> {isCreating ? "CREATE" : "SAVE CHANGES"}</>
+            )}
+          </motion.button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
 
 function Dashboard({ onLogout }: { onLogout: () => void }) {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -1269,6 +1911,16 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
             <Package className="w-4 h-4" /> Products
           </button>
           <button
+            onClick={() => setActiveTab("deals")}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-xs font-semibold tracking-wider uppercase cursor-pointer transition-all ${
+              activeTab === "deals"
+                ? "bg-[#E5B83C] text-[#0A0301]"
+                : "text-[#FEF3DF]/60 hover:text-[#FEF3DF] hover:bg-white/5"
+            }`}
+          >
+            <Tag className="w-4 h-4" /> Deals
+          </button>
+          <button
             onClick={() => setActiveTab("settings")}
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-xs font-semibold tracking-wider uppercase cursor-pointer transition-all ${
               activeTab === "settings"
@@ -1302,6 +1954,16 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
               transition={{ duration: 0.2 }}
             >
               <ProductsPanel />
+            </motion.div>
+          ) : activeTab === "deals" ? (
+            <motion.div
+              key="deals"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              <DealsPanel />
             </motion.div>
           ) : (
             <motion.div

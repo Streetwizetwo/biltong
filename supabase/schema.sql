@@ -149,10 +149,73 @@ VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- ----------------------------------------------------------------------
--- 4) VERIFY
+-- 4) DEALS TABLE (admin-managed bundle deals, e.g. "3 × Taster – R139")
+-- ----------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.deals (
+  id              SERIAL PRIMARY KEY,
+  name            TEXT NOT NULL,
+  description     TEXT NOT NULL DEFAULT '',
+  items           JSONB NOT NULL DEFAULT '[]'::jsonb,    -- [{product_id, product_name, quantity, weight, img}, ...]
+  price           INTEGER NOT NULL DEFAULT 0,            -- bundle price in Rand
+  original_price  INTEGER NOT NULL DEFAULT 0,            -- sum of individual prices
+  savings         INTEGER NOT NULL DEFAULT 0,            -- original_price - price
+  img             TEXT NOT NULL DEFAULT '',
+  badge           TEXT,
+  is_active       BOOLEAN NOT NULL DEFAULT TRUE,
+  sort_order      INTEGER NOT NULL DEFAULT 0,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS deals_active_sort_idx
+  ON public.deals (is_active, sort_order);
+
+ALTER TABLE public.deals ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Deals are publicly readable" ON public.deals;
+CREATE POLICY "Deals are publicly readable" ON public.deals
+  FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Deals are publicly insertable" ON public.deals;
+CREATE POLICY "Deals are publicly insertable" ON public.deals
+  FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Deals are publicly updatable" ON public.deals;
+CREATE POLICY "Deals are publicly updatable" ON public.deals
+  FOR UPDATE USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Deals are publicly deletable" ON public.deals;
+CREATE POLICY "Deals are publicly deletable" ON public.deals
+  FOR DELETE USING (true);
+
+-- Seed the 4 starter deals (prices match the seeded product prices above)
+INSERT INTO public.deals (name, description, items, price, original_price, savings, img, badge, is_active, sort_order)
+VALUES
+  ('Triple Taster Saver',
+   'Three taster packs of our premium wet biltong — perfect to share or stock your snack drawer.',
+   '[{"product_id":1,"product_name":"The Taster","quantity":3,"weight":"50g","img":"/images/taster-50g.webp"}]'::jsonb,
+   139, 147, 8, '/images/taster-50g.webp', 'Save R8', TRUE, 0),
+  ('Double Snack Pack',
+   'Two snack packs — double the flavour, less the price. Great for on-the-go cravings.',
+   '[{"product_id":2,"product_name":"Snack Pack","quantity":2,"weight":"150g","img":"/images/snack-pack-150g.jpeg"}]'::jsonb,
+   249, 258, 9, '/images/snack-pack-150g.jpeg', 'Save R9', TRUE, 1),
+  ('Family + Taster Combo',
+   'A family batch for the household plus two taster packs to try something new.',
+   '[{"product_id":3,"product_name":"Family Batch","quantity":1,"weight":"500g","img":"/images/family-batch-500g.webp"},{"product_id":1,"product_name":"The Taster","quantity":2,"weight":"50g","img":"/images/taster-50g.webp"}]'::jsonb,
+   439, 447, 8, '/images/family-batch-500g.webp', 'Save R8', TRUE, 2),
+  ('Double Feast',
+   'Two kilograms of the ultimate biltong experience — best value per gram, doubled.',
+   '[{"product_id":4,"product_name":"The Feast","quantity":2,"weight":"1kg","img":"/images/feast-1kg.jpeg"}]'::jsonb,
+   1250, 1298, 48, '/images/feast-1kg.jpeg', 'Save R48', TRUE, 3)
+ON CONFLICT (id) DO NOTHING;
+
+-- ----------------------------------------------------------------------
+-- 5) VERIFY
 -- ----------------------------------------------------------------------
 SELECT 'orders' AS table_name, COUNT(*) AS row_count FROM public.orders
 UNION ALL
 SELECT 'settings', COUNT(*) FROM public.settings
 UNION ALL
-SELECT 'products', COUNT(*) FROM public.products;
+SELECT 'products', COUNT(*) FROM public.products
+UNION ALL
+SELECT 'deals', COUNT(*) FROM public.deals;
