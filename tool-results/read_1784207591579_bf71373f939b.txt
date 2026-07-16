@@ -1,0 +1,1999 @@
+     1→"use client";
+     2→
+     3→import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+     4→import {
+     5→  motion,
+     6→  AnimatePresence,
+     7→  useScroll,
+     8→  useTransform,
+     9→  useMotionValue,
+    10→  useDragControls,
+    11→} from "framer-motion";
+    12→import {
+    13→  ShoppingCart,
+    14→  Menu,
+    15→  X,
+    16→  Plus,
+    17→  Minus,
+    18→  Trash2,
+    19→  MapPin,
+    20→  Flame,
+    21→  Leaf,
+    22→  Droplets,
+    23→  Truck,
+    24→  CreditCard,
+    25→  MessageCircle,
+    26→  Check,
+    27→  ChevronUp,
+    28→  Package,
+    29→  Sparkles,
+    30→  Loader2,
+    31→  BadgeCheck,
+    32→  PartyPopper,
+    33→  ArrowDown,
+    34→  CircleDot,
+    35→  CircleCheck,
+    36→  Circle,
+    37→  Zap,
+    38→  Crown,
+    39→  TrendingUp,
+    40→  Sun,
+    41→  Moon,
+    42→  CheckCircle2,
+    43→  Facebook,
+    44→} from "lucide-react";
+    45→import {
+    46→  useCartStore,
+    47→  type DeliveryMode,
+    48→} from "@/lib/store";
+    49→// Address input is now inline — no external component needed
+    50→import { useSettingsStore } from "@/lib/settings-store";
+    51→import {
+    52→  PRODUCTS,
+    53→  FLAVORS,
+    54→  IKHOKHA_PAYMENT_URL,
+    55→  WHATSAPP_NUMBER,
+    56→  generateOrderId,
+    57→  type OrderData,
+    58→  type Product,
+    59→} from "@/lib/supabase";
+    60→import { toast } from "sonner";
+    61→
+    62→// ============================================
+    63→// ANIMATION VARIANTS
+    64→// ============================================
+    65→const fadeUp = {
+    66→  hidden: { opacity: 0, y: 40 },
+    67→  visible: (i: number = 0) => ({
+    68→    opacity: 1,
+    69→    y: 0,
+    70→    transition: { delay: i * 0.1, duration: 0.6, ease: [0.22, 1, 0.36, 1] },
+    71→  }),
+    72→};
+    73→
+    74→const scaleIn = {
+    75→  hidden: { opacity: 0, scale: 0.9 },
+    76→  visible: {
+    77→    opacity: 1,
+    78→    scale: 1,
+    79→    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] },
+    80→  },
+    81→};
+    82→
+    83→const staggerContainer = {
+    84→  hidden: {},
+    85→  visible: { transition: { staggerChildren: 0.08 } },
+    86→};
+    87→
+    88→const cartItemVariants = {
+    89→  enter: { opacity: 0, x: 60, scale: 0.95 },
+    90→  center: { opacity: 1, x: 0, scale: 1 },
+    91→  exit: { opacity: 0, x: -80, scale: 0.9, transition: { duration: 0.25 } },
+    92→};
+    93→
+    94→// ============================================
+    95→// SECTION DIVIDER
+    96→// ============================================
+    97→function SectionDivider() {
+    98→  return (
+    99→    <motion.div
+   100→      initial={{ opacity: 0 }}
+   101→      whileInView={{ opacity: 1 }}
+   102→      viewport={{ once: true, margin: "-50px" }}
+   103→      transition={{ duration: 0.8 }}
+   104→      className="relative w-full max-w-[1400px] mx-auto h-12 md:h-16 flex items-center justify-center z-20 -my-2"
+   105→    >
+   106→      <svg
+   107→        viewBox="0 0 1200 60"
+   108→        className="w-full h-full"
+   109→        preserveAspectRatio="none"
+   110→      >
+   111→        <motion.path
+   112→          d="M0,30 Q150,0 300,30 T600,30 T900,30 T1200,30"
+   113→          fill="none"
+   114→          stroke="#E5B83C"
+   115→          strokeWidth="1.5"
+   116→          strokeOpacity="0.2"
+   117→          initial={{ pathLength: 0, opacity: 0 }}
+   118→          whileInView={{ pathLength: 1, opacity: 1 }}
+   119→          viewport={{ once: true }}
+   120→          transition={{ duration: 1.2, ease: "easeInOut" }}
+   121→        />
+   122→        <motion.path
+   123→          d="M0,35 Q150,55 300,35 T600,35 T900,35 T1200,35"
+   124→          fill="none"
+   125→          stroke="#E5B83C"
+   126→          strokeWidth="1"
+   127→          strokeOpacity="0.1"
+   128→          initial={{ pathLength: 0, opacity: 0 }}
+   129→          whileInView={{ pathLength: 1, opacity: 1 }}
+   130→          viewport={{ once: true }}
+   131→          transition={{ duration: 1.4, ease: "easeInOut", delay: 0.2 }}
+   132→        />
+   133→      </svg>
+   134→    </motion.div>
+   135→  );
+   136→}
+   137→
+   138→// ============================================
+   139→// STICKY ORDER BAR (Mobile only)
+   140→// ============================================
+   141→function StickyOrderBar() {
+   142→  const [visible, setVisible] = useState(false);
+   143→
+   144→  useEffect(() => {
+   145→    const handler = () => setVisible(window.scrollY > window.innerHeight * 0.7);
+   146→    window.addEventListener("scroll", handler, { passive: true });
+   147→    return () => window.removeEventListener("scroll", handler);
+   148→  }, []);
+   149→
+   150→  return (
+   151→    <AnimatePresence>
+   152→      {visible && (
+   153→        <motion.a
+   154→          href="#products"
+   155→          initial={{ y: 80, opacity: 0 }}
+   156→          animate={{ y: 0, opacity: 1 }}
+   157→          exit={{ y: 80, opacity: 0 }}
+   158→          transition={{ type: "spring", damping: 25, stiffness: 300 }}
+   159→          className="md:hidden fixed bottom-[72px] left-0 right-0 z-[50] bg-[#0A0301]/95 backdrop-blur-md border-t border-[#E5B83C]/30 py-2.5 px-4 flex items-center justify-center gap-2 no-underline"
+   160→        >
+   161→          <Zap className="w-3.5 h-3.5 text-[#E5B83C]" />
+   162→          <span className="text-[0.65rem] font-bold tracking-[0.2em] uppercase text-[#E5B83C]">
+   163→            VIEW MENU · ORDER NOW
+   164→          </span>
+   165→        </motion.a>
+   166→      )}
+   167→    </AnimatePresence>
+   168→  );
+   169→}
+   170→
+   171→// ============================================
+   172→// FLY-TO-CART ANIMATION
+   173→// ============================================
+   174→function FlyToCart({ from, to, onComplete }: { from: DOMRect; to: DOMRect; onComplete: () => void }) {
+   175→  const startX = from.left + from.width / 2;
+   176→  const startY = from.top + from.height / 2;
+   177→  const endX = to.left + to.width / 2;
+   178→  const endY = to.top + to.height / 2;
+   179→
+   180→  return (
+   181→    <motion.div
+   182→      initial={{ x: startX - 14, y: startY - 14, scale: 1, opacity: 1 }}
+   183→      animate={{ x: endX - 14, y: endY - 14, scale: 0.4, opacity: 0.6 }}
+   184→      transition={{ duration: 0.5, ease: "easeInOut" }}
+   185→      onAnimationComplete={onComplete}
+   186→      className="fixed z-[9998] w-7 h-7 rounded-full bg-[#E5B83C] flex items-center justify-center text-xs pointer-events-none"
+   187→    >
+   188→      🥩
+   189→    </motion.div>
+   190→  );
+   191→}
+   192→
+   193→// ============================================
+   194→// CONFETTI PARTICLE SYSTEM
+   195→// ============================================
+   196→function Confetti({ confettiKey }: { confettiKey: number }) {
+   197→  const [particles, setParticles] = useState<
+   198→    { id: number; x: number; y: number; color: string; size: number; rotation: number }[]
+   199→  >([]);
+   200→
+   201→  useEffect(() => {
+   202→    if (confettiKey === 0) return;
+   203→    const colors = ["#E5B83C", "#E07A2C", "#25D366", "#B23A1A", "#F8E5B0", "#2E7D32"];
+   204→    const newParticles = Array.from({ length: 25 }, (_, i) => ({
+   205→      id: Date.now() + i,
+   206→      x: 30 + Math.random() * 40,
+   207→      y: 50 + Math.random() * 20,
+   208→      color: colors[Math.floor(Math.random() * colors.length)],
+   209→      size: 6 + Math.random() * 8,
+   210→      rotation: Math.random() * 360,
+   211→    }));
+   212→    setParticles(newParticles);
+   213→    const timer = setTimeout(() => setParticles([]), 1500);
+   214→    return () => clearTimeout(timer);
+   215→  }, [confettiKey]);
+   216→
+   217→  return (
+   218→    <div className="fixed inset-0 pointer-events-none z-[9999] overflow-hidden">
+   219→      <AnimatePresence>
+   220→        {particles.map((p) => (
+   221→          <motion.div
+   222→            key={p.id}
+   223→            initial={{ x: `${p.x}vw`, y: `${p.y}vh`, rotate: p.rotation, opacity: 1 }}
+   224→            animate={{ y: "110vh", rotate: p.rotation + 720, opacity: 0 }}
+   225→            exit={{ opacity: 0 }}
+   226→            transition={{ duration: 1.2 + Math.random() * 0.5, ease: "easeIn" }}
+   227→            className="absolute rounded-sm"
+   228→            style={{
+   229→              width: p.size,
+   230→              height: p.size,
+   231→              backgroundColor: p.color,
+   232→            }}
+   233→          />
+   234→        ))}
+   235→      </AnimatePresence>
+   236→    </div>
+   237→  );
+   238→}
+   239→
+   240→// ============================================
+   241→// SMOKE CANVAS
+   242→// ============================================
+   243→function SmokeCanvas() {
+   244→  const canvasRef = useRef<HTMLCanvasElement>(null);
+   245→
+   246→  useEffect(() => {
+   247→    const canvas = canvasRef.current;
+   248→    if (!canvas) return;
+   249→    const ctx = canvas.getContext("2d");
+   250→    if (!ctx) return;
+   251→
+   252→    let w = (canvas.width = window.innerWidth);
+   253→    let h = (canvas.height = window.innerHeight);
+   254→    let animationId: number;
+   255→
+   256→    const particles = Array.from({ length: 30 }, () => ({
+   257→      x: Math.random() * w,
+   258→      y: Math.random() * h,
+   259→      r: 40 + Math.random() * 80,
+   260→      vx: (Math.random() - 0.5) * 0.15,
+   261→      vy: -(Math.random() * 0.4 + 0.08),
+   262→    }));
+   263→
+   264→    const animate = () => {
+   265→      ctx.clearRect(0, 0, w, h);
+   266→      particles.forEach((p) => {
+   267→        p.x += p.vx;
+   268→        p.y += p.vy;
+   269→        if (p.y < -120) p.y = h + 60;
+   270→        if (p.x < -120) p.x = w + 60;
+   271→        if (p.x > w + 120) p.x = -120;
+   272→        const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r);
+   273→        grad.addColorStop(0, "rgba(210,90,30,0.035)");
+   274→        grad.addColorStop(1, "rgba(0,0,0,0)");
+   275→        ctx.fillStyle = grad;
+   276→        ctx.beginPath();
+   277→        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+   278→        ctx.fill();
+   279→      });
+   280→      animationId = requestAnimationFrame(animate);
+   281→    };
+   282→    animate();
+   283→
+   284→    const handleResize = () => {
+   285→      w = canvas.width = window.innerWidth;
+   286→      h = canvas.height = window.innerHeight;
+   287→    };
+   288→    window.addEventListener("resize", handleResize);
+   289→    return () => {
+   290→      cancelAnimationFrame(animationId);
+   291→      window.removeEventListener("resize", handleResize);
+   292→    };
+   293→  }, []);
+   294→
+   295→  return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-[1] opacity-60" />;
+   296→}
+   297→
+   298→// ============================================
+   299→// NAVBAR
+   300→// ============================================
+   301→function Navbar({ onCartOpen, cartRef }: { onCartOpen: () => void; cartRef: React.RefObject<HTMLButtonElement | null> }) {
+   302→  const [scrolled, setScrolled] = useState(false);
+   303→  const [mobileOpen, setMobileOpen] = useState(false);
+   304→  const totalItems = useCartStore((s) => s.totalItems());
+   305→  const [isLight, setIsLight] = useState(() => {
+   306→    if (typeof window !== "undefined") {
+   307→      return localStorage.getItem("bb-theme") === "light";
+   308→    }
+   309→    return false;
+   310→  });
+   311→
+   312→  useEffect(() => {
+   313→    const handler = () => setScrolled(window.scrollY > 50);
+   314→    window.addEventListener("scroll", handler, { passive: true });
+   315→    return () => window.removeEventListener("scroll", handler);
+   316→  }, []);
+   317→
+   318→  useEffect(() => {
+   319→    if (isLight) {
+   320→      document.documentElement.setAttribute("data-theme", "light");
+   321→    }
+   322→  }, []);
+   323→
+   324→  const toggleTheme = () => {
+   325→    const next = !isLight;
+   326→    setIsLight(next);
+   327→    document.documentElement.setAttribute("data-theme", next ? "light" : "dark");
+   328→    localStorage.setItem("bb-theme", next ? "light" : "dark");
+   329→  };
+   330→
+   331→  const navLinks = [
+   332→    { href: "#products", label: "MENU", icon: Package },
+   333→    { href: "#story", label: "STORY", icon: Flame },
+   334→    { href: "#how-to-order", label: "ORDER", icon: CreditCard },
+   335→    { href: "#contact", label: "CONTACT", icon: MessageCircle },
+   336→  ];
+   337→
+   338→  return (
+   339→    <>
+   340→      <motion.nav
+   341→        initial={{ y: -100 }}
+   342→        animate={{ y: 0 }}
+   343→        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+   344→        className={`fixed top-0 left-0 right-0 z-[500] flex justify-between items-center transition-all duration-400 ${
+   345→          scrolled
+   346→            ? "py-3 px-4 bg-[#0A0301]/95 backdrop-blur-xl border-b border-[#E5B83C]/20 shadow-lg shadow-black/30"
+   347→            : "py-4 px-4 md:px-[6%]"
+   348→        }`}
+   349→      >
+   350→        <a href="#" className="font-['Bebas_Neue'] text-xl md:text-[1.8rem] tracking-[0.2em] text-[#E5B83C] no-underline flex items-center gap-2">
+   351→          <span className="text-lg">🥩</span>
+   352→          BILTONG<span className="text-[#E07A2C]">&amp;</span>BYTES
+   353→        </a>
+   354→
+   355→        <ul className="hidden md:flex gap-10 list-none">
+   356→          {navLinks.map((link) => (
+   357→            <li key={link.href}>
+   358→              <a href={link.href} className="text-[0.7rem] font-semibold tracking-[0.25em] uppercase text-[#FEF3DF]/60 no-underline transition-colors hover:text-[#E5B83C]">
+   359→                {link.label}
+   360→              </a>
+   361→            </li>
+   362→          ))}
+   363→        </ul>
+   364→
+   365→        <div className="flex items-center gap-2">
+   366→          <motion.button
+   367→            whileTap={{ scale: 0.9 }}
+   368→            onClick={toggleTheme}
+   369→            className="border border-[#E5B83C]/30 text-[#E5B83C] p-2 cursor-pointer rounded-xl transition-all hover:bg-[#E5B83C]/10 hover:border-[#E5B83C]/60"
+   370→            aria-label="Toggle theme"
+   371→          >
+   372→            <AnimatePresence mode="wait">
+   373→              {isLight ? (
+   374→                <motion.div key="moon" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.2 }}>
+   375→                  <Moon className="w-4 h-4" />
+   376→                </motion.div>
+   377→              ) : (
+   378→                <motion.div key="sun" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.2 }}>
+   379→                  <Sun className="w-4 h-4" />
+   380→                </motion.div>
+   381→              )}
+   382→            </AnimatePresence>
+   383→          </motion.button>
+   384→          <motion.button
+   385→            whileTap={{ scale: 0.9 }}
+   386→            ref={cartRef}
+   387→            onClick={onCartOpen}
+   388→            id="cart-button"
+   389→            className="relative border border-[#E5B83C]/40 text-[#E5B83C] px-3 py-2 md:px-4 font-bold text-[0.7rem] tracking-[0.15em] cursor-pointer transition-all hover:bg-[#E5B83C]/10 hover:border-[#E5B83C] rounded-xl flex items-center gap-1.5"
+   390→          >
+   391→            <ShoppingCart className="w-4 h-4" />
+   392→            <span className="hidden md:inline">CART</span>
+   393→            <AnimatePresence mode="wait">
+   394→              {totalItems > 0 && (
+   395→                <motion.span
+   396→                  key={totalItems}
+   397→                  initial={{ scale: 0 }}
+   398→                  animate={{ scale: 1 }}
+   399→                  exit={{ scale: 0 }}
+   400→                  className="absolute -top-2 -right-2 bg-[#B23A1A] text-white w-5 h-5 rounded-full text-[0.6rem] flex items-center justify-center font-bold"
+   401→                >
+   402→                  {totalItems}
+   403→                </motion.span>
+   404→              )}
+   405→            </AnimatePresence>
+   406→          </motion.button>
+   407→
+   408→          <motion.button
+   409→            whileTap={{ scale: 0.9 }}
+   410→            onClick={() => setMobileOpen(true)}
+   411→            className="md:hidden border border-[#E5B83C]/40 text-[#E5B83C] p-2 cursor-pointer rounded-xl"
+   412→          >
+   413→            <Menu className="w-5 h-5" />
+   414→          </motion.button>
+   415→        </div>
+   416→      </motion.nav>
+   417→
+   418→      {/* Mobile Nav Drawer */}
+   419→      <AnimatePresence>
+   420→        {mobileOpen && (
+   421→          <>
+   422→            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+   423→              className="fixed inset-0 bg-black/70 z-[599] backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
+   424→            <motion.div
+   425→              initial={{ x: "-100%" }} animate={{ x: 0 }} exit={{ x: "-100%" }}
+   426→              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+   427→              className="fixed top-0 left-0 w-[80%] max-w-[300px] h-full bg-[#0A0301]/98 backdrop-blur-xl z-[600] p-8 pt-20"
+   428→            >
+   429→              <button onClick={() => setMobileOpen(false)} className="absolute top-5 right-5 text-[#E5B83C] cursor-pointer">
+   430→                <X className="w-7 h-7" />
+   431→              </button>
+   432→              <ul className="flex flex-col gap-6 list-none">
+   433→                {navLinks.map((link, i) => (
+   434→                  <motion.li key={link.href} initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }}
+   435→                    transition={{ delay: 0.1 + i * 0.08 }}>
+   436→                    <a href={link.href} onClick={() => setMobileOpen(false)}
+   437→                      className="text-[#FEF3DF] no-underline text-lg tracking-[0.1em] font-semibold flex items-center gap-3">
+   438→                      <link.icon className="w-5 h-5 text-[#E5B83C]" />
+   439→                      {link.label}
+   440→                    </a>
+   441→                  </motion.li>
+   442→                ))}
+   443→              </ul>
+   444→              <div className="mt-10 space-y-3">
+   445→                <div className="p-3 bg-[#2E7D32]/15 rounded-xl border border-[#2E7D32]/30">
+   446→                  <p className="text-[#2E7D32] text-xs font-semibold flex items-center gap-2">
+   447→                    <Leaf className="w-3.5 h-3.5" /> 100% Halaal Certified
+   448→                  </p>
+   449→                </div>
+   450→                <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noopener noreferrer"
+   451→                  className="bg-[#25D366] text-white px-4 py-3 text-xs font-bold tracking-[0.1em] uppercase no-underline inline-flex items-center gap-2 rounded-xl w-full justify-center">
+   452→                  <MessageCircle className="w-4 h-4" /> WhatsApp Us
+   453→                </a>
+   454→              </div>
+   455→            </motion.div>
+   456→          </>
+   457→        )}
+   458→      </AnimatePresence>
+   459→    </>
+   460→  );
+   461→}
+   462→
+   463→// ============================================
+   464→// HERO SECTION
+   465→// ============================================
+   466→function Hero() {
+   467→  const ref = useRef(null);
+   468→  const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
+   469→  const bgScale = useTransform(scrollYProgress, [0, 1], [1.05, 1.3]);
+   470→  const bgOpacity = useTransform(scrollYProgress, [0, 0.5], [0.2, 0.05]);
+   471→  const contentY = useTransform(scrollYProgress, [0, 0.5], [0, -60]);
+   472→
+   473→  return (
+   474→    <section ref={ref} className="relative min-h-screen flex items-center justify-center overflow-hidden">
+   475→      <motion.div style={{ scale: bgScale, opacity: bgOpacity }} className="absolute inset-0 z-[-2]">
+   476→        <div className="w-full h-full bg-cover bg-center" style={{
+   477→          backgroundImage: "url('/images/hero-bg.jpeg')",
+   478→          filter: "saturate(0.8)",
+   479→        }} />
+   480→      </motion.div>
+   481→      <div className="absolute inset-0 bg-gradient-to-b from-[#0A0301]/60 via-transparent to-[#0A0301] z-[-1]" />
+   482→
+   483→      <motion.div style={{ y: contentY }} className="z-20 max-w-[900px] px-5 text-center">
+   484→        <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={0}
+   485→          className="text-[0.55rem] md:text-[0.65rem] tracking-[0.5em] uppercase text-[#F8E5B0] border border-[#E5B83C]/40 inline-block px-4 py-2.5 rounded-full mb-6 backdrop-blur-md">
+   486→          ✦ HALAAL · HAND-CURED · STANGER ✦
+   487→        </motion.div>
+   488→
+   489→        <motion.h1 variants={fadeUp} initial="hidden" animate="visible" custom={0.2}
+   490→          className="font-['Cormorant_Garamond'] text-[3.2rem] md:text-[7rem] lg:text-[10rem] font-light leading-[0.85]">
+   491→          Biltong <span className="bg-gradient-to-br from-[#F8E5B0] to-[#E5B83C] bg-clip-text text-transparent">&amp; Bytes</span>
+   492→        </motion.h1>
+   493→
+   494→        <motion.p variants={fadeUp} initial="hidden" animate="visible" custom={0.4}
+   495→          className="text-[0.7rem] md:text-[0.9rem] tracking-[0.15em] uppercase mt-4 md:mt-6 text-[#FEF3DF]/80">
+   496→          Premium Wet Biltong · Remote Tech Support · KZN
+   497→        </motion.p>
+   498→
+   499→        <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={0.6}
+   500→          className="mt-6 md:mt-8 flex gap-3 justify-center flex-wrap">
+   501→          <motion.a href="#products" whileTap={{ scale: 0.95 }}
+   502→            className="bg-[#25D366] text-white px-5 py-3.5 md:px-8 text-[0.7rem] font-bold tracking-[0.2em] uppercase no-underline rounded-xl flex items-center gap-2 shadow-[0_4px_20px_rgba(37,211,102,0.3)]">
+   503→            <Zap className="w-4 h-4" /> ORDER NOW
+   504→          </motion.a>
+   505→          <a href="#story"
+   506→            className="border border-[#E5B83C]/60 text-[#E5B83C] px-5 py-3.5 md:px-8 text-[0.7rem] font-bold tracking-[0.2em] uppercase no-underline transition-all hover:bg-[#E5B83C]/10 rounded-xl">
+   507→            OUR STORY
+   508→          </a>
+   509→        </motion.div>
+   510→
+   511→        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.5 }} className="mt-12 md:mt-16">
+   512→          <motion.div animate={{ y: [0, 8, 0] }} transition={{ duration: 1.5, repeat: Infinity }}
+   513→            className="text-[#E5B83C]/40 text-xs tracking-[0.3em] uppercase flex flex-col items-center">
+   514→            <ArrowDown className="w-5 h-5" />
+   515→          </motion.div>
+   516→        </motion.div>
+   517→      </motion.div>
+   518→    </section>
+   519→  );
+   520→}
+   521→
+   522→// ============================================
+   523→// PHOTO STRIP (horizontal scroll on mobile)
+   524→// ============================================
+   525→function PhotoStrip() {
+   526→  const scrollRef = useRef<HTMLDivElement>(null);
+   527→
+   528→  const images = [
+   529→    { src: "/images/hero-bg.jpeg", alt: "Biltong" },
+   530→    { src: "/images/biltong-hanging-2.jpeg", alt: "Hanging" },
+   531→    { src: "/images/biltong-sliced-2.jpeg", alt: "Sliced" },
+   532→    { src: "/images/snack-pack-150g.jpeg", alt: "Chilli" },
+   533→  ];
+   534→
+   535→  return (
+   536→    <>
+   537→      {/* Desktop grid */}
+   538→      <div className="hidden md:grid grid-cols-4 h-[45vh] max-w-[1400px] mx-auto relative z-10">
+   539→        {images.map((img, i) => (
+   540→          <motion.div key={i} initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}
+   541→            transition={{ delay: i * 0.1 }} className="overflow-hidden">
+   542→            <motion.img whileHover={{ scale: 1.08 }} transition={{ duration: 0.6 }}
+   543→              src={img.src} alt={img.alt}
+   544→              className="w-full h-full object-cover brightness-[0.55] hover:brightness-[0.75] transition-all" />
+   545→          </motion.div>
+   546→        ))}
+   547→      </div>
+   548→      {/* Mobile horizontal scroll */}
+   549→      <div ref={scrollRef} className="md:hidden flex overflow-x-auto snap-x snap-mandatory gap-2 px-4 py-3 relative z-10 scrollbar-hide"
+   550→        style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
+   551→        {images.map((img, i) => (
+   552→          <motion.div key={i} initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }}
+   553→            viewport={{ once: true }} transition={{ delay: i * 0.1 }}
+   554→            className="flex-shrink-0 w-[75vw] snap-center overflow-hidden rounded-2xl">
+   555→            <img src={img.src} alt={img.alt} className="w-full h-48 object-cover brightness-[0.65] rounded-2xl" />
+   556→          </motion.div>
+   557→        ))}
+   558→      </div>
+   559→    </>
+   560→  );
+   561→}
+   562→
+   563→// ============================================
+   564→// FLAVOR ICON HELPER
+   565→// ============================================
+   566→function FlavorIcon({ flavor }: { flavor: string }) {
+   567→  switch (flavor) {
+   568→    case "Chilli": return <Flame className="w-3.5 h-3.5" />;
+   569→    case "Hot Honey Glazed": return <Droplets className="w-3.5 h-3.5" />;
+   570→    default: return <Leaf className="w-3.5 h-3.5" />;
+   571→  }
+   572→}
+   573→
+   574→// ============================================
+   575→// PRODUCT CARD — Exciting mobile version
+   576→// ============================================
+   577→function ProductCard({ product, index, onAdd, cardRef }: { product: Product; index: number; onAdd?: () => void; cardRef?: React.RefObject<HTMLDivElement | null> }) {
+   578→  const [selectedFlavor, setSelectedFlavor] = useState(FLAVORS[0]);
+   579→  const [qty, setQty] = useState(1);
+   580→  const [justAdded, setJustAdded] = useState(false);
+   581→  const addItem = useCartStore((s) => s.addItem);
+   582→
+   583→  // Always use the price that came from the API (server-side verified). The
+   584→  // settings store's getPrice() helper is kept for backward compat but
+   585→  // products-table prices are authoritative now.
+   586→  const currentPrice = product.price;
+   587→
+   588→  const isPopular = product.badge === "Popular";
+   589→  const isBestValue = product.badge === "Best Value";
+   590→  const pricePerGram = product.grams > 0 ? (currentPrice / product.grams).toFixed(2) : "0.00";
+   591→
+   592→  const handleAdd = () => {
+   593→    addItem({
+   594→      name: `${product.name} ${product.weight}`,
+   595→      weight: product.weight,
+   596→      flavor: selectedFlavor,
+   597→      price: currentPrice,
+   598→      qty,
+   599→      img: product.img,
+   600→    });
+   601→    setJustAdded(true);
+   602→    toast.success(`${qty}x ${product.name} (${selectedFlavor}) added!`, { icon: "🥩", duration: 2000 });
+   603→    onAdd?.();
+   604→    setTimeout(() => setJustAdded(false), 1200);
+   605→    setQty(1);
+   606→  };
+   607→
+   608→  return (
+   609→    <motion.div
+   610→      ref={cardRef}
+   611→      variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-30px" }}
+   612→      custom={index * 0.1}
+   613→      className="bg-gradient-to-br from-[#140A04]/90 to-[#0C0502]/95 backdrop-blur-sm p-4 md:p-6 text-center rounded-2xl border border-[#E5B83C]/15 hover:border-[#E5B83C]/60 transition-all relative overflow-hidden group hover:shadow-[0_0_30px_rgba(229,184,60,0.15),0_0_60px_rgba(229,184,60,0.05)]"
+   614→    >
+   615→      {/* Badges */}
+   616→      {/* Inner radial gradient glow on hover */}
+   617→      <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+   618→        style={{ background: "radial-gradient(circle at 50% 50%, rgba(229,184,60,0.08) 0%, transparent 70%)" }} />
+   619→      <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5">
+   620→        {isPopular && (
+   621→          <span className="bg-[#E07A2C] text-white text-[0.55rem] px-2.5 py-1 rounded-full font-bold tracking-wider uppercase flex items-center gap-1">
+   622→            <TrendingUp className="w-3 h-3" /> POPULAR
+   623→          </span>
+   624→        )}
+   625→        {isBestValue && (
+   626→          <span className="bg-[#2E7D32] text-white text-[0.55rem] px-2.5 py-1 rounded-full font-bold tracking-wider uppercase flex items-center gap-1">
+   627→            <Crown className="w-3 h-3" /> BEST VALUE
+   628→          </span>
+   629→        )}
+   630→        {product.badge && product.badge !== "Popular" && product.badge !== "Best Value" && (
+   631→          <span className="bg-[#E5B83C] text-[#0A0301] text-[0.55rem] px-2.5 py-1 rounded-full font-bold tracking-wider uppercase flex items-center gap-1">
+   632→            <Sparkles className="w-3 h-3" /> {product.badge.toUpperCase()}
+   633→          </span>
+   634→        )}
+   635→      </div>
+   636→
+   637→      {/* Image */}
+   638→      <div className="relative overflow-hidden rounded-xl mb-3">
+   639→        <motion.img whileHover={{ scale: 1.05 }} transition={{ duration: 0.4 }}
+   640→          src={product.img} alt={product.name}
+   641→          className="w-full h-40 md:h-52 object-cover brightness-[0.75] rounded-xl" />
+   642→        <div className="absolute top-3 right-3 bg-[#0A0301]/80 backdrop-blur-md text-[#E5B83C] px-3 py-1 rounded-full text-xs font-bold tracking-wider">
+   643→          {product.weight}
+   644→        </div>
+   645→        <div className="absolute bottom-3 left-3 bg-[#0A0301]/70 backdrop-blur-md text-[#FEF3DF]/60 px-2 py-0.5 rounded-full text-[0.6rem]">
+   646→          R{pricePerGram}/g
+   647→        </div>
+   648→      </div>
+   649→
+   650→      <h3 className="font-['Cormorant_Garamond'] text-lg md:text-2xl font-bold text-[#FEF3DF]">
+   651→        {product.name}
+   652→      </h3>
+   653→      <p className="text-[0.65rem] md:text-xs text-[#FEF3DF]/50 mt-0.5">{product.description}</p>
+   654→
+   655→      <div className="font-['Bebas_Neue'] text-3xl md:text-4xl text-[#F8E5B0] mt-1.5">R{currentPrice}</div>
+   656→
+   657→      {/* Flavor Selector */}
+   658→      <div className="flex justify-center gap-1.5 mt-3 flex-wrap">
+   659→        {FLAVORS.map((f) => (
+   660→          <motion.button key={f} whileTap={{ scale: 0.9 }}
+   661→            onClick={() => setSelectedFlavor(f)}
+   662→            className={`flex items-center gap-1 px-2.5 py-1.5 text-[0.65rem] rounded-full cursor-pointer transition-all ${
+   663→              selectedFlavor === f
+   664→                ? "bg-[#E5B83C] text-[#0A0301] border border-[#E5B83C] font-bold"
+   665→                : "bg-white/5 border border-white/10 text-[#FEF3DF]/70 hover:border-[#E5B83C]/40"
+   666→            }`}>
+   667→            <FlavorIcon flavor={f} /> {f}
+   668→          </motion.button>
+   669→        ))}
+   670→      </div>
+   671→
+   672→      {/* Quantity */}
+   673→      <div className="flex items-center justify-center gap-4 mt-3">
+   674→        <motion.button whileTap={{ scale: 0.8 }}
+   675→          onClick={() => setQty(Math.max(1, qty - 1))}
+   676→          className="bg-white/8 w-9 h-9 rounded-full flex items-center justify-center text-[#FEF3DF] cursor-pointer hover:bg-[#E5B83C] hover:text-black transition-colors">
+   677→          <Minus className="w-4 h-4" />
+   678→        </motion.button>
+   679→        <motion.span key={qty} initial={{ scale: 1.3 }} animate={{ scale: 1 }}
+   680→          className="font-['Bebas_Neue'] text-2xl min-w-[40px] text-center">{qty}</motion.span>
+   681→        <motion.button whileTap={{ scale: 0.8 }}
+   682→          onClick={() => setQty(qty + 1)}
+   683→          className="bg-white/8 w-9 h-9 rounded-full flex items-center justify-center text-[#FEF3DF] cursor-pointer hover:bg-[#E5B83C] hover:text-black transition-colors">
+   684→          <Plus className="w-4 h-4" />
+   685→        </motion.button>
+   686→      </div>
+   687→
+   688→      {/* Add to Cart */}
+   689→      <motion.button whileTap={{ scale: 0.95 }} onClick={handleAdd}
+   690→        className={`w-full mt-3 py-3 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-full text-sm ${
+   691→          justAdded
+   692→            ? "bg-[#2E7D32] text-white border border-[#2E7D32]"
+   693→            : "bg-transparent border border-[#E5B83C]/50 text-[#E5B83C] hover:bg-[#E5B83C] hover:text-[#0A0301]"
+   694→        }`}>
+   695→        {justAdded ? (
+   696→          <span className="flex items-center justify-center gap-2"><Check className="w-4 h-4" /> ADDED!</span>
+   697→        ) : (
+   698→          <span className="flex items-center justify-center gap-2"><ShoppingCart className="w-4 h-4" /> ADD TO CART</span>
+   699→        )}
+   700→      </motion.button>
+   701→    </motion.div>
+   702→  );
+   703→}
+   704→
+   705→// ============================================
+   706→// PRODUCTS SECTION
+   707→// ============================================
+   708→function ProductsSection({ onItemAdd, productRefs }: { onItemAdd?: () => void; productRefs?: React.RefObject<(HTMLDivElement | null)[]> }) {
+   709→  // Fetch live products from /api/products. Falls back to hardcoded PRODUCTS
+   710→  // if the API is unreachable (e.g. Supabase down) so the page still renders.
+   711→  const [products, setProducts] = useState<Product[]>(PRODUCTS);
+   712→  const [loading, setLoading] = useState(true);
+   713→
+   714→  useEffect(() => {
+   715→    let cancelled = false;
+   716→    (async () => {
+   717→      try {
+   718→        const res = await fetch("/api/products");
+   719→        if (!res.ok) return;
+   720→        const data = await res.json();
+   721→        if (!cancelled && Array.isArray(data.products) && data.products.length > 0) {
+   722→          setProducts(data.products);
+   723→        }
+   724→      } catch {
+   725→        // Silent — fallback to hardcoded PRODUCTS already in state
+   726→      } finally {
+   727→        if (!cancelled) setLoading(false);
+   728→      }
+   729→    })();
+   730→    return () => { cancelled = true; };
+   731→  }, []);
+   732→
+   733→  return (
+   734→    <section id="products" className="py-16 md:py-24 px-4 md:px-[6%] relative z-20">
+   735→      <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} className="text-center">
+   736→        <p className="text-[0.6rem] tracking-[0.4em] uppercase text-[#E07A2C] mb-3">THE MENU</p>
+   737→        <h2 className="font-['Cormorant_Garamond'] text-[2.5rem] md:text-[4.5rem] font-light leading-tight mb-6">
+   738→          Choose your <em className="italic text-[#E5B83C] font-semibold">Biltong</em>
+   739→        </h2>
+   740→      </motion.div>
+   741→
+   742→      <motion.div variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-30px" }}
+   743→        className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 max-w-[1400px] mx-auto">
+   744→        {loading ? (
+   745→          // Skeleton placeholders while fetching
+   746→          Array.from({ length: 4 }).map((_, i) => (
+   747→            <div key={`skeleton-${i}`} className="bg-white/4 border border-white/8 rounded-2xl p-6 animate-pulse">
+   748→              <div className="w-full h-40 md:h-52 bg-white/6 rounded-xl mb-3" />
+   749→              <div className="h-5 bg-white/6 rounded mb-2 w-3/4" />
+   750→              <div className="h-3 bg-white/4 rounded mb-4 w-full" />
+   751→              <div className="h-8 bg-white/6 rounded w-1/2" />
+   752→            </div>
+   753→          ))
+   754→        ) : (
+   755→          products.map((prod, i) => (
+   756→            <ProductCard key={prod.id} product={prod} index={i} onAdd={onItemAdd} cardRef={productRefs ? { current: productRefs.current?.[i] ?? null } as React.RefObject<HTMLDivElement | null> : undefined} />
+   757→          ))
+   758→        )}
+   759→      </motion.div>
+   760→    </section>
+   761→  );
+   762→}
+   763→
+   764→// ============================================
+   765→// STORY SECTION
+   766→// ============================================
+   767→function StorySection() {
+   768→  return (
+   769→    <section id="story" className="py-16 md:py-24 px-4 md:px-[6%] relative z-20">
+   770→      <div className="max-w-[1200px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16 items-center">
+   771→        <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }}>
+   772→          <p className="text-[0.6rem] tracking-[0.4em] uppercase text-[#E07A2C] mb-3">OUR ROOTS</p>
+   773→          <h2 className="font-['Cormorant_Garamond'] text-[2.5rem] md:text-[4.5rem] font-light leading-tight mb-6">
+   774→            Handmade <em className="italic text-[#E5B83C] font-semibold">Halaal</em> with soul
+   775→          </h2>
+   776→          <p className="leading-relaxed text-[#FEF3DF]/85 text-sm md:text-base">
+   777→            We are a Muslim family in Stanger, hand-cutting premium beef from Halaal certified butcheries.
+   778→            Our wet biltong is famous — spiced traditionally, always fresh, made with love. Every strip is
+   779→            carefully prepared, hung, and cured to perfection using time-honoured recipes passed down through
+   780→            generations. From our family to yours.
+   781→          </p>
+   782→          <div className="bg-[#2E7D32]/15 border-l-4 border-[#2E7D32] p-4 mt-6 rounded-r-lg">
+   783→            <p className="text-[#2E7D32] font-semibold flex items-center gap-2 text-sm">
+   784→              <BadgeCheck className="w-4 h-4 flex-shrink-0" /> 100% Halaal Certified · Every single batch
+   785→            </p>
+   786→          </div>
+   787→          <div className="mt-4 flex gap-3 flex-wrap">
+   788→            {FLAVORS.map((f) => (
+   789→              <span key={f} className="bg-[#E5B83C]/10 border border-[#E5B83C]/25 text-[#E5B83C] px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5">
+   790→                <FlavorIcon flavor={f} /> {f}
+   791→              </span>
+   792→            ))}
+   793→          </div>
+   794→        </motion.div>
+   795→
+   796→        <motion.div variants={scaleIn} initial="hidden" whileInView="visible" viewport={{ once: true }}
+   797→          className="bg-gradient-to-br from-[#160A03]/90 to-[#080301]/95 p-5 md:p-8 rounded-2xl border border-[#E5B83C]/25">
+   798→          <img src="/images/our-story.png"
+   799→            alt="Fresh Biltong" className="w-full rounded-xl" />
+   800→          <h3 className="text-[#E5B83C] mt-4 font-['Cormorant_Garamond'] text-2xl font-bold">Wet, Tender &amp; Aromatic</h3>
+   801→          <p className="text-sm text-[#FEF3DF]/60 mt-1">Traditional · Chilli · Hot Honey Glazed</p>
+   802→        </motion.div>
+   803→      </div>
+   804→    </section>
+   805→  );
+   806→}
+   807→
+   808→// ============================================
+   809→// HOW TO ORDER SECTION
+   810→// ============================================
+   811→function HowToOrderSection() {
+   812→  const deliveryFee = useSettingsStore((s) => s.deliveryFee);
+   813→  const nationwideFee = useSettingsStore((s) => s.nationwideDeliveryFee);
+   814→  const steps = [
+   815→    { icon: Package, title: "Pick your Biltong", desc: "Choose size & flavor", num: "1" },
+   816→    { icon: ShoppingCart, title: "Add to Cart", desc: "Adjust quantity & mix", num: "2" },
+   817→    { icon: CreditCard, title: "Pay with iKhokha", desc: "Secure online payment", num: "3" },
+   818→    { icon: Truck, title: "Collect or Delivery", desc: `R${deliveryFee} Stanger · R${nationwideFee} SA · Free collect`, num: "4" },
+   819→  ];
+   820→
+   821→  // Made-to-order preparation notice
+   822→  const PreparationNotice = () => (
+   823→    <motion.div
+   824→      initial={{ opacity: 0, y: 10 }}
+   825→      whileInView={{ opacity: 1, y: 0 }}
+   826→      viewport={{ once: true }}
+   827→      className="max-w-[1100px] mx-auto mt-8"
+   828→    >
+   829→      <div className="bg-[#E5B83C]/8 border border-[#E5B83C]/20 rounded-xl p-4 flex items-start gap-3">
+   830→        <Sparkles className="w-5 h-5 text-[#E5B83C] flex-shrink-0 mt-0.5" />
+   831→        <p className="text-[#FEF3DF]/70 text-sm leading-relaxed">
+   832→          To ensure the highest quality and freshness, our biltong is <span className="text-[#E5B83C] font-semibold">made to order</span>. Please allow up to <span className="text-[#E5B83C] font-semibold">3 days</span> for preparation before shipping.
+   833→        </p>
+   834→      </div>
+   835→    </motion.div>
+   836→  );
+   837→
+   838→  return (
+   839→    <section id="how-to-order" className="py-16 md:py-24 px-4 md:px-[6%] relative z-20">
+   840→      <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} className="text-center mb-10">
+   841→        <p className="text-[0.6rem] tracking-[0.4em] uppercase text-[#E07A2C] mb-3">HOW IT WORKS</p>
+   842→        <h2 className="font-['Cormorant_Garamond'] text-[2.5rem] md:text-[4.5rem] font-light leading-tight">
+   843→          Simple <em className="italic text-[#E5B83C] font-semibold">4-Step</em> Ordering
+   844→        </h2>
+   845→      </motion.div>
+   846→
+   847→      {/* Mobile: horizontal scroll, Desktop: grid */}
+   848→      <div className="flex md:grid md:grid-cols-4 gap-3 md:gap-6 max-w-[1100px] mx-auto overflow-x-auto snap-x snap-mandatory pb-2 md:overflow-visible"
+   849→        style={{ scrollbarWidth: "none" }}>
+   850→        {steps.map((step, i) => (
+   851→          <motion.div key={step.num} variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }}
+   852→            custom={i} whileHover={{ y: -5 }}
+   853→            className="text-center p-5 rounded-2xl bg-[#0E0500]/50 border border-[#E5B83C]/10 hover:border-[#E5B83C]/30 transition-all flex-shrink-0 w-[70vw] md:w-auto snap-center">
+   854→            <motion.div whileHover={{ scale: 1.1 }}
+   855→              className="w-14 h-14 md:w-[70px] md:h-[70px] bg-[#E5B83C]/10 rounded-full flex items-center justify-center mx-auto mb-3 border border-[#E5B83C]/30">
+   856→              <step.icon className="w-6 h-6 text-[#E5B83C]" />
+   857→            </motion.div>
+   858→            <div className="text-[#E5B83C]/40 font-['Bebas_Neue'] text-3xl -mt-1 mb-1">{step.num}</div>
+   859→            <h4 className="text-sm md:text-base font-bold text-[#FEF3DF]">{step.title}</h4>
+   860→            <p className="text-xs text-[#FEF3DF]/50 mt-1">{step.desc}</p>
+   861→          </motion.div>
+   862→        ))}
+   863→      </div>
+   864→      <PreparationNotice />
+   865→    </section>
+   866→  );
+   867→}
+   868→
+   869→// ============================================
+   870→// CONTACT SECTION
+   871→// ============================================
+   872→function ContactSection() {
+   873→  return (
+   874→    <section id="contact" className="py-16 md:py-24 px-4 md:px-[6%] relative z-20">
+   875→      <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }}
+   876→        className="text-center max-w-[550px] mx-auto">
+   877→        <p className="text-[0.6rem] tracking-[0.4em] uppercase text-[#E07A2C] mb-3">GET IN TOUCH</p>
+   878→        <h2 className="font-['Cormorant_Garamond'] text-[2.5rem] md:text-[4.5rem] font-light leading-tight mb-8">
+   879→          Contact <em className="italic text-[#E5B83C] font-semibold">Us</em>
+   880→        </h2>
+   881→        <motion.div whileHover={{ y: -3 }}
+   882→          className="bg-gradient-to-br from-[#160A03] to-[#0C0502] border border-[#E5B83C] p-8 rounded-2xl">
+   883→          <div className="text-5xl mb-4">👩🏽‍🍳</div>
+   884→          <h3 className="text-2xl font-bold font-['Cormorant_Garamond']">Biltong &amp; Bytes</h3>
+   885→          <p className="text-sm text-[#FEF3DF]/60 mb-6">Stanger, KZN &bull; Halaal Biltong</p>
+   886→          <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noopener noreferrer"
+   887→            className="bg-[#25D366] text-white px-6 py-3 text-sm font-bold tracking-[0.1em] uppercase no-underline inline-flex items-center gap-2 rounded-xl transition-all hover:-translate-y-1 hover:shadow-[0_8px_25px_rgba(37,211,102,0.4)]">
+   888→            <MessageCircle className="w-4 h-4" /> ORDER ON WHATSAPP
+   889→          </a>
+   890→        </motion.div>
+   891→      </motion.div>
+   892→    </section>
+   893→  );
+   894→}
+   895→
+   896→// ============================================
+   897→// CART DRAWER — Drag to close
+   898→// ============================================
+   899→function CartDrawer({ open, onClose, onCheckout }: { open: boolean; onClose: () => void; onCheckout: () => void }) {
+   900→  const items = useCartStore((s) => s.items);
+   901→  const removeItem = useCartStore((s) => s.removeItem);
+   902→  const incrementQty = useCartStore((s) => s.incrementQty);
+   903→  const decrementQty = useCartStore((s) => s.decrementQty);
+   904→  const deliveryMode = useCartStore((s) => s.deliveryMode);
+   905→  const setDeliveryMode = useCartStore((s) => s.setDeliveryMode);
+   906→  const subtotal = useCartStore((s) => s.subtotal());
+   907→  const deliveryFee = useCartStore((s) => s.deliveryFee());
+   908→  const total = useCartStore((s) => s.total());
+   909→  const settingsDeliveryFee = useSettingsStore((s) => s.deliveryFee);
+   910→  const settingsNationwideFee = useSettingsStore((s) => s.nationwideDeliveryFee);
+   911→  const deliveryAddress = useCartStore((s) => s.deliveryAddress);
+   912→  const dragY = useMotionValue(0);
+   913→  const dragControls = useDragControls();
+   914→
+   915→  return (
+   916→    <AnimatePresence>
+   917→      {open && (
+   918→        <>
+   919→          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+   920→            className="fixed inset-0 bg-black/80 backdrop-blur-md z-[2000]" onClick={onClose} />
+   921→          <motion.div
+   922→            drag="y" dragControls={dragControls} dragConstraints={{ top: 0 }} dragElastic={0.2}
+   923→            onDragEnd={(_, info) => { if (info.offset.y > 150) onClose(); }}
+   924→            initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+   925→            transition={{ type: "spring", damping: 30, stiffness: 300 }}
+   926→            className="fixed bottom-0 left-0 right-0 z-[2001] bg-[#0E0500] border-t border-[#E5B83C] rounded-t-3xl max-h-[92vh] flex flex-col touch-none"
+   927→          >
+   928→            {/* Drag handle */}
+   929→            <div className="flex justify-center pt-3 pb-1 cursor-grab" onPointerDown={(e) => dragControls.start(e)}>
+   930→              <div className="w-10 h-1.5 bg-[#E5B83C]/30 rounded-full" />
+   931→            </div>
+   932→
+   933→            {/* Header */}
+   934→            <div className="flex justify-between items-center px-5 py-3 border-b border-white/10">
+   935→              <h3 className="font-['Cormorant_Garamond'] text-xl text-[#E5B83C]">
+   936→                Your Order <span className="text-sm text-[#FEF3DF]/40 ml-2">({items.reduce((s, i) => s + i.qty, 0)} items)</span>
+   937→              </h3>
+   938→              <button onClick={onClose} className="text-white/60 hover:text-white cursor-pointer p-1"><X className="w-6 h-6" /></button>
+   939→            </div>
+   940→
+   941→            {/* Cart Items */}
+   942→            <div className="flex-1 overflow-y-auto px-5 py-3 min-h-[100px]">
+   943→              {items.length === 0 ? (
+   944→                <div className="text-center py-10 text-white/40">
+   945→                  <motion.div animate={{ y: [0, -5, 0] }} transition={{ duration: 2, repeat: Infinity }}>
+   946→                    <ShoppingCart className="w-14 h-14 mx-auto mb-3 opacity-20" />
+   947→                  </motion.div>
+   948→                  <p className="font-semibold">Your cart is empty</p>
+   949→                  <p className="text-xs mt-1 text-[#FEF3DF]/30">Tap a product to add some delicious biltong!</p>
+   950→                </div>
+   951→              ) : (
+   952→                <AnimatePresence mode="popLayout">
+   953→                  {items.map((item) => (
+   954→                    <motion.div key={item.id} variants={cartItemVariants} initial="enter" animate="center" exit="exit" layout
+   955→                      className="flex justify-between items-start py-3 border-b border-white/8">
+   956→                      <div className="flex-1">
+   957→                        <p className="font-semibold text-sm text-[#FEF3DF]">{item.name}</p>
+   958→                        <p className="text-xs text-[#E5B83C]/70 mt-0.5 flex items-center gap-1">
+   959→                          <FlavorIcon flavor={item.flavor} /> {item.flavor}
+   960→                        </p>
+   961→                        <div className="flex items-center gap-2 mt-2">
+   962→                          <motion.button whileTap={{ scale: 0.75 }} onClick={() => decrementQty(item.id)}
+   963→                            className="bg-white/8 w-7 h-7 rounded-full flex items-center justify-center cursor-pointer hover:bg-[#E5B83C] hover:text-black transition-colors">
+   964→                            <Minus className="w-3 h-3" />
+   965→                          </motion.button>
+   966→                          <span className="text-sm font-bold w-6 text-center">{item.qty}</span>
+   967→                          <motion.button whileTap={{ scale: 0.75 }} onClick={() => incrementQty(item.id)}
+   968→                            className="bg-white/8 w-7 h-7 rounded-full flex items-center justify-center cursor-pointer hover:bg-[#E5B83C] hover:text-black transition-colors">
+   969→                            <Plus className="w-3 h-3" />
+   970→                          </motion.button>
+   971→                        </div>
+   972→                      </div>
+   973→                      <div className="flex items-center gap-3">
+   974→                        <span className="font-['Bebas_Neue'] text-lg text-[#F8E5B0]">R{item.price * item.qty}</span>
+   975→                        <motion.button whileTap={{ scale: 0.75 }} onClick={() => { removeItem(item.id); toast("Item removed", { icon: "🗑️" }); }}
+   976→                          className="text-[#B23A1A]/70 cursor-pointer p-1 hover:text-[#B23A1A] hover:bg-[#B23A1A]/10 rounded-full transition-colors">
+   977→                          <Trash2 className="w-4 h-4" />
+   978→                        </motion.button>
+   979→                      </div>
+   980→                    </motion.div>
+   981→                  ))}
+   982→                </AnimatePresence>
+   983→              )}
+   984→            </div>
+   985→
+   986→            {/* Delivery Mode Toggle — 3 Options */}
+   987→            <div className="px-5 py-3 border-t border-white/10">
+   988→              <p className="text-[0.55rem] tracking-[0.15em] uppercase text-[#FEF3DF]/40 mb-2">Delivery Option</p>
+   989→              <div className="flex flex-col gap-2">
+   990→                {[{ mode: "collect" as DeliveryMode, icon: MapPin, label: "COLLECT", sub: "Free · Stanger" },
+   991→                  { mode: "stanger" as DeliveryMode, icon: Truck, label: "STANGER DELIVERY", sub: `R${settingsDeliveryFee}` },
+   992→                  { mode: "nationwide" as DeliveryMode, icon: Truck, label: "NATIONWIDE DELIVERY", sub: `R${settingsNationwideFee}` }].map(({ mode, icon: Icon, label, sub }) => (
+   993→                  <motion.button key={mode} whileTap={{ scale: 0.97 }}
+   994→                    onClick={() => setDeliveryMode(mode)}
+   995→                    className={`w-full py-2.5 text-center cursor-pointer rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-2 ${
+   996→                      deliveryMode === mode ? "bg-[#E5B83C] text-[#0A0301]" : "bg-white/5 text-[#FEF3DF]/70 hover:bg-white/10"
+   997→                    }`}>
+   998→                    <Icon className="w-3.5 h-3.5" /> {label} <span className="opacity-70">({sub})</span>
+   999→                  </motion.button>
+  1000→                ))}
+  1001→              </div>
+  1002→            </div>
+  1003→
+  1004→            {/* Footer */}
+  1005→            <div className="px-5 py-4 border-t border-white/10 bg-[#0A0301]">
+  1006→              <div className="flex justify-between items-center mb-2">
+  1007→                <span className="text-xs text-[#FEF3DF]/60">Subtotal:</span><span className="text-xs">R{subtotal}</span>
+  1008→              </div>
+  1009→              {deliveryFee > 0 && (
+  1010→                <div className="flex justify-between items-center mb-2">
+  1011→                  <span className="text-xs text-[#FEF3DF]/60">
+  1012→                    Delivery:
+  1013→                  </span>
+  1014→                  <span className="text-xs">R{deliveryFee}</span>
+  1015→                </div>
+  1016→              )}
+  1017→              <div className="flex justify-between items-center font-['Bebas_Neue'] text-2xl">
+  1018→                <span>TOTAL:</span>
+  1019→                <motion.span key={total} initial={{ scale: 1.2 }} animate={{ scale: 1 }} className="text-[#E5B83C]">R{total}</motion.span>
+  1020→              </div>
+  1021→              <motion.button whileTap={{ scale: 0.97 }} onClick={onCheckout} disabled={items.length === 0}
+  1022→                className={`w-full mt-3 py-3.5 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-sm flex items-center justify-center gap-2 ${
+  1023→                  items.length === 0 ? "bg-white/5 text-white/30 cursor-not-allowed" : "bg-[#25D366] text-white hover:shadow-[0_8px_25px_rgba(37,211,102,0.4)]"
+  1024→                }`}>
+  1025→                <CreditCard className="w-4 h-4" /> CHECKOUT
+  1026→              </motion.button>
+  1027→            </div>
+  1028→          </motion.div>
+  1029→        </>
+  1030→      )}
+  1031→    </AnimatePresence>
+  1032→  );
+  1033→}
+  1034→
+  1035→// ============================================
+  1036→// ORDER SUCCESS SCREEN
+  1037→// ============================================
+  1038→function OrderSuccess({ orderId, paymentMethod, onClose }: { orderId: string; paymentMethod: string; onClose: () => void }) {
+  1039→  const steps = [
+  1040→    { icon: Package, label: "Order Placed", active: true },
+  1041→    { icon: CheckCircle2, label: "Confirmed", active: false },
+  1042→    { icon: Flame, label: "Preparing", active: false },
+  1043→    { icon: Package, label: "Ready", active: false },
+  1044→  ];
+  1045→
+  1046→  return (
+  1047→    <div className="text-center py-8 px-4">
+  1048→      <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", damping: 15, stiffness: 200, delay: 0.2 }}>
+  1049→        <PartyPopper className="w-16 h-16 text-[#E5B83C] mx-auto" />
+  1050→      </motion.div>
+  1051→      <motion.h3 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+  1052→        className="font-['Cormorant_Garamond'] text-3xl text-[#E5B83C] mt-4">
+  1053→        {paymentMethod === "ikhokha" ? "Payment Approved!" : "Order Placed!"}
+  1054→      </motion.h3>
+  1055→      <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}
+  1056→        className="text-[#FEF3DF]/70 mt-2 text-sm">
+  1057→        {paymentMethod === "ikhokha"
+  1058→          ? "Payment received! Your order is confirmed — we'll start preparing your biltong fresh."
+  1059→          : "Your order is in our system. Pay cash or card when you collect in Stanger."}
+  1060→      </motion.p>
+  1061→
+  1062→      {/* Order Tracker */}
+  1063→      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }}
+  1064→        className="mt-6 px-2">
+  1065→        <div className="flex items-center justify-between max-w-[320px] mx-auto">
+  1066→          {steps.map((step, i) => (
+  1067→            <div key={step.label} className="flex items-center">
+  1068→              <div className="flex flex-col items-center">
+  1069→                <motion.div
+  1070→                  initial={{ scale: 0 }}
+  1071→                  animate={{ scale: 1 }}
+  1072→                  transition={{ delay: 0.8 + i * 0.15, type: "spring" }}
+  1073→                  className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all ${
+  1074→                    step.active
+  1075→                      ? "bg-[#E5B83C] border-[#E5B83C] text-[#0A0301]"
+  1076→                      : "bg-transparent border-[#E5B83C]/25 text-[#E5B83C]/30"
+  1077→                  }`}
+  1078→                >
+  1079→                  <step.icon className="w-4.5 h-4.5" />
+  1080→                </motion.div>
+  1081→                <span className={`text-[0.55rem] mt-1.5 tracking-wider uppercase font-semibold ${
+  1082→                  step.active ? "text-[#E5B83C]" : "text-[#FEF3DF]/30"
+  1083→                }`}>{step.label}</span>
+  1084→              </div>
+  1085→              {i < steps.length - 1 && (
+  1086→                <div className={`w-6 md:w-10 h-0.5 mx-0.5 -mt-5 ${
+  1087→                  i < 0 ? "bg-[#E5B83C]" : "bg-[#E5B83C]/20"
+  1088→                }`} />
+  1089→              )}
+  1090→            </div>
+  1091→          ))}
+  1092→        </div>
+  1093→      </motion.div>
+  1094→
+  1095→      <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 1.2 }}
+  1096→        className="bg-[#2E7D32]/15 border border-[#2E7D32] rounded-xl p-4 mt-5 inline-block">
+  1097→        <p className="text-[0.6rem] tracking-[0.15em] uppercase text-[#FEF3DF]/70">Order Reference</p>
+  1098→        <p className="font-['Bebas_Neue'] text-2xl text-[#2E7D32] tracking-[0.1em]">{orderId}</p>
+  1099→      </motion.div>
+  1100→
+  1101→      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.4 }}>
+  1102→        <button onClick={onClose}
+  1103→          className="mt-6 px-6 py-3 bg-[#E5B83C] text-[#0A0301] font-bold tracking-[0.1em] uppercase rounded-xl cursor-pointer text-sm">
+  1104→          DONE
+  1105→        </button>
+  1106→      </motion.div>
+  1107→    </div>
+  1108→  );
+  1109→}
+  1110→
+  1111→// ============================================
+  1112→// CHECKOUT MODAL — 3-Step: Shipping → Payment → Done
+  1113→// ============================================
+  1114→function CheckoutModal({ open, onClose, resetKey }: { open: boolean; onClose: () => void; resetKey: number }) {
+  1115→  const items = useCartStore((s) => s.items);
+  1116→  const deliveryMode = useCartStore((s) => s.deliveryMode);
+  1117→  const deliveryAddress = useCartStore((s) => s.deliveryAddress);
+  1118→  const setDeliveryAddress = useCartStore((s) => s.setDeliveryAddress);
+  1119→  const customerName = useCartStore((s) => s.customerName);
+  1120→  const customerPhone = useCartStore((s) => s.customerPhone);
+  1121→  const customerEmail = useCartStore((s) => s.customerEmail);
+  1122→  const setCustomerInfo = useCartStore((s) => s.setCustomerInfo);
+  1123→  const setCurrentOrderId = useCartStore((s) => s.setCurrentOrderId);
+  1124→  const setPendingIkhokhaOrder = useCartStore((s) => s.setPendingIkhokhaOrder);
+  1125→  const total = useCartStore((s) => s.total());
+  1126→  const subtotal = useCartStore((s) => s.subtotal());
+  1127→  const deliveryFee = useCartStore((s) => s.deliveryFee());
+  1128→  const clearCart = useCartStore((s) => s.clearCart);
+  1129→  const settingsDeliveryFee = useSettingsStore((s) => s.deliveryFee);
+  1130→  const settingsNationwideFee = useSettingsStore((s) => s.nationwideDeliveryFee);
+  1131→
+  1132→  const [name, setName] = useState(customerName);
+  1133→  const [phone, setPhone] = useState(customerPhone);
+  1134→  const [email, setEmail] = useState(customerEmail);
+  1135→  const [orderId, setOrderId] = useState<string | null>(null);
+  1136→  const [savingStatus, setSavingStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  1137→  const [ikhokhaStep, setIkhokhaStep] = useState(false);
+  1138→  const [ikhokhaLoading, setIkhokhaLoading] = useState(false);
+  1139→  const [paylinkUrl, setPaylinkUrl] = useState<string | null>(null);
+  1140→  const [orderSuccess, setOrderSuccess] = useState(false);
+  1141→  const [lastPaymentMethod, setLastPaymentMethod] = useState("cash");
+  1142→  const [checkoutStep, setCheckoutStep] = useState(0); // 0=shipping, 1=payment, 2=done
+  1143→  // Payment polling state — tracks whether iKhokha webhook has confirmed payment
+  1144→  const [paymentVerification, setPaymentVerification] = useState<"idle" | "waiting" | "approved" | "failed">("idle");
+  1145→  const [pollSeconds, setPollSeconds] = useState(0);
+  1146→  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  1147→  const pollStartRef = useRef<number>(0);
+  1148→
+  1149→  // Save order to Supabase via API
+  1150→  // Returns the orderData if successful, or null if the save FAILED.
+  1151→  // The caller MUST check the return value and abort the payment flow on null.
+  1152→  const saveOrder = useCallback(
+  1153→    async (paymentMethod: string): Promise<OrderData | null> => {
+  1154→      const newOrderId = generateOrderId();
+  1155→      setOrderId(newOrderId);
+  1156→      setCurrentOrderId(newOrderId);
+  1157→      setSavingStatus("saving");
+  1158→
+  1159→      const orderData: OrderData = {
+  1160→        order_id: newOrderId,
+  1161→        customer_name: name,
+  1162→        customer_phone: phone,
+  1163→        customer_email: email || null,
+  1164→        items: items.map((i) => ({ name: i.name, flavor: i.flavor, price: i.price, qty: i.qty })),
+  1165→        items_summary: items.map((i) => `${i.qty}x ${i.name} [${i.flavor}]`).join(", "),
+  1166→        subtotal, delivery_fee: deliveryFee, total,
+  1167→        delivery_mode: deliveryMode,
+  1168→        delivery_address: deliveryMode !== "collect" ? deliveryAddress : null,
+  1169→        payment_method: paymentMethod,
+  1170→        payment_status: paymentMethod === "ikhokha" ? "pending" : "cash_on_delivery",
+  1171→        order_status: "new",
+  1172→      };
+  1173→
+  1174→      setCustomerInfo(name, phone, email);
+  1175→
+  1176→      const localOrders = JSON.parse(localStorage.getItem("biltong_orders") || "[]");
+  1177→      localOrders.push({ ...orderData, created_at: new Date().toISOString() });
+  1178→      localStorage.setItem("biltong_orders", JSON.stringify(localOrders));
+  1179→
+  1180→      try {
+  1181→        const res = await fetch("/api/orders", {
+  1182→          method: "POST",
+  1183→          headers: { "Content-Type": "application/json" },
+  1184→          body: JSON.stringify(orderData),
+  1185→        });
+  1186→        if (res.ok) {
+  1187→          setSavingStatus("saved");
+  1188→          return orderData;
+  1189→        } else {
+  1190→          // CRITICAL: order failed to save — return null so caller can ABORT payment
+  1191→          const errBody = await res.json().catch(() => ({}));
+  1192→          console.error("[Checkout] Order save failed:", res.status, errBody);
+  1193→          setSavingStatus("error");
+  1194→          toast.error(
+  1195→            errBody?.error
+  1196→              ? `Order could not be saved: ${errBody.error}. Please contact us on WhatsApp.`
+  1197→              : "Order could not be saved. Please contact us on WhatsApp.",
+  1198→            { duration: 6000 }
+  1199→          );
+  1200→          return null;
+  1201→        }
+  1202→      } catch (err) {
+  1203→        console.error("[Checkout] Order save network error:", err);
+  1204→        setSavingStatus("error");
+  1205→        toast.error("Network error — order could not be saved. Please try again or contact us on WhatsApp.", { duration: 6000 });
+  1206→        return null;
+  1207→      }
+  1208→    },
+  1209→    [name, phone, email, items, subtotal, deliveryFee, total, deliveryMode, deliveryAddress, setCustomerInfo, setCurrentOrderId]
+  1210→  );
+  1211→
+  1212→  const validate = useCallback((): boolean => {
+  1213→    if (!name.trim()) { toast.error("Please enter your name"); return false; }
+  1214→    if (!phone.trim()) { toast.error("Please enter your phone number"); return false; }
+  1215→    if (deliveryMode !== "collect" && !deliveryAddress.trim()) { toast.error("Please enter your delivery address"); return false; }
+  1216→    return true;
+  1217→  }, [name, phone, deliveryMode, deliveryAddress]);
+  1218→
+  1219→  const handleContinueToPayment = () => {
+  1220→    if (!validate()) return;
+  1221→    setCheckoutStep(1);
+  1222→  };
+  1223→
+  1224→  const handleCashOnCollection = async () => {
+  1225→    if (!validate()) return;
+  1226→    const orderData = await saveOrder("cash");
+  1227→    if (!orderData) return; // ABORT if order failed to save — no order record
+  1228→    setLastPaymentMethod("cash");
+  1229→    toast.success(`Order ${orderData.order_id} placed!`, { icon: "🥩" });
+  1230→    setOrderSuccess(true);
+  1231→    setCheckoutStep(2);
+  1232→    // Fire-and-forget email notifications (customer + merchant)
+  1233→    sendOrderEmails(orderData);
+  1234→  };
+  1235→
+  1236→  const handleIkhokha = async () => {
+  1237→    if (!validate()) return;
+  1238→    setIkhokhaLoading(true);
+  1239→    // Reset per-order flags
+  1240→    if (pollIntervalRef.current) { clearInterval(pollIntervalRef.current); pollIntervalRef.current = null; }
+  1241→    setPaymentVerification("idle");
+  1242→
+  1243→    let orderData: OrderData | null = null;
+  1244→
+  1245→    try {
+  1246→      orderData = await saveOrder("ikhokha");
+  1247→      if (!orderData) {
+  1248→        setIkhokhaLoading(false);
+  1249→        return; // ABORT — do NOT redirect to iKhokha if order failed to save
+  1250→      }
+  1251→      setLastPaymentMethod("ikhokha");
+  1252→      setPendingIkhokhaOrder(orderData as unknown as Record<string, unknown>);
+  1253→
+  1254→      // Build the iKhokha payment URL.
+  1255→      // Since no iKhokha API credentials are configured, we use the static MPR URL.
+  1256→      let finalPaylinkUrl: string = `${IKHOKHA_PAYMENT_URL}?amount=${total.toFixed(2)}`;
+  1257→
+  1258→      try {
+  1259→        const res = await fetch("/api/ikhokha/create-payment", {
+  1260→          method: "POST",
+  1261→          headers: { "Content-Type": "application/json" },
+  1262→          body: JSON.stringify({
+  1263→            amount: total,
+  1264→            orderId: orderData.order_id,
+  1265→            description: `Biltong & Bytes - ${orderData.items_summary}`,
+  1266→          }),
+  1267→        });
+  1268→
+  1269→        const paymentData = await res.json();
+  1270→
+  1271→        if (res.ok && paymentData.success && paymentData.paylinkUrl) {
+  1272→          finalPaylinkUrl = paymentData.paylinkUrl;
+  1273→          // Mark order as payment_initiated
+  1274→          try {
+  1275→            await fetch("/api/orders", {
+  1276→              method: "PATCH",
+  1277→              headers: { "Content-Type": "application/json" },
+  1278→              body: JSON.stringify({ order_id: orderData.order_id, order_status: "payment_initiated" }),
+  1279→            });
+  1280→          } catch { /* non-critical */ }
+  1281→        }
+  1282→      } catch {
+  1283→        // Network failure — use static URL
+  1284→      }
+  1285→
+  1286→      // Store the payment URL and switch to the "waiting" step.
+  1287→      setPaylinkUrl(finalPaylinkUrl);
+  1288→      setIkhokhaStep(true);
+  1289→      setIkhokhaLoading(false);
+  1290→      toast.success("Order saved! Tap the green button below to pay.", { icon: "💳", duration: 5000 });
+  1291→
+  1292→      // Start polling for payment confirmation from the iKhokha webhook
+  1293→      startPaymentPolling(orderData.order_id, orderData);
+  1294→    } catch {
+  1295→      setIkhokhaLoading(false);
+  1296→      toast.error("Something went wrong. Please try again or contact us.");
+  1297→    }
+  1298→  };
+  1299→
+  1300→  // Manual "I've Paid" fallback — used when polling times out (e.g. webhook delay).
+  1301→  // Marks the order as paid in the admin panel directly, no WhatsApp involved.
+  1302→  const handleConfirmPaid = async () => {
+  1303→    const pendingOrder = useCartStore.getState().pendingIkhokhaOrder;
+  1304→    if (!pendingOrder) { toast.error("No pending order found"); return; }
+  1305→    const orderData = pendingOrder as unknown as OrderData;
+  1306→
+  1307→    try {
+  1308→      await fetch("/api/orders", {
+  1309→        method: "PATCH",
+  1310→        headers: { "Content-Type": "application/json" },
+  1311→        body: JSON.stringify({
+  1312→          order_id: orderData.order_id,
+  1313→          payment_status: "paid",
+  1314→          order_status: "confirmed",
+  1315→        }),
+  1316→      });
+  1317→    } catch {
+  1318→      /* non-critical — order is already saved locally + in admin panel */
+  1319→    }
+  1320→
+  1321→    if (pollIntervalRef.current) {
+  1322→      clearInterval(pollIntervalRef.current);
+  1323→      pollIntervalRef.current = null;
+  1324→    }
+  1325→    setPaymentVerification("approved");
+  1326→    toast.success("Payment confirmed! Order placed.", { icon: "✅", duration: 5000 });
+  1327→    // Fire emails — mark as paid so the customer email says "Payment Approved!"
+  1328→    sendOrderEmails({ ...orderData, payment_status: "paid", order_status: "confirmed" });
+  1329→    setTimeout(() => {
+  1330→      setOrderSuccess(true);
+  1331→      setCheckoutStep(2);
+  1332→    }, 1200);
+  1333→  };
+  1334→
+  1335→  // Fire-and-forget: send customer + merchant order confirmation emails.
+  1336→  // Failures are logged server-side; the customer order flow is never blocked.
+  1337→  const sendOrderEmails = useCallback((orderData: OrderData) => {
+  1338→    fetch("/api/email/order-confirmation", {
+  1339→      method: "POST",
+  1340→      headers: { "Content-Type": "application/json" },
+  1341→      body: JSON.stringify(orderData),
+  1342→    }).catch((err) => {
+  1343→      console.error("[Checkout] Email send failed:", err);
+  1344→    });
+  1345→  }, []);
+  1346→
+  1347→  // Start polling the public order-status endpoint for payment confirmation.
+  1348→  // The iKhokha webhook PATCHes the order's payment_status to "paid" on success.
+  1349→  const startPaymentPolling = useCallback((orderIdToPoll: string, orderData: OrderData) => {
+  1350→    // Clear any existing poller
+  1351→    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+  1352→    pollStartRef.current = Date.now();
+  1353→    setPaymentVerification("waiting");
+  1354→    setPollSeconds(0);
+  1355→
+  1356→    const poll = async () => {
+  1357→      const elapsed = Math.floor((Date.now() - pollStartRef.current) / 1000);
+  1358→      setPollSeconds(elapsed);
+  1359→
+  1360→      // Stop polling after 15 minutes — customer can still confirm manually
+  1361→      if (elapsed > 15 * 60) {
+  1362→        if (pollIntervalRef.current) {
+  1363→          clearInterval(pollIntervalRef.current);
+  1364→          pollIntervalRef.current = null;
+  1365→        }
+  1366→        setPaymentVerification("failed");
+  1367→        return;
+  1368→      }
+  1369→
+  1370→      try {
+  1371→        const res = await fetch(`/api/orders/status?order_id=${encodeURIComponent(orderIdToPoll)}`);
+  1372→        if (!res.ok) return;
+  1373→        const data = await res.json();
+  1374→
+  1375→        if (data.payment_status === "paid" || data.order_status === "confirmed") {
+  1376→          // PAYMENT APPROVED!
+  1377→          if (pollIntervalRef.current) {
+  1378→            clearInterval(pollIntervalRef.current);
+  1379→            pollIntervalRef.current = null;
+  1380→          }
+  1381→          setPaymentVerification("approved");
+  1382→          setLastPaymentMethod("ikhokha");
+  1383→          toast.success("Payment approved! Order confirmed.", { icon: "✅", duration: 5000 });
+  1384→          // Fire emails — mark as paid so the customer email says "Payment Approved!"
+  1385→          sendOrderEmails({ ...orderData, payment_status: "paid", order_status: "confirmed" });
+  1386→          // Move to success screen after a short delay so customer can see the approval
+  1387→          setTimeout(() => {
+  1388→            setOrderSuccess(true);
+  1389→            setCheckoutStep(2);
+  1390→          }, 1800);
+  1391→        } else if (data.payment_status === "failed" || data.order_status === "payment_failed") {
+  1392→          if (pollIntervalRef.current) {
+  1393→            clearInterval(pollIntervalRef.current);
+  1394→            pollIntervalRef.current = null;
+  1395→          }
+  1396→          setPaymentVerification("failed");
+  1397→          toast.error("Payment failed or was cancelled.", { duration: 5000 });
+  1398→        }
+  1399→      } catch {
+  1400→        // Network blip — keep polling
+  1401→      }
+  1402→    };
+  1403→
+  1404→    // Poll immediately, then every 5 seconds
+  1405→    poll();
+  1406→    pollIntervalRef.current = setInterval(poll, 5000);
+  1407→  }, [sendOrderEmails]);
+  1408→
+  1409→  // Cleanup polling on unmount
+  1410→  useEffect(() => {
+  1411→    return () => {
+  1412→      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+  1413→    };
+  1414→  }, []);
+  1415→
+  1416→  const handleClose = () => {
+  1417→    if (orderSuccess) clearCart();
+  1418→    setOrderSuccess(false);
+  1419→    setIkhokhaStep(false);
+  1420→    setCheckoutStep(0);
+  1421→    onClose();
+  1422→  };
+  1423→
+  1424→  // Step progress indicator
+  1425→  const checkoutSteps = ["Shipping", "Payment", "Done"];
+  1426→
+  1427→  // Can proceed from step 0 to step 1?
+  1428→  const canContinueToPayment = name.trim() && phone.trim() &&
+  1429→    (deliveryMode === "collect" ||
+  1430→      (deliveryMode !== "collect" && deliveryAddress.trim().length >= 3));
+  1431→
+  1432→  return (
+  1433→    <AnimatePresence>
+  1434→      {open && (
+  1435→        <>
+  1436→          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+  1437→            className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[3000]" />
+  1438→          <motion.div
+  1439→            initial={{ opacity: 0, y: 30 }}
+  1440→            animate={{ opacity: 1, y: 0 }}
+  1441→            exit={{ opacity: 0, y: 30 }}
+  1442→            transition={{ type: "spring", damping: 30, stiffness: 300 }}
+  1443→            className="fixed inset-0 z-[3001] overflow-y-auto"
+  1444→          >
+  1445→            <div key={resetKey} className="min-h-full flex items-start md:items-center justify-center py-4 md:py-8">
+  1446→              <div className="w-full max-w-[540px] bg-gradient-to-br from-[#1A0A04] to-[#0E0500] border border-[#E5B83C]/20 rounded-2xl shadow-2xl shadow-black/50 px-5 py-6 md:px-8 md:py-8 relative overflow-visible">
+  1447→
+  1448→                {/* Close button */}
+  1449→                <div className="flex justify-between items-center mb-4">
+  1450→                  <h3 className="font-['Cormorant_Garamond'] text-2xl text-[#E5B83C]">Checkout</h3>
+  1451→                  <button onClick={handleClose} className="text-white/60 hover:text-white cursor-pointer p-1"><X className="w-6 h-6" /></button>
+  1452→                </div>
+  1453→
+  1454→                {/* Step Progress Indicator */}
+  1455→                <div className="flex items-center justify-center gap-2 mb-6">
+  1456→                  {checkoutSteps.map((step, i) => (
+  1457→                    <div key={step} className="flex items-center gap-2">
+  1458→                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+  1459→                        i <= checkoutStep ? "bg-[#E5B83C] text-[#0A0301]" : "bg-white/10 text-white/40"
+  1460→                      }`}>
+  1461→                        {i < checkoutStep ? <Check className="w-4 h-4" /> : i + 1}
+  1462→                      </div>
+  1463→                      <span className={`text-[0.65rem] tracking-wider uppercase ${
+  1464→                        i <= checkoutStep ? "text-[#E5B83C] font-semibold" : "text-white/30"
+  1465→                      }`}>{step}</span>
+  1466→                      {i < checkoutSteps.length - 1 && (
+  1467→                        <div className={`w-6 h-0.5 ${i < checkoutStep ? "bg-[#E5B83C]" : "bg-white/10"}`} />
+  1468→                      )}
+  1469→                    </div>
+  1470→                  ))}
+  1471→                </div>
+  1472→
+  1473→                {/* ============================== */}
+  1474→                {/* STEP 0: Shipping & Details     */}
+  1475→                {/* ============================== */}
+  1476→                {checkoutStep === 0 && (
+  1477→                  <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }}>
+  1478→                    {/* Customer Info */}
+  1479→                    <div className="space-y-3 mb-5">
+  1480→                      <p className="text-[0.65rem] tracking-[0.2em] uppercase text-[#E07A2C] font-semibold">Your Details</p>
+  1481→                      <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your Full Name *"
+  1482→                        className="w-full bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-3 text-[#FEF3DF] text-sm placeholder:text-[#FEF3DF]/25 focus:outline-none focus:border-[#E5B83C] focus:bg-white/12 transition-all" />
+  1483→                      <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Your Phone Number *"
+  1484→                        className="w-full bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-3 text-[#FEF3DF] text-sm placeholder:text-[#FEF3DF]/25 focus:outline-none focus:border-[#E5B83C] focus:bg-white/12 transition-all" />
+  1485→                      <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Your Email (for order confirmation)"
+  1486→                        className="w-full bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-3 text-[#FEF3DF] text-sm placeholder:text-[#FEF3DF]/25 focus:outline-none focus:border-[#E5B83C] focus:bg-white/12 transition-all" />
+  1487→                    </div>
+  1488→
+  1489→                    {/* Shipping Section */}
+  1490→                    <div className="mb-5">
+  1491→                      <p className="text-[0.65rem] tracking-[0.2em] uppercase text-[#E07A2C] font-semibold mb-3">Shipping</p>
+  1492→
+  1493→                      {deliveryMode === "collect" ? (
+  1494→                        <div className="bg-[#2E7D32]/15 border border-[#2E7D32]/30 rounded-xl p-4">
+  1495→                          <p className="text-[#2E7D32] text-sm font-semibold flex items-center gap-2">
+  1496→                            <MapPin className="w-4 h-4" /> Collection from Stanger — Free
+  1497→                          </p>
+  1498→                          <p className="text-[#FEF3DF]/40 text-xs mt-1">Pick up your order in Stanger town</p>
+  1499→                          <div className="mt-2 bg-[#E5B83C]/8 border border-[#E5B83C]/15 rounded-lg p-2 flex items-start gap-2">
+  1500→                            <Sparkles className="w-3.5 h-3.5 text-[#E5B83C] flex-shrink-0 mt-0.5" />
+  1501→                            <p className="text-[#FEF3DF]/50 text-[0.6rem] leading-relaxed">Made to order — please allow up to 3 days for preparation.</p>
+  1502→                          </div>
+  1503→                        </div>
+  1504→                      ) : (
+  1505→                        <div className="space-y-3">
+  1506→                          {/* Delivery zone confirmation */}
+  1507→                          <div className={`rounded-xl p-3 border ${
+  1508→                            deliveryMode === "stanger"
+  1509→                              ? "bg-[#2E7D32]/10 border-[#2E7D32]/30"
+  1510→                              : "bg-[#E07A2C]/10 border-[#E07A2C]/30"
+  1511→                          }`}>
+  1512→                            <p className={`text-sm font-semibold flex items-center gap-2 ${
+  1513→                              deliveryMode === "stanger" ? "text-[#2E7D32]" : "text-[#E07A2C]"
+  1514→                            }`}>
+  1515→                              <Truck className="w-4 h-4" />
+  1516→                              {deliveryMode === "stanger" ? `Stanger Delivery — R${settingsDeliveryFee}` : `Nationwide Delivery — R${settingsNationwideFee}`}
+  1517→                            </p>
+  1518→                            <p className="text-[#FEF3DF]/40 text-xs mt-0.5">
+  1519→                              {deliveryMode === "stanger" ? "Local delivery within Stanger / KwaDukuza area" : "Delivery anywhere in South Africa"}
+  1520→                            </p>
+  1521→                          </div>
+  1522→
+  1523→                          {/* Delivery Address Input */}
+  1524→                          <div>
+  1525→                            <label className="text-xs text-[#FEF3DF]/70 font-semibold mb-1.5 block">Delivery Address</label>
+  1526→                            <div className="relative">
+  1527→                              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#E5B83C]/50 pointer-events-none" />
+  1528→                              <input
+  1529→                                type="text"
+  1530→                                value={deliveryAddress}
+  1531→                                onChange={(e) => setDeliveryAddress(e.target.value)}
+  1532→                                placeholder={deliveryMode === "stanger" ? "e.g. 12 Main Rd, Stanger, KZN" : "e.g. 45 Florida Rd, Durban, KZN, 4001"}
+  1533→                                className="w-full bg-white/8 border border-[#E5B83C]/30 rounded-xl pl-10 pr-4 py-3 text-[#FEF3DF] text-sm placeholder:text-[#FEF3DF]/25 focus:outline-none focus:border-[#E5B83C] focus:bg-white/12 transition-all"
+  1534→                                autoComplete="street-address"
+  1535→                              />
+  1536→                            </div>
+  1537→                            <p className="text-[0.6rem] text-[#FEF3DF]/35 mt-1.5 flex items-center gap-1.5">
+  1538→                              Format: Street, Suburb, City, Province, Postal Code
+  1539→                            </p>
+  1540→                            {/* Made to order notice */}
+  1541→                            <div className="mt-3 bg-[#E5B83C]/8 border border-[#E5B83C]/15 rounded-lg p-2.5 flex items-start gap-2">
+  1542→                              <Sparkles className="w-3.5 h-3.5 text-[#E5B83C] flex-shrink-0 mt-0.5" />
+  1543→                              <p className="text-[#FEF3DF]/50 text-[0.6rem] leading-relaxed">
+  1544→                                Our biltong is made to order for peak freshness. Please allow up to 3 days for preparation before dispatch.
+  1545→                              </p>
+  1546→                            </div>
+  1547→                          </div>
+  1548→                        </div>
+  1549→                      )}
+  1550→                    </div>
+  1551→
+  1552→                    {/* Order ID & saving status */}
+  1553→                    <AnimatePresence>
+  1554→                      {orderId && (
+  1555→                        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+  1556→                          className="bg-[#2E7D32]/15 border border-[#2E7D32] rounded-xl p-3 text-center mb-3">
+  1557→                          <p className="text-[0.6rem] tracking-[0.15em] uppercase text-[#FEF3DF]/70">Order Reference</p>
+  1558→                          <p className="font-['Bebas_Neue'] text-xl text-[#2E7D32] tracking-[0.1em]">{orderId}</p>
+  1559→                        </motion.div>
+  1560→                      )}
+  1561→                    </AnimatePresence>
+  1562→                    {savingStatus !== "idle" && (
+  1563→                      <div className={`text-center text-xs mb-3 ${
+  1564→                        savingStatus === "saving" ? "text-[#E5B83C]/70" : savingStatus === "saved" ? "text-[#2E7D32]" : "text-[#B23A1A]"
+  1565→                      }`}>
+  1566→                        {savingStatus === "saving" && <span className="flex items-center justify-center gap-2"><Loader2 className="w-3 h-3 animate-spin" /> Saving...</span>}
+  1567→                        {savingStatus === "saved" && "✓ Order saved!"}
+  1568→                        {savingStatus === "error" && "Saved locally (database unavailable)"}
+  1569→                      </div>
+  1570→                    )}
+  1571→
+  1572→                    {/* Continue to Payment */}
+  1573→                    <motion.button whileTap={{ scale: 0.97 }} onClick={handleContinueToPayment}
+  1574→                      disabled={!canContinueToPayment}
+  1575→                      className={`w-full py-3.5 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-sm flex items-center justify-center gap-2 ${
+  1576→                        canContinueToPayment
+  1577→                          ? "bg-[#E5B83C] text-[#0A0301] hover:shadow-[0_8px_25px_rgba(229,184,60,0.4)]"
+  1578→                          : "bg-white/5 text-white/30 cursor-not-allowed"
+  1579→                      }`}>
+  1580→                      CONTINUE TO PAYMENT <ChevronUp className="w-4 h-4 rotate-90" />
+  1581→                    </motion.button>
+  1582→
+  1583→                    <button onClick={handleClose}
+  1584→                      className="w-full text-white/40 py-3 cursor-pointer text-sm hover:text-white transition-colors bg-transparent border-none mt-1">Cancel</button>
+  1585→                  </motion.div>
+  1586→                )}
+  1587→
+  1588→                {/* ============================== */}
+  1589→                {/* STEP 1: Payment                */}
+  1590→                {/* ============================== */}
+  1591→                {checkoutStep === 1 && (
+  1592→                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }}>
+  1593→                    {/* Order Summary */}
+  1594→                    <div className="bg-white/4 rounded-xl p-4 mb-4 border border-white/5">
+  1595→                      <p className="text-[0.65rem] font-semibold text-[#FEF3DF]/60 mb-2 tracking-wider uppercase">Order Summary</p>
+  1596→                      {items.map((item) => (
+  1597→                        <div key={item.id} className="flex justify-between text-xs py-1">
+  1598→                          <span className="text-[#FEF3DF]/80">{item.qty}x {item.name}</span>
+  1599→                          <span className="text-[#F8E5B0]">R{item.price * item.qty}</span>
+  1600→                        </div>
+  1601→                      ))}
+  1602→                      <div className="flex justify-between text-xs py-1 border-t border-white/10 mt-1">
+  1603→                        <span className="text-[#FEF3DF]/60">Subtotal</span><span>R{subtotal}</span>
+  1604→                      </div>
+  1605→                      {deliveryFee > 0 && (
+  1606→                        <div className="flex justify-between text-xs py-1">
+  1607→                          <span className="text-[#FEF3DF]/60">Delivery</span><span>R{deliveryFee}</span>
+  1608→                        </div>
+  1609→                      )}
+  1610→                      {deliveryMode !== "collect" && deliveryAddress && (
+  1611→                        <div className="flex justify-between text-xs py-1 border-t border-white/10 mt-1">
+  1612→                          <span className="text-[#FEF3DF]/60">Deliver to</span>
+  1613→                          <span className="text-[#FEF3DF]/80 text-right max-w-[60%] truncate">{deliveryAddress}</span>
+  1614→                        </div>
+  1615→                      )}
+  1616→                    </div>
+  1617→
+  1618→                    {/* Total */}
+  1619→                    <div className="bg-[#E5B83C]/12 border-2 border-[#E5B83C] rounded-xl p-4 text-center mb-5">
+  1620→                      <p className="text-[0.65rem] tracking-[0.2em] uppercase text-[#FEF3DF]/70">AMOUNT TO PAY</p>
+  1621→                      <motion.p key={total} initial={{ scale: 1.1 }} animate={{ scale: 1 }}
+  1622→                        className="font-['Bebas_Neue'] text-4xl text-[#E5B83C]">R{total}</motion.p>
+  1623→                    </div>
+  1624→
+  1625→                    {/* Order ID & saving */}
+  1626→                    <AnimatePresence>
+  1627→                      {orderId && (
+  1628→                        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+  1629→                          className="bg-[#2E7D32]/15 border border-[#2E7D32] rounded-xl p-3 text-center mb-3">
+  1630→                          <p className="text-[0.6rem] tracking-[0.15em] uppercase text-[#FEF3DF]/70">Order Reference</p>
+  1631→                          <p className="font-['Bebas_Neue'] text-xl text-[#2E7D32] tracking-[0.1em]">{orderId}</p>
+  1632→                        </motion.div>
+  1633→                      )}
+  1634→                    </AnimatePresence>
+  1635→                    {savingStatus !== "idle" && (
+  1636→                      <div className={`text-center text-xs mb-3 ${
+  1637→                        savingStatus === "saving" ? "text-[#E5B83C]/70" : savingStatus === "saved" ? "text-[#2E7D32]" : "text-[#B23A1A]"
+  1638→                      }`}>
+  1639→                        {savingStatus === "saving" && <span className="flex items-center justify-center gap-2"><Loader2 className="w-3 h-3 animate-spin" /> Saving...</span>}
+  1640→                        {savingStatus === "saved" && "✓ Order saved!"}
+  1641→                        {savingStatus === "error" && "Saved locally (database unavailable)"}
+  1642→                      </div>
+  1643→                    )}
+  1644→
+  1645→                    {/* Payment Buttons */}
+  1646→                    {!ikhokhaStep ? (
+  1647→                      <>
+  1648→                        <motion.button whileTap={{ scale: 0.97 }} onClick={handleIkhokha} disabled={ikhokhaLoading}
+  1649→                          className={`w-full bg-[#1DB954] text-white py-3.5 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-sm mb-3 hover:shadow-[0_8px_25px_rgba(29,185,84,0.4)] flex items-center justify-center gap-2 ${ikhokhaLoading ? 'opacity-60 cursor-not-allowed' : ''}`}>
+  1650→                          {ikhokhaLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />} {ikhokhaLoading ? 'CREATING PAYMENT...' : 'PAY WITH IKHOKHA'}
+  1651→                        </motion.button>
+  1652→                        {/* Cash / Card on Collection — only for collection orders */}
+  1653→                        {deliveryMode === "collect" && (
+  1654→                          <>
+  1655→                            <div className="flex items-center gap-3 my-1">
+  1656→                              <div className="flex-1 h-px bg-white/15" />
+  1657→                              <span className="text-[0.55rem] text-white/40 uppercase tracking-[0.1em]">or</span>
+  1658→                              <div className="flex-1 h-px bg-white/15" />
+  1659→                            </div>
+  1660→                            <motion.button whileTap={{ scale: 0.97 }} onClick={handleCashOnCollection}
+  1661→                              className="w-full bg-[#25D366] text-white py-3 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-xs mb-3 hover:shadow-[0_8px_25px_rgba(37,211,102,0.4)] flex items-center justify-center gap-2">
+  1662→                              <MessageCircle className="w-3.5 h-3.5" /> CASH / CARD ON COLLECTION
+  1663→                            </motion.button>
+  1664→                          </>
+  1665→                        )}
+  1666→                        {deliveryMode !== "collect" && (
+  1667→                          <div className="bg-[#E07A2C]/10 border border-[#E07A2C]/25 rounded-xl p-3 mt-1">
+  1668→                            <p className="text-[0.65rem] text-[#E07A2C]/80 text-center">
+  1669→                              Delivery orders require online payment via iKhokha for security.
+  1670→                            </p>
+  1671→                          </div>
+  1672→                        )}
+  1673→                      </>
+  1674→                    ) : (
+  1675→                      <>
+  1676→                        {/* PAYMENT VERIFICATION STATUS BLOCK */}
+  1677→                        {paymentVerification === "approved" ? (
+  1678→                          <motion.div
+  1679→                            initial={{ scale: 0.9, opacity: 0 }}
+  1680→                            animate={{ scale: 1, opacity: 1 }}
+  1681→                            className="bg-[#2E7D32]/15 border-2 border-[#2E7D32] rounded-xl p-5 text-center mb-4"
+  1682→                          >
+  1683→                            <motion.div
+  1684→                              initial={{ scale: 0 }}
+  1685→                              animate={{ scale: 1 }}
+  1686→                              transition={{ type: "spring", damping: 12, stiffness: 200, delay: 0.1 }}
+  1687→                              className="w-14 h-14 rounded-full bg-[#2E7D32] flex items-center justify-center mx-auto mb-3"
+  1688→                            >
+  1689→                              <CheckCircle2 className="w-8 h-8 text-white" />
+  1690→                            </motion.div>
+  1691→                            <p className="font-['Cormorant_Garamond'] text-xl text-[#2E7D32] font-bold">Payment Approved!</p>
+  1692→                            <p className="text-xs text-[#FEF3DF]/60 mt-1">Your order is confirmed. We'll start preparing your biltong fresh.</p>
+  1693→                            <p className="text-[0.6rem] text-[#FEF3DF]/40 mt-2">Redirecting to confirmation...</p>
+  1694→                          </motion.div>
+  1695→                        ) : paymentVerification === "failed" ? (
+  1696→                          <div className="bg-[#B23A1A]/15 border border-[#B23A1A]/40 rounded-xl p-4 text-center mb-4">
+  1697→                            <p className="font-['Cormorant_Garamond'] text-lg text-[#B23A1A] font-bold">Payment Not Confirmed</p>
+  1698→                            <p className="text-xs text-[#FEF3DF]/60 mt-1">
+  1699→                              We couldn't verify your payment automatically. If you've paid, please tap below to confirm.
+  1700→                            </p>
+  1701→                            <motion.button whileTap={{ scale: 0.97 }} onClick={handleConfirmPaid}
+  1702→                              className="w-full mt-3 bg-[#2E7D32] text-white py-3 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-xs hover:shadow-[0_8px_25px_rgba(46,125,50,0.4)] flex items-center justify-center gap-2">
+  1703→                              <CheckCircle2 className="w-4 h-4" /> I'VE PAID — CONFIRM ORDER
+  1704→                            </motion.button>
+  1705→                          </div>
+  1706→                        ) : (
+  1707→                          /* WAITING state — customer needs to tap the button to open iKhokha */
+  1708→                          <div className="bg-[#E5B83C]/8 border border-[#E5B83C]/30 rounded-xl p-4 text-center mb-4">
+  1709→                            <p className="font-['Cormorant_Garamond'] text-lg text-[#E5B83C] font-bold mb-1">
+  1710→                              Order Saved — Pay Now
+  1711→                            </p>
+  1712→                            <p className="text-xs text-[#FEF3DF]/70 leading-relaxed mb-3">
+  1713→                              Tap the green button below to open iKhokha and pay <strong className="text-[#E5B83C]">R{total}</strong>. Your order will be automatically confirmed the moment payment is approved.
+  1714→                            </p>
+  1715→                            <p className="text-[0.6rem] text-[#FEF3DF]/40">
+  1716→                              Order ref: <strong>{orderId}</strong>
+  1717→                            </p>
+  1718→                          </div>
+  1719→                        )}
+  1720→
+  1721→                        {/* BIG primary "OPEN PAYMENT PAGE" button — plain <a> tag, no framer-motion, never blocked */}
+  1722→                        {paymentVerification !== "approved" && paylinkUrl && (
+  1723→                          <a
+  1724→                            href={paylinkUrl}
+  1725→                            target="_blank"
+  1726→                            rel="noopener noreferrer"
+  1727→                            style={{ display: "block", textDecoration: "none" }}
+  1728→                            className="w-full bg-[#1DB954] text-white py-4 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-base mb-3 hover:bg-[#1DB954]/90 flex items-center justify-center gap-2"
+  1729→                          >
+  1730→                            <CreditCard className="w-5 h-5" /> OPEN PAYMENT PAGE →
+  1731→                          </a>
+  1732→                        )}
+  1733→
+  1734→                        {/* Status line showing polling progress */}
+  1735→                        {paymentVerification === "waiting" && (
+  1736→                          <p className="text-[0.65rem] text-[#E5B83C]/70 text-center mb-3 flex items-center justify-center gap-1.5">
+  1737→                            <Loader2 className="w-3 h-3 animate-spin" />
+  1738→                            Waiting for payment... {Math.floor(pollSeconds / 60)}:{String(pollSeconds % 60).padStart(2, "0")}
+  1739→                          </p>
+  1740→                        )}
+  1741→
+  1742→                        {/* Manual confirm — only shown after polling times out (failed state) */}
+  1743→                        {paymentVerification === "failed" && (
+  1744→                          <p className="text-[0.6rem] text-white/35 text-center mt-2 leading-relaxed">
+  1745→                            Already confirmed above? We'll process your order as soon as we verify payment.
+  1746→                          </p>
+  1747→                        )}
+  1748→                      </>
+  1749→                    )}
+  1750→
+  1751→                    {/* Back button */}
+  1752→                    <button onClick={() => setCheckoutStep(0)}
+  1753→                      className="w-full text-white/40 py-3 cursor-pointer text-sm hover:text-white transition-colors bg-transparent border-none">
+  1754→                      ← Back to Shipping
+  1755→                    </button>
+  1756→
+  1757→                    <p className="text-[0.6rem] text-white/35 text-center mt-2 leading-relaxed">
+  1758→                      iKhokha: Secure card payment in a new tab.
+  1759→                      {deliveryMode === "collect" && <><br />Cash / Card: Pay when you collect in Stanger.</>}
+  1760→                    </p>
+  1761→                  </motion.div>
+  1762→                )}
+  1763→
+  1764→                {/* ============================== */}
+  1765→                {/* STEP 2: Done (Order Success)   */}
+  1766→                {/* ============================== */}
+  1767→                {checkoutStep === 2 && orderSuccess && (
+  1768→                  <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3 }}>
+  1769→                    <OrderSuccess orderId={orderId || ""} paymentMethod={lastPaymentMethod} onClose={handleClose} />
+  1770→                  </motion.div>
+  1771→                )}
+  1772→
+  1773→              </div>
+  1774→            </div>
+  1775→          </motion.div>
+  1776→        </>
+  1777→      )}
+  1778→    </AnimatePresence>
+  1779→  );
+  1780→}
+  1781→
+  1782→// ============================================
+  1783→// FLOATING CART BUTTON
+  1784→// ============================================
+  1785→function FloatingCartButton({ onClick, pulse }: { onClick: () => void; pulse?: boolean }) {
+  1786→  const totalItems = useCartStore((s) => s.totalItems());
+  1787→  return (
+  1788→    <AnimatePresence>
+  1789→      {totalItems > 0 && (
+  1790→        <motion.button
+  1791→          initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }}
+  1792→          whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+  1793→          onClick={onClick}
+  1794→          className={`fixed bottom-6 right-5 w-14 h-14 rounded-full flex items-center justify-center cursor-pointer z-[300] transition-all ${
+  1795→            pulse
+  1796→              ? "bg-[#E5B83C] shadow-[0_0_25px_rgba(229,184,60,0.5)]"
+  1797→              : "bg-[#25D366] shadow-[0_4px_20px_rgba(37,211,102,0.4)]"
+  1798→          }`}
+  1799→        >
+  1800→          <ShoppingCart className="w-6 h-6 text-white" />
+  1801→          <motion.span key={totalItems} initial={{ scale: 1.5 }} animate={{ scale: 1 }}
+  1802→            className="absolute -top-1 -right-1 bg-[#B23A1A] text-white w-5 h-5 rounded-full text-[0.6rem] flex items-center justify-center font-bold">
+  1803→            {totalItems}
+  1804→          </motion.span>
+  1805→        </motion.button>
+  1806→      )}
+  1807→    </AnimatePresence>
+  1808→  );
+  1809→}
+  1810→
+  1811→// ============================================
+  1812→// FOOTER
+  1813→// ============================================
+  1814→function Footer() {
+  1815→  const deliveryFee = useSettingsStore((s) => s.deliveryFee);
+  1816→  const nationwideFee = useSettingsStore((s) => s.nationwideDeliveryFee);
+  1817→  return (
+  1818→    <footer className="py-10 md:py-14 px-4 md:px-[6%] relative z-20 border-t border-[#E5B83C]/10">
+  1819→      <div className="max-w-[1200px] mx-auto">
+  1820→        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
+  1821→          {/* Brand Column */}
+  1822→          <div className="text-center md:text-left">
+  1823→            <p className="font-['Bebas_Neue'] text-xl tracking-[0.2em] text-[#E5B83C] mb-2">
+  1824→              🥩 BILTONG<span className="text-[#E07A2C]">&amp;</span>BYTES
+  1825→            </p>
+  1826→            <p className="text-[0.65rem] tracking-[0.15em] uppercase text-[#FEF3DF]/40">Premium Halaal Biltong · Est. 2024</p>
+  1827→            <div className="mt-4 flex items-center justify-center md:justify-start gap-2">
+  1828→              <Leaf className="w-4 h-4 text-[#2E7D32]" />
+  1829→              <span className="text-[#2E7D32] text-xs font-semibold">100% Halaal Certified</span>
+  1830→            </div>
+  1831→          </div>
+  1832→
+  1833→          {/* Contact Column */}
+  1834→          <div className="text-center md:text-left">
+  1835→            <p className="text-[0.6rem] tracking-[0.25em] uppercase text-[#E5B83C]/60 mb-3">Get In Touch</p>
+  1836→            <div className="mt-3 flex items-center justify-center md:justify-start gap-2 flex-wrap">
+  1837→              <a
+  1838→                href={`https://wa.me/${WHATSAPP_NUMBER}`}
+  1839→                target="_blank"
+  1840→                rel="noopener noreferrer"
+  1841→                className="inline-flex items-center gap-2 bg-[#25D366]/15 border border-[#25D366]/30 text-[#25D366] px-4 py-2.5 rounded-xl text-xs font-bold tracking-wider uppercase no-underline transition-all hover:bg-[#25D366]/25"
+  1842→              >
+  1843→                <MessageCircle className="w-4 h-4" /> WhatsApp Us
+  1844→              </a>
+  1845→              <a
+  1846→                href="https://www.facebook.com/profile.php?id=61590746632536"
+  1847→                target="_blank"
+  1848→                rel="noopener noreferrer"
+  1849→                className="inline-flex items-center gap-2 bg-[#1877F2]/15 border border-[#1877F2]/30 text-[#1877F2] px-4 py-2.5 rounded-xl text-xs font-bold tracking-wider uppercase no-underline transition-all hover:bg-[#1877F2]/25"
+  1850→              >
+  1851→                <Facebook className="w-4 h-4" /> Facebook
+  1852→              </a>
+  1853→            </div>
+  1854→            <div className="mt-3 flex items-center justify-center md:justify-start gap-1.5 text-[#FEF3DF]/40 text-xs">
+  1855→              <MapPin className="w-3.5 h-3.5" />
+  1856→              <span>Stanger, KwaZulu-Natal</span>
+  1857→            </div>
+  1858→            <div className="mt-1.5 flex items-center justify-center md:justify-start gap-1.5 text-[#FEF3DF]/40 text-xs">
+  1859→              <Truck className="w-3.5 h-3.5" />
+  1860→              <span>Stanger R{deliveryFee} · Nationwide R{nationwideFee} · Collection Free</span>
+  1861→            </div>
+  1862→          </div>
+  1863→
+  1864→          {/* Info Column */}
+  1865→          <div className="text-center md:text-left">
+  1866→            <p className="text-[0.6rem] tracking-[0.25em] uppercase text-[#E5B83C]/60 mb-3">Delivery Options</p>
+  1867→            <div className="bg-[#0E0500]/60 rounded-xl p-3 border border-[#E5B83C]/10">
+  1868→              <p className="text-[#FEF3DF]/50 text-xs leading-relaxed">
+  1869→                <span className="text-[#E5B83C] font-semibold">Stanger:</span> R{deliveryFee} &nbsp;·&nbsp; <span className="text-[#E5B83C] font-semibold">Nationwide:</span> R{nationwideFee}
+  1870→              </p>
+  1871→              <p className="text-[#FEF3DF]/30 text-[0.6rem] mt-2">Free collection in Stanger town</p>
+  1872→            </div>
+  1873→          </div>
+  1874→        </div>
+  1875→
+  1876→        {/* Bottom bar */}
+  1877→        <div className="mt-8 pt-5 border-t border-[#E5B83C]/8 flex flex-col md:flex-row items-center justify-between gap-2">
+  1878→          <p className="text-[#FEF3DF]/25 text-[0.65rem]">
+  1879→            &copy; 2025 Biltong &amp; Bytes · Made with ❤️ in Stanger
+  1880→          </p>
+  1881→          <p className="text-[#FEF3DF]/20 text-[0.55rem] tracking-wider uppercase">
+  1882→            Premium Halaal Biltong · Hand-Cured with Love · Made to Order
+  1883→          </p>
+  1884→        </div>
+  1885→      </div>
+  1886→    </footer>
+  1887→  );
+  1888→}
+  1889→
+  1890→// ============================================
+  1891→// MAIN PAGE
+  1892→// ============================================
+  1893→export default function BiltongAndBytes() {
+  1894→  const [cartOpen, setCartOpen] = useState(false);
+  1895→  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  1896→  const [checkoutResetKey, setCheckoutResetKey] = useState(0);
+  1897→  const [confettiActive, setConfettiActive] = useState(false);
+  1898→  const [mounted, setMounted] = useState(false);
+  1899→  const cartRef = useRef<HTMLButtonElement>(null);
+  1900→  const productRefs = useRef<(HTMLDivElement | null)[]>([]);
+  1901→  const [flyAnimation, setFlyAnimation] = useState<{ from: DOMRect; to: DOMRect } | null>(null);
+  1902→  const [cartPulse, setCartPulse] = useState(false);
+  1903→
+  1904→  useEffect(() => {
+  1905→    const id = requestAnimationFrame(() => setMounted(true));
+  1906→    return () => cancelAnimationFrame(id);
+  1907→  }, []);
+  1908→
+  1909→  // Fetch settings from Supabase on mount
+  1910→  const fetchSettings = useSettingsStore((s) => s.fetchSettings);
+  1911→  useEffect(() => {
+  1912→    fetchSettings();
+  1913→  }, [fetchSettings]);
+  1914→
+  1915→  // Confetti is triggered via confettiKey increment from add-to-cart actions
+  1916→  const [confettiKey, setConfettiKey] = useState(0);
+  1917→
+  1918→  const triggerConfetti = useCallback(() => setConfettiKey((k) => k + 1), []);
+  1919→
+  1920→  const handleCartOpen = useCallback(() => setCartOpen(true), []);
+  1921→  const handleCartClose = useCallback(() => setCartOpen(false), []);
+  1922→  const handleCheckout = useCallback(() => {
+  1923→    setCartOpen(false);
+  1924→    setCheckoutResetKey((k) => k + 1);
+  1925→    setTimeout(() => setCheckoutOpen(true), 200);
+  1926→  }, []);
+  1927→  const handleCheckoutClose = useCallback(() => setCheckoutOpen(false), []);
+  1928→
+  1929→  const handleItemAdd = useCallback(() => {
+  1930→    triggerConfetti();
+  1931→    // Fly-to-cart animation
+  1932→    const cardEl = productRefs.current?.find((el) => el !== null);
+  1933→    const cartBtn = cartRef.current;
+  1934→    if (cardEl && cartBtn) {
+  1935→      const from = cardEl.getBoundingClientRect();
+  1936→      const to = cartBtn.getBoundingClientRect();
+  1937→      setFlyAnimation({ from, to });
+  1938→    }
+  1939→    // Cart pulse
+  1940→    setCartPulse(true);
+  1941→    setTimeout(() => setCartPulse(false), 600);
+  1942→  }, [triggerConfetti]);
+  1943→
+  1944→  if (!mounted) {
+  1945→    return (
+  1946→      <div className="min-h-screen bg-[#0A0301] flex flex-col items-center justify-center">
+  1947→        <motion.div
+  1948→          animate={{ scale: [1, 1.2, 1], rotate: [0, 10, -10, 0] }}
+  1949→          transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+  1950→          className="text-6xl md:text-7xl mb-4"
+  1951→        >
+  1952→          🥩
+  1953→        </motion.div>
+  1954→        <div className="font-['Bebas_Neue'] text-3xl md:text-4xl tracking-[0.2em] relative overflow-hidden">
+  1955→          <span className="bg-gradient-to-r from-[#E5B83C] via-[#F8E5B0] to-[#E5B83C] bg-clip-text text-transparent bg-[length:200%_100%] animate-[shimmer_2s_linear_infinite]">
+  1956→            BILTONG<span className="text-[#E07A2C]">&amp;</span>BYTES
+  1957→          </span>
+  1958→        </div>
+  1959→        <div className="w-32 h-1 mt-6 bg-[#E5B83C]/20 rounded-full overflow-hidden">
+  1960→          <motion.div
+  1961→            initial={{ x: "-100%" }}
+  1962→            animate={{ x: "100%" }}
+  1963→            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+  1964→            className="h-full w-1/2 bg-[#E5B83C] rounded-full"
+  1965→          />
+  1966→        </div>
+  1967→      </div>
+  1968→    );
+  1969→  }
+  1970→
+  1971→  return (
+  1972→    <div className="min-h-screen bg-[#0A0301] text-[#FEF3DF] font-['Syne',sans-serif] overflow-x-hidden">
+  1973→      <SmokeCanvas />
+  1974→      <Confetti confettiKey={confettiKey} />
+  1975→      <Navbar onCartOpen={handleCartOpen} cartRef={cartRef} />
+  1976→      <Hero />
+  1977→      <PhotoStrip />
+  1978→      <SectionDivider />
+  1979→      <ProductsSection onItemAdd={handleItemAdd} productRefs={productRefs} />
+  1980→      <SectionDivider />
+  1981→      <StorySection />
+  1982→      <SectionDivider />
+  1983→      <HowToOrderSection />
+  1984→      <SectionDivider />
+  1985→      <ContactSection />
+  1986→      <Footer />
+  1987→      <StickyOrderBar />
+  1988→      <FloatingCartButton onClick={handleCartOpen} pulse={cartPulse} />
+  1989→      <AnimatePresence>
+  1990→        {flyAnimation && (
+  1991→          <FlyToCart from={flyAnimation.from} to={flyAnimation.to} onComplete={() => setFlyAnimation(null)} />
+  1992→        )}
+  1993→      </AnimatePresence>
+  1994→      <CartDrawer open={cartOpen} onClose={handleCartClose} onCheckout={handleCheckout} />
+  1995→      <CheckoutModal open={checkoutOpen} onClose={handleCheckoutClose} resetKey={checkoutResetKey} />
+  1996→    </div>
+  1997→  );
+  1998→}
+  1999→

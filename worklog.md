@@ -261,3 +261,52 @@ Stage Summary:
 - Flavors stay global (hardcoded Traditional/Chilli/Hot Honey Glazed). Future enhancement: per-product flavors.
 - ACTION REQUIRED: User must run supabase/migration-products-table.sql in Supabase SQL Editor to create the products table
 - Files changed: 7 modified + 3 new, ~700 lines added
+
+---
+Task ID: 7
+Agent: Main Agent
+Task: Add deals/bundles section to storefront + admin panel management (mix & match deals)
+
+Work Log:
+- Explored codebase: products table pattern (src/app/api/products), settings JSONB pattern, admin panel tab structure (Orders/Products/Settings), storefront ProductsSection component, orders API price verification flow
+- Verified user's deal math against live production prices (Taster R49, Snack R129, Family R349, Feast R649):
+  * 3 × Taster (3×49=147) → R139 = save R8 ✓
+  * 2 × Snack (2×129=258) → R249 = save R9 ✓
+  * Family + 2 Taster (349+2×49=447) → R439 = save R8 ✓
+  * 2 × Feast (2×649=1298) → R1250 = save R48 ✓
+- Created supabase/migration-deals-table.sql: deals table (SERIAL id, name, description, items JSONB, price, original_price, savings, img, badge, is_active, sort_order) with RLS policies + seed of 4 starter deals
+- Updated supabase/schema.sql to include deals table for fresh installs
+- Created src/app/api/deals/route.ts: GET (public, ?include_inactive=1 for admin) + POST (admin auth, auto-computes original_price + savings from live product prices). GET returns empty array if deals table doesn't exist yet (graceful degradation).
+- Created src/app/api/deals/[id]/route.ts: PATCH (admin auth, recomputes prices if items change) + DELETE (admin auth). Fixed import path bug (../../admin/auth/route for [id] subdirectory, not ../admin/auth/route) and next.server typo (should be next/server).
+- Updated src/app/api/orders/route.ts: getLivePrices() now fetches deal prices in parallel with product prices + settings. Added DEFAULT_DEAL_PRICES fallback (matches hardcoded DEALS in supabase.ts) so customers can order deals even before the migration is run. Verification loop: if item.flavor === "Bundle", match against deals table by exact name; else match against products table by name/prefix (existing logic).
+- Updated src/lib/supabase.ts: added Deal + DealItem interfaces, added DEALS fallback array with 4 starter deals (prices match the seed SQL).
+- Updated src/app/page.tsx:
+  * Added DEALS + Deal type imports
+  * Added "Bundle" case to FlavorIcon (Package icon for deal items in cart)
+  * Created DealCard component: savings badge, image, name, description, items list (product chips), price with strikethrough original, qty selector, add-to-cart button
+  * Created DealsSection component: fetches /api/deals, falls back to hardcoded DEALS, renders 4-up grid with skeleton loaders
+  * Inserted <DealsSection /> between ProductsSection and StorySection
+  * Added "DEALS" link to Navbar (with Zap icon)
+- Updated src/app/admin/page.tsx:
+  * Added Deal + DealItem type imports, added Zap icon import
+  * Changed DashboardTab type to include "deals"
+  * Created DealsPanel component: lists all deals (active + inactive) with image/name/items/price/savings/visibility, ADD DEAL button, edit/hide/delete actions per row
+  * Created DealEditor modal: name, description, items builder (product picker dropdown + quantity + remove), price/original/savings triple input with auto-compute, "Recompute prices" button, image URL with preview, badge, sort order, visibility toggle
+  * Added Deals tab button between Products and Settings
+  * Wired DealsPanel rendering into the tab switch
+- Build verified clean (npx next build, 15 routes including /api/deals + /api/deals/[id])
+- Committed (0e72312) + pushed to GitHub — Vercel auto-deploy triggered
+- Verified production: GET /api/deals returns {deals:[]} (table doesn't exist yet, graceful fallback)
+- Verified price verification: POST /api/orders with tampered prices (price=1) for a deal item → server corrected to R139 (DEFAULT_DEAL_PRICES fallback) + product item corrected to R129 (products table). Subtotal R268. Order saved to Supabase successfully.
+
+Stage Summary:
+- Storefront has a new "Mix & Match Deals" section showing 4 starter deals (using hardcoded fallback until migration is run)
+- Admin panel has a new Deals tab with full CRUD: add/edit/hide/delete deals, product picker, auto-compute savings
+- Deals are added to cart as single line items (flavor="Bundle") with the Package icon
+- Server-side price verification prevents tampering: deal prices verified against deals table (or DEFAULT_DEAL_PRICES fallback), product prices verified against products table
+- ACTION REQUIRED: User must run supabase/migration-deals-table.sql in Supabase SQL Editor to create the deals table. Until then:
+  * Storefront shows hardcoded fallback deals (4 starter deals)
+  * Admin panel shows "No deals yet" (admin can't create/edit deals)
+  * Customers CAN order deals (orders API uses DEFAULT_DEAL_PRICES fallback)
+- Test order BB-DEAL-TEST-001 is in the admin panel — user can delete it
+- Files: 9 changed, +1658 lines, -30 lines

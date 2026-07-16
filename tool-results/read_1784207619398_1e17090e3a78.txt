@@ -1,0 +1,1437 @@
+     1→"use client";
+     2→
+     3→import { useState, useEffect, useCallback } from "react";
+     4→import {
+     5→  Lock,
+     6→  Eye,
+     7→  EyeOff,
+     8→  Package,
+     9→  Clock,
+    10→  CheckCircle2,
+    11→  XCircle,
+    12→  CreditCard,
+    13→  Banknote,
+    14→  Truck,
+    15→  MapPin,
+    16→  Search,
+    17→  RefreshCw,
+    18→  ChevronDown,
+    19→  ChevronUp,
+    20→  Trash2,
+    21→  LogOut,
+    22→  ShoppingBag,
+    23→  CircleDollarSign,
+    24→  Loader2,
+    25→  Settings,
+    26→  ClipboardList,
+    27→  Save,
+    28→  DollarSign,
+    29→  Plus,
+    30→  Pencil,
+    31→  X,
+    32→  Image as ImageIcon,
+    33→  Tag,
+    34→  Star,
+    35→} from "lucide-react";
+    36→import { motion, AnimatePresence } from "framer-motion";
+    37→import { toast } from "sonner";
+    38→import { PRODUCTS, type Product } from "@/lib/supabase";
+    39→
+    40→// ============================================
+    41→// TYPES
+    42→// ============================================
+    43→interface OrderItem {
+    44→  name: string;
+    45→  flavor?: string;
+    46→  price: number;
+    47→  qty: number;
+    48→}
+    49→
+    50→interface Order {
+    51→  order_id: string;
+    52→  customer_name: string;
+    53→  customer_phone: string;
+    54→  customer_email: string | null;
+    55→  items: OrderItem[];
+    56→  items_summary: string;
+    57→  subtotal: number;
+    58→  delivery_fee: number;
+    59→  total: number;
+    60→  delivery_mode: string;
+    61→  delivery_address: string | null;
+    62→  payment_method: string;
+    63→  payment_status: string;
+    64→  order_status: string;
+    65→  paylink_id: string | null;
+    66→  created_at: string;
+    67→}
+    68→
+    69→type StatusFilter = "all" | "new" | "payment_initiated" | "confirmed" | "fulfilled" | "payment_failed";
+    70→
+    71→const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: typeof Clock }> = {
+    72→  new: { label: "New", color: "text-blue-400", bg: "bg-blue-500/15 border-blue-500/30", icon: Clock },
+    73→  payment_initiated: { label: "Awaiting Payment", color: "text-amber-400", bg: "bg-amber-500/15 border-amber-500/30", icon: CreditCard },
+    74→  confirmed: { label: "Confirmed", color: "text-green-400", bg: "bg-green-500/15 border-green-500/30", icon: CheckCircle2 },
+    75→  fulfilled: { label: "Fulfilled", color: "text-[#E5B83C]", bg: "bg-[#E5B83C]/15 border-[#E5B83C]/30", icon: Package },
+    76→  payment_failed: { label: "Payment Failed", color: "text-red-400", bg: "bg-red-500/15 border-red-500/30", icon: XCircle },
+    77→};
+    78→
+    79→const PAYMENT_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+    80→  pending: { label: "Pending", color: "text-amber-400" },
+    81→  paid: { label: "Paid", color: "text-green-400" },
+    82→  failed: { label: "Failed", color: "text-red-400" },
+    83→  cash_on_delivery: { label: "Cash/Card", color: "text-blue-400" },
+    84→};
+    85→
+    86→// ============================================
+    87→// AUTH HELPERS (cookie-based, no token storage)
+    88→// ============================================
+    89→// The session token is stored in an httpOnly cookie set by the server.
+    90→// JavaScript can NEVER read it — defeats XSS token theft.
+    91→// All API calls include credentials: "include" so the cookie is sent.
+    92→
+    93→async function checkAuth(): Promise<boolean> {
+    94→  try {
+    95→    const res = await fetch("/api/admin/auth", { method: "GET", credentials: "include" });
+    96→    if (!res.ok) return false;
+    97→    const data = await res.json();
+    98→    return data.valid === true;
+    99→  } catch {
+   100→    return false;
+   101→  }
+   102→}
+   103→
+   104→async function logout(): Promise<void> {
+   105→  await fetch("/api/admin/auth", { method: "DELETE", credentials: "include" });
+   106→}
+   107→
+   108→// ============================================
+   109→// LOGIN SCREEN
+   110→// ============================================
+   111→function LoginScreen({ onLogin }: { onLogin: () => void }) {
+   112→  const [password, setPassword] = useState("");
+   113→  const [showPassword, setShowPassword] = useState(false);
+   114→  const [error, setError] = useState("");
+   115→  const [shaking, setShaking] = useState(false);
+   116→  const [loggingIn, setLoggingIn] = useState(false);
+   117→
+   118→  const handleSubmit = async (e: React.FormEvent) => {
+   119→    e.preventDefault();
+   120→    setLoggingIn(true);
+   121→    setError("");
+   122→
+   123→    try {
+   124→      // Send password to server — server sets httpOnly cookie on success
+   125→      const res = await fetch("/api/admin/auth", {
+   126→        method: "POST",
+   127→        headers: { "Content-Type": "application/json" },
+   128→        credentials: "include",
+   129→        body: JSON.stringify({ password }),
+   130→      });
+   131→
+   132→      const data = await res.json();
+   133→
+   134→      if (res.ok && data.success) {
+   135→        // Cookie is set by the server — no token to store in JS
+   136→        onLogin();
+   137→      } else if (res.status === 429) {
+   138→        setError(data.error || "Too many attempts. Please wait.");
+   139→        setShaking(true);
+   140→        setTimeout(() => setShaking(false), 500);
+   141→      } else {
+   142→        setError(data.error || "Wrong password. Try again.");
+   143→        setShaking(true);
+   144→        setTimeout(() => setShaking(false), 500);
+   145→      }
+   146→    } catch {
+   147→      setError("Connection error. Please try again.");
+   148→    } finally {
+   149→      setLoggingIn(false);
+   150→    }
+   151→  };
+   152→
+   153→  return (
+   154→    <div className="min-h-screen bg-gradient-to-br from-[#0A0301] via-[#1A0A04] to-[#0A0301] flex items-center justify-center px-4">
+   155→      <motion.div
+   156→        initial={{ opacity: 0, y: 30 }}
+   157→        animate={{ opacity: 1, y: shaking ? [0, -10, 10, -5, 5, 0] : 0 }}
+   158→        transition={{ duration: 0.5 }}
+   159→        className="w-full max-w-sm"
+   160→      >
+   161→        <div className="text-center mb-8">
+   162→          <div className="w-20 h-20 bg-[#E5B83C]/15 border-2 border-[#E5B83C] rounded-full flex items-center justify-center mx-auto mb-4">
+   163→            <Lock className="w-8 h-8 text-[#E5B83C]" />
+   164→          </div>
+   165→          <h1 className="font-['Cormorant_Garamond'] text-3xl text-[#FEF3DF]">Admin Dashboard</h1>
+   166→          <p className="text-sm text-[#FEF3DF]/50 mt-1">Biltong & Bytes</p>
+   167→        </div>
+   168→
+   169→        <form onSubmit={handleSubmit} className="space-y-4">
+   170→          <div className="relative">
+   171→            <input
+   172→              type={showPassword ? "text" : "password"}
+   173→              value={password}
+   174→              onChange={(e) => { setPassword(e.target.value); setError(""); }}
+   175→              placeholder="Enter admin password"
+   176→              className="w-full bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-3.5 text-[#FEF3DF] text-sm placeholder:text-[#FEF3DF]/25 focus:outline-none focus:border-[#E5B83C] focus:bg-white/12 transition-all pr-12"
+   177→              autoFocus
+   178→            />
+   179→            <button
+   180→              type="button"
+   181→              onClick={() => setShowPassword(!showPassword)}
+   182→              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#FEF3DF]/40 hover:text-[#E5B83C] cursor-pointer"
+   183→            >
+   184→              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+   185→            </button>
+   186→          </div>
+   187→
+   188→          {error && (
+   189→            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-red-400 text-xs text-center">
+   190→              {error}
+   191→            </motion.p>
+   192→          )}
+   193→
+   194→          <button
+   195→            type="submit"
+   196→            disabled={loggingIn}
+   197→            className={`w-full py-3.5 font-bold tracking-[0.1em] uppercase cursor-pointer rounded-xl text-sm transition-all flex items-center justify-center gap-2 ${
+   198→              loggingIn ? "bg-[#E5B83C]/50 text-[#0A0301]/70 cursor-not-allowed" : "bg-[#E5B83C] text-[#0A0301] hover:bg-[#E5B83C]/90"
+   199→            }`}
+   200→          >
+   201→            {loggingIn ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+   202→            {loggingIn ? "VERIFYING..." : "LOGIN"}
+   203→          </button>
+   204→        </form>
+   205→      </motion.div>
+   206→    </div>
+   207→  );
+   208→}
+   209→
+   210→// ============================================
+   211→// STATS CARDS
+   212→// ============================================
+   213→function StatsCards({ orders }: { orders: Order[] }) {
+   214→  const totalRevenue = orders
+   215→    .filter((o) => o.payment_status === "paid" || o.order_status === "confirmed" || o.order_status === "fulfilled")
+   216→    .reduce((sum, o) => sum + o.total, 0);
+   217→
+   218→  const pendingCount = orders.filter((o) => o.order_status === "new" || o.order_status === "payment_initiated").length;
+   219→  const fulfilledCount = orders.filter((o) => o.order_status === "fulfilled").length;
+   220→  const totalOrders = orders.length;
+   221→
+   222→  const stats = [
+   223→    { label: "Total Orders", value: totalOrders, icon: ShoppingBag, color: "text-blue-400", bg: "bg-blue-500/10" },
+   224→    { label: "Revenue", value: `R${totalRevenue}`, icon: CircleDollarSign, color: "text-green-400", bg: "bg-green-500/10" },
+   225→    { label: "Pending", value: pendingCount, icon: Clock, color: "text-amber-400", bg: "bg-amber-500/10" },
+   226→    { label: "Fulfilled", value: fulfilledCount, icon: Package, color: "text-[#E5B83C]", bg: "bg-[#E5B83C]/10" },
+   227→  ];
+   228→
+   229→  return (
+   230→    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+   231→      {stats.map((stat) => (
+   232→        <div key={stat.label} className={`${stat.bg} border border-white/10 rounded-xl p-4`}>
+   233→          <stat.icon className={`w-5 h-5 ${stat.color} mb-2`} />
+   234→          <p className="font-['Bebas_Neue'] text-2xl text-[#FEF3DF]">{stat.value}</p>
+   235→          <p className="text-[0.6rem] text-[#FEF3DF]/50 tracking-wider uppercase">{stat.label}</p>
+   236→        </div>
+   237→      ))}
+   238→    </div>
+   239→  );
+   240→}
+   241→
+   242→// ============================================
+   243→// ORDER ROW
+   244→// ============================================
+   245→function OrderRow({
+   246→  order,
+   247→  onUpdateStatus,
+   248→  onDelete,
+   249→}: {
+   250→  order: Order;
+   251→  onUpdateStatus: (orderId: string, orderStatus: string, paymentStatus?: string) => void;
+   252→  onDelete: (orderId: string) => void;
+   253→}) {
+   254→  const [expanded, setExpanded] = useState(false);
+   255→  const statusConf = STATUS_CONFIG[order.order_status] || STATUS_CONFIG.new;
+   256→  const payConf = PAYMENT_STATUS_CONFIG[order.payment_status] || { label: order.payment_status, color: "text-white/50" };
+   257→  const StatusIcon = statusConf.icon;
+   258→
+   259→  const date = new Date(order.created_at);
+   260→  const timeStr = date.toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" });
+   261→  const dateStr = date.toLocaleDateString("en-ZA", { day: "2-digit", month: "short" });
+   262→
+   263→  return (
+   264→    <motion.div
+   265→      layout
+   266→      initial={{ opacity: 0, y: 10 }}
+   267→      animate={{ opacity: 1, y: 0 }}
+   268→      className="bg-white/4 border border-white/8 rounded-xl overflow-hidden"
+   269→    >
+   270→      {/* Header Row */}
+   271→      <button
+   272→        onClick={() => setExpanded(!expanded)}
+   273→        className="w-full px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-white/4 transition-colors text-left"
+   274→      >
+   275→        <div className={`w-8 h-8 rounded-lg ${statusConf.bg} border flex items-center justify-center flex-shrink-0`}>
+   276→          <StatusIcon className={`w-4 h-4 ${statusConf.color}`} />
+   277→        </div>
+   278→
+   279→        <div className="flex-1 min-w-0">
+   280→          <div className="flex items-center gap-2 flex-wrap">
+   281→            <span className="font-['Bebas_Neue'] text-sm tracking-wider text-[#E5B83C]">
+   282→              {order.order_id}
+   283→            </span>
+   284→            <span className={`text-[0.55rem] px-2 py-0.5 rounded-full border ${statusConf.bg} ${statusConf.color} font-semibold`}>
+   285→              {statusConf.label}
+   286→            </span>
+   287→          </div>
+   288→          <p className="text-xs text-[#FEF3DF]/60 truncate mt-0.5">
+   289→            {order.customer_name} · {order.items_summary}
+   290→          </p>
+   291→        </div>
+   292→
+   293→        <div className="text-right flex-shrink-0">
+   294→          <p className="font-['Bebas_Neue'] text-lg text-[#E5B83C]">R{order.total}</p>
+   295→          <p className="text-[0.55rem] text-[#FEF3DF]/40">{dateStr} {timeStr}</p>
+   296→        </div>
+   297→
+   298→        {expanded ? (
+   299→          <ChevronUp className="w-4 h-4 text-[#FEF3DF]/40 flex-shrink-0" />
+   300→        ) : (
+   301→          <ChevronDown className="w-4 h-4 text-[#FEF3DF]/40 flex-shrink-0" />
+   302→        )}
+   303→      </button>
+   304→
+   305→      {/* Expanded Details */}
+   306→      <AnimatePresence>
+   307→        {expanded && (
+   308→          <motion.div
+   309→            initial={{ height: 0, opacity: 0 }}
+   310→            animate={{ height: "auto", opacity: 1 }}
+   311→            exit={{ height: 0, opacity: 0 }}
+   312→            transition={{ duration: 0.2 }}
+   313→            className="overflow-hidden"
+   314→          >
+   315→            <div className="px-4 pb-4 border-t border-white/8 pt-3 space-y-3">
+   316→              {/* Customer Info */}
+   317→              <div className="grid grid-cols-2 gap-3">
+   318→                <div>
+   319→                  <p className="text-[0.55rem] text-[#FEF3DF]/40 uppercase tracking-wider mb-1">Customer</p>
+   320→                  <p className="text-sm text-[#FEF3DF]">{order.customer_name}</p>
+   321→                  <p className="text-xs text-[#FEF3DF]/60">{order.customer_phone}</p>
+   322→                  {order.customer_email && (
+   323→                    <p className="text-xs text-[#FEF3DF]/40">{order.customer_email}</p>
+   324→                  )}
+   325→                </div>
+   326→                <div>
+   327→                  <p className="text-[0.55rem] text-[#FEF3DF]/40 uppercase tracking-wider mb-1">Delivery</p>
+   328→                  <div className="flex items-center gap-1.5">
+   329→                    {order.delivery_mode === "collect" ? (
+   330→                      <MapPin className="w-3.5 h-3.5 text-green-400" />
+   331→                    ) : (
+   332→                      <Truck className="w-3.5 h-3.5 text-amber-400" />
+   333→                    )}
+   334→                    <span className="text-sm text-[#FEF3DF]">
+   335→                      {order.delivery_mode === "collect"
+   336→                        ? "Collection"
+   337→                        : order.delivery_mode === "stanger"
+   338→                          ? "Stanger Delivery"
+   339→                          : order.delivery_mode === "nationwide"
+   340→                            ? "Nationwide Delivery"
+   341→                            : order.delivery_mode === "deliver"
+   342→                              ? "Delivery"
+   343→                              : order.delivery_mode}
+   344→                    </span>
+   345→                  </div>
+   346→                  {order.delivery_address && (
+   347→                    <p className="text-xs text-[#FEF3DF]/60 mt-0.5">{order.delivery_address}</p>
+   348→                  )}
+   349→                </div>
+   350→              </div>
+   351→
+   352→              {/* Items */}
+   353→              <div>
+   354→                <p className="text-[0.55rem] text-[#FEF3DF]/40 uppercase tracking-wider mb-1">Items</p>
+   355→                {order.items.map((item, i) => (
+   356→                  <div key={i} className="flex justify-between text-xs py-0.5">
+   357→                    <span className="text-[#FEF3DF]/80">{item.qty}x {item.name} <span className="text-[#E5B83C]/80">[{item.flavor || "Traditional"}]</span></span>
+   358→                    <span className="text-[#F8E5B0]">R{item.price * item.qty}</span>
+   359→                  </div>
+   360→                ))}
+   361→                <div className="flex justify-between text-xs pt-1 mt-1 border-t border-white/10">
+   362→                  <span className="text-[#FEF3DF]/50">Subtotal</span><span>R{order.subtotal}</span>
+   363→                </div>
+   364→                {order.delivery_fee > 0 && (
+   365→                  <div className="flex justify-between text-xs">
+   366→                    <span className="text-[#FEF3DF]/50">Delivery</span><span>R{order.delivery_fee}</span>
+   367→                  </div>
+   368→                )}
+   369→                <div className="flex justify-between font-['Bebas_Neue'] text-sm pt-1">
+   370→                  <span>Total</span><span className="text-[#E5B83C]">R{order.total}</span>
+   371→                </div>
+   372→              </div>
+   373→
+   374→              {/* Payment Info */}
+   375→              <div className="flex items-center gap-4">
+   376→                <div>
+   377→                  <p className="text-[0.55rem] text-[#FEF3DF]/40 uppercase tracking-wider mb-1">Payment</p>
+   378→                  <div className="flex items-center gap-1.5">
+   379→                    {order.payment_method === "ikhokha" ? (
+   380→                      <CreditCard className="w-3.5 h-3.5 text-amber-400" />
+   381→                    ) : (
+   382→                      <Banknote className="w-3.5 h-3.5 text-green-400" />
+   383→                    )}
+   384→                    <span className="text-xs text-[#FEF3DF] capitalize">{order.payment_method === "ikhokha" ? "iKhokha" : "Cash/Card"}</span>
+   385→                  </div>
+   386→                </div>
+   387→                <div>
+   388→                  <p className="text-[0.55rem] text-[#FEF3DF]/40 uppercase tracking-wider mb-1">Payment Status</p>
+   389→                  <span className={`text-xs font-semibold ${payConf.color}`}>{payConf.label}</span>
+   390→                </div>
+   391→              </div>
+   392→
+   393→              {/* Action Buttons */}
+   394→              <div className="flex flex-wrap gap-2 pt-2">
+   395→                {order.order_status === "new" && (
+   396→                  <button
+   397→                    onClick={() => onUpdateStatus(order.order_id, "confirmed", order.payment_method === "ikhokha" ? "paid" : undefined)}
+   398→                    className="flex items-center gap-1.5 px-3 py-2 bg-green-500/15 border border-green-500/30 text-green-400 rounded-lg text-xs font-semibold cursor-pointer hover:bg-green-500/25 transition-colors"
+   399→                  >
+   400→                    <CheckCircle2 className="w-3.5 h-3.5" /> Confirm Order
+   401→                  </button>
+   402→                )}
+   403→                {order.order_status === "payment_initiated" && (
+   404→                  <button
+   405→                    onClick={() => onUpdateStatus(order.order_id, "confirmed", "paid")}
+   406→                    className="flex items-center gap-1.5 px-3 py-2 bg-green-500/15 border border-green-500/30 text-green-400 rounded-lg text-xs font-semibold cursor-pointer hover:bg-green-500/25 transition-colors"
+   407→                  >
+   408→                    <CheckCircle2 className="w-3.5 h-3.5" /> Mark Paid & Confirm
+   409→                  </button>
+   410→                )}
+   411→                {order.order_status === "confirmed" && (
+   412→                  <button
+   413→                    onClick={() => onUpdateStatus(order.order_id, "fulfilled")}
+   414→                    className="flex items-center gap-1.5 px-3 py-2 bg-[#E5B83C]/15 border border-[#E5B83C]/30 text-[#E5B83C] rounded-lg text-xs font-semibold cursor-pointer hover:bg-[#E5B83C]/25 transition-colors"
+   415→                  >
+   416→                    <Package className="w-3.5 h-3.5" /> Mark Fulfilled
+   417→                  </button>
+   418→                )}
+   419→                {order.order_status === "payment_failed" && (
+   420→                  <>
+   421→                    <button
+   422→                      onClick={() => onUpdateStatus(order.order_id, "new")}
+   423→                      className="flex items-center gap-1.5 px-3 py-2 bg-blue-500/15 border border-blue-500/30 text-blue-400 rounded-lg text-xs font-semibold cursor-pointer hover:bg-blue-500/25 transition-colors"
+   424→                    >
+   425→                      <RefreshCw className="w-3.5 h-3.5" /> Retry
+   426→                    </button>
+   427→                    <button
+   428→                      onClick={() => onUpdateStatus(order.order_id, "confirmed", "paid")}
+   429→                      className="flex items-center gap-1.5 px-3 py-2 bg-green-500/15 border border-green-500/30 text-green-400 rounded-lg text-xs font-semibold cursor-pointer hover:bg-green-500/25 transition-colors"
+   430→                    >
+   431→                      <CheckCircle2 className="w-3.5 h-3.5" /> Mark Paid Manually
+   432→                    </button>
+   433→                  </>
+   434→                )}
+   435→                {order.order_status === "fulfilled" && (
+   436→                  <span className="flex items-center gap-1.5 px-3 py-2 bg-[#E5B83C]/10 border border-[#E5B83C]/20 text-[#E5B83C]/60 rounded-lg text-xs">
+   437→                    <CheckCircle2 className="w-3.5 h-3.5" /> Complete
+   438→                  </span>
+   439→                )}
+   440→                <button
+   441→                  onClick={() => {
+   442→                    if (confirm(`Delete order ${order.order_id}? This cannot be undone.`)) {
+   443→                      onDelete(order.order_id);
+   444→                    }
+   445→                  }}
+   446→                  className="flex items-center gap-1.5 px-3 py-2 bg-red-500/10 border border-red-500/20 text-red-400/60 rounded-lg text-xs cursor-pointer hover:bg-red-500/20 hover:text-red-400 transition-colors ml-auto"
+   447→                >
+   448→                  <Trash2 className="w-3.5 h-3.5" /> Delete
+   449→                </button>
+   450→              </div>
+   451→            </div>
+   452→          </motion.div>
+   453→        )}
+   454→      </AnimatePresence>
+   455→    </motion.div>
+   456→  );
+   457→}
+   458→
+   459→// ============================================
+   460→// SETTINGS PANEL
+   461→// ============================================
+   462→// SETTINGS PANEL — delivery fees only (product prices now in Products tab)
+   463→// ============================================
+   464→function SettingsPanel() {
+   465→  const [deliveryFeeInput, setDeliveryFeeInput] = useState("40");
+   466→  const [nationwideFeeInput, setNationwideFeeInput] = useState("150");
+   467→  const [loading, setLoading] = useState(true);
+   468→  const [saving, setSaving] = useState(false);
+   469→
+   470→  const fetchSettings = useCallback(async () => {
+   471→    try {
+   472→      const res = await fetch("/api/settings", { credentials: "include" });
+   473→      if (res.ok) {
+   474→        const data = await res.json();
+   475→        setDeliveryFeeInput(String(data.deliveryFee ?? 40));
+   476→        setNationwideFeeInput(String(data.nationwideDeliveryFee ?? 150));
+   477→      }
+   478→    } catch (err) {
+   479→      console.error("Failed to fetch settings:", err);
+   480→    } finally {
+   481→      setLoading(false);
+   482→    }
+   483→  }, []);
+   484→
+   485→  useEffect(() => {
+   486→    fetchSettings();
+   487→  }, [fetchSettings]);
+   488→
+   489→  const handleSave = async () => {
+   490→    setSaving(true);
+   491→    try {
+   492→      const deliveryFee = parseInt(deliveryFeeInput, 10) || 0;
+   493→      const nationwideDeliveryFee = parseInt(nationwideFeeInput, 10) || 0;
+   494→
+   495→      const res = await fetch("/api/settings", {
+   496→        method: "PUT",
+   497→        headers: { "Content-Type": "application/json" },
+   498→        credentials: "include",
+   499→        body: JSON.stringify({
+   500→          deliveryFee,
+   501→          nationwideDeliveryFee,
+   502→          // Keep product_prices in sync with the products table — read current products
+   503→          // and send their prices so the legacy field stays consistent.
+   504→          productPrices: {},
+   505→        }),
+   506→      });
+   507→
+   508→      if (res.ok) {
+   509→        toast.success("Delivery fees saved!", { icon: "✅" });
+   510→      } else {
+   511→        const data = await res.json();
+   512→        toast.error(data.error || "Failed to save settings");
+   513→      }
+   514→    } catch {
+   515→      toast.error("Failed to save settings");
+   516→    } finally {
+   517→      setSaving(false);
+   518→    }
+   519→  };
+   520→
+   521→  if (loading) {
+   522→    return (
+   523→      <div className="text-center py-20">
+   524→        <Loader2 className="w-8 h-8 text-[#E5B83C] animate-spin mx-auto mb-3" />
+   525→        <p className="text-sm text-[#FEF3DF]/50">Loading settings...</p>
+   526→      </div>
+   527→    );
+   528→  }
+   529→
+   530→  return (
+   531→    <div className="space-y-6">
+   532→      {/* Delivery Fee Card */}
+   533→      <div className="bg-white/4 border border-white/8 rounded-xl p-5">
+   534→        <div className="flex items-center gap-3 mb-4">
+   535→          <div className="w-10 h-10 bg-[#E5B83C]/10 border border-[#E5B83C]/30 rounded-lg flex items-center justify-center">
+   536→            <Truck className="w-5 h-5 text-[#E5B83C]" />
+   537→          </div>
+   538→          <div>
+   539→            <h3 className="font-['Cormorant_Garamond'] text-lg text-[#FEF3DF]">Delivery Fees</h3>
+   540→            <p className="text-[0.6rem] text-[#FEF3DF]/40 tracking-wider uppercase">Set delivery rates</p>
+   541→          </div>
+   542→        </div>
+   543→        <div className="space-y-3">
+   544→          {/* Stanger Fee */}
+   545→          <div className="flex items-center gap-3">
+   546→            <span className="text-[#FEF3DF]/60 text-xs font-bold min-w-[80px]">Stanger</span>
+   547→            <span className="text-[#FEF3DF]/60 text-sm font-bold">R</span>
+   548→            <input
+   549→              type="text"
+   550→              inputMode="numeric"
+   551→              value={deliveryFeeInput}
+   552→              onChange={(e) => {
+   553→                const val = e.target.value;
+   554→                if (val === "" || /^\d+$/.test(val)) setDeliveryFeeInput(val);
+   555→              }}
+   556→              className="flex-1 bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-3 text-[#FEF3DF] text-lg font-['Bebas_Neue'] tracking-wider focus:outline-none focus:border-[#E5B83C] transition-all"
+   557→            />
+   558→          </div>
+   559→          {/* Nationwide Fee */}
+   560→          <div className="flex items-center gap-3">
+   561→            <span className="text-[#FEF3DF]/60 text-xs font-bold min-w-[80px]">Nationwide</span>
+   562→            <span className="text-[#FEF3DF]/60 text-sm font-bold">R</span>
+   563→            <input
+   564→              type="text"
+   565→              inputMode="numeric"
+   566→              value={nationwideFeeInput}
+   567→              onChange={(e) => {
+   568→                const val = e.target.value;
+   569→                if (val === "" || /^\d+$/.test(val)) setNationwideFeeInput(val);
+   570→              }}
+   571→              className="flex-1 bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-3 text-[#FEF3DF] text-lg font-['Bebas_Neue'] tracking-wider focus:outline-none focus:border-[#E5B83C] transition-all"
+   572→            />
+   573→          </div>
+   574→        </div>
+   575→      </div>
+   576→
+   577→      {/* Note about product prices */}
+   578→      <div className="bg-[#E5B83C]/8 border border-[#E5B83C]/25 rounded-xl p-4 flex items-start gap-3">
+   579→        <Tag className="w-4 h-4 text-[#E5B83C] flex-shrink-0 mt-0.5" />
+   580→        <p className="text-xs text-[#FEF3DF]/70 leading-relaxed">
+   581→          Product prices, names, images, and badges are now managed in the
+   582→          <strong className="text-[#E5B83C]"> Products</strong> tab. Add new products, edit pricing,
+   583→          or hide out-of-stock items from there.
+   584→        </p>
+   585→      </div>
+   586→
+   587→      {/* Save Button */}
+   588→      <motion.button
+   589→        whileTap={{ scale: 0.97 }}
+   590→        onClick={handleSave}
+   591→        disabled={saving}
+   592→        className={`w-full py-3.5 font-bold tracking-[0.1em] uppercase cursor-pointer transition-all rounded-xl text-sm flex items-center justify-center gap-2 ${
+   593→          saving
+   594→            ? "bg-[#E5B83C]/50 text-[#0A0301]/70 cursor-not-allowed"
+   595→            : "bg-[#E5B83C] text-[#0A0301] hover:bg-[#E5B83C]/90"
+   596→        }`}
+   597→      >
+   598→        {saving ? (
+   599→          <><Loader2 className="w-4 h-4 animate-spin" /> SAVING...</>
+   600→        ) : (
+   601→          <><Save className="w-4 h-4" /> SAVE DELIVERY FEES</>
+   602→        )}
+   603→      </motion.button>
+   604→    </div>
+   605→  );
+   606→}
+   607→
+   608→// ============================================
+   609→// PRODUCTS PANEL — full CRUD for the product catalog
+   610→// ============================================
+   611→interface AdminProduct extends Product {
+   612→  is_active: boolean;
+   613→  sort_order: number;
+   614→}
+   615→
+   616→function ProductsPanel() {
+   617→  const [products, setProducts] = useState<AdminProduct[]>([]);
+   618→  const [loading, setLoading] = useState(true);
+   619→  const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null);
+   620→  const [isCreating, setIsCreating] = useState(false);
+   621→
+   622→  const fetchProducts = useCallback(async () => {
+   623→    try {
+   624→      // Fetch ALL products (active + inactive) — admin needs to see hidden ones too.
+   625→      // The /api/products endpoint accepts ?include_inactive=1 to return hidden rows.
+   626→      // (RLS allows public SELECT; admin auth is enforced on POST/PATCH/DELETE only.)
+   627→      const res = await fetch("/api/products?include_inactive=1");
+   628→      if (res.ok) {
+   629→        const data = await res.json();
+   630→        setProducts(data.products || []);
+   631→      } else {
+   632→        // Fallback: just use what the public endpoint returns (active only)
+   633→        const fallbackRes = await fetch("/api/products");
+   634→        if (fallbackRes.ok) {
+   635→          const data = await fallbackRes.json();
+   636→          setProducts(data.products || []);
+   637→        }
+   638→      }
+   639→    } catch (err) {
+   640→      console.error("Failed to fetch products:", err);
+   641→      toast.error("Failed to load products");
+   642→    } finally {
+   643→      setLoading(false);
+   644→    }
+   645→  }, []);
+   646→
+   647→  useEffect(() => {
+   648→    fetchProducts();
+   649→  }, [fetchProducts]);
+   650→
+   651→  const handleSaveProduct = async (product: AdminProduct) => {
+   652→    try {
+   653→      const url = isCreating ? "/api/products" : `/api/products/${product.id}`;
+   654→      const method = isCreating ? "POST" : "PATCH";
+   655→      const body = isCreating
+   656→        ? {
+   657→            name: product.name,
+   658→            weight: product.weight,
+   659→            grams: product.grams,
+   660→            price: product.price,
+   661→            description: product.description,
+   662→            img: product.img,
+   663→            badge: product.badge || null,
+   664→            is_active: product.is_active,
+   665→            sort_order: product.sort_order,
+   666→          }
+   667→        : {
+   668→            name: product.name,
+   669→            weight: product.weight,
+   670→            grams: product.grams,
+   671→            price: product.price,
+   672→            description: product.description,
+   673→            img: product.img,
+   674→            badge: product.badge || null,
+   675→            is_active: product.is_active,
+   676→            sort_order: product.sort_order,
+   677→          };
+   678→
+   679→      const res = await fetch(url, {
+   680→        method,
+   681→        headers: { "Content-Type": "application/json" },
+   682→        credentials: "include",
+   683→        body: JSON.stringify(body),
+   684→      });
+   685→
+   686→      if (res.ok) {
+   687→        toast.success(isCreating ? "Product created!" : "Product updated!", { icon: "✅" });
+   688→        setEditingProduct(null);
+   689→        setIsCreating(false);
+   690→        fetchProducts();
+   691→      } else {
+   692→        const data = await res.json().catch(() => ({}));
+   693→        toast.error(data.error || "Failed to save product");
+   694→      }
+   695→    } catch {
+   696→      toast.error("Failed to save product");
+   697→    }
+   698→  };
+   699→
+   700→  const handleDeleteProduct = async (id: number) => {
+   701→    if (!confirm("Delete this product? This cannot be undone. Consider hiding it instead (toggle Active off).")) return;
+   702→    try {
+   703→      const res = await fetch(`/api/products/${id}`, {
+   704→        method: "DELETE",
+   705→        credentials: "include",
+   706→      });
+   707→      if (res.ok) {
+   708→        toast.success("Product deleted", { icon: "🗑️" });
+   709→        fetchProducts();
+   710→      } else {
+   711→        const data = await res.json().catch(() => ({}));
+   712→        toast.error(data.error || "Failed to delete product");
+   713→      }
+   714→    } catch {
+   715→      toast.error("Failed to delete product");
+   716→    }
+   717→  };
+   718→
+   719→  const handleToggleActive = async (product: AdminProduct) => {
+   720→    // Quick toggle without opening the editor
+   721→    try {
+   722→      const res = await fetch(`/api/products/${product.id}`, {
+   723→        method: "PATCH",
+   724→        headers: { "Content-Type": "application/json" },
+   725→        credentials: "include",
+   726→        body: JSON.stringify({ is_active: !product.is_active }),
+   727→      });
+   728→      if (res.ok) {
+   729→        toast.success(product.is_active ? "Product hidden" : "Product visible", { icon: "✅" });
+   730→        fetchProducts();
+   731→      } else {
+   732→        toast.error("Failed to toggle product");
+   733→      }
+   734→    } catch {
+   735→      toast.error("Failed to toggle product");
+   736→    }
+   737→  };
+   738→
+   739→  if (loading) {
+   740→    return (
+   741→      <div className="text-center py-20">
+   742→        <Loader2 className="w-8 h-8 text-[#E5B83C] animate-spin mx-auto mb-3" />
+   743→        <p className="text-sm text-[#FEF3DF]/50">Loading products...</p>
+   744→      </div>
+   745→    );
+   746→  }
+   747→
+   748→  return (
+   749→    <div className="space-y-4">
+   750→      {/* Header row */}
+   751→      <div className="flex items-center justify-between">
+   752→        <div className="flex items-center gap-3">
+   753→          <div className="w-10 h-10 bg-[#E5B83C]/10 border border-[#E5B83C]/30 rounded-lg flex items-center justify-center">
+   754→            <Package className="w-5 h-5 text-[#E5B83C]" />
+   755→          </div>
+   756→          <div>
+   757→            <h3 className="font-['Cormorant_Garamond'] text-lg text-[#FEF3DF]">Product Catalog</h3>
+   758→            <p className="text-[0.6rem] text-[#FEF3DF]/40 tracking-wider uppercase">Add, edit, hide, or delete products</p>
+   759→          </div>
+   760→        </div>
+   761→        <motion.button
+   762→          whileTap={{ scale: 0.97 }}
+   763→          onClick={() => {
+   764→            setEditingProduct({
+   765→              id: 0,
+   766→              name: "",
+   767→              weight: "",
+   768→              grams: 0,
+   769→              price: 0,
+   770→              description: "",
+   771→              img: "",
+   772→              badge: null,
+   773→              is_active: true,
+   774→              sort_order: products.length,
+   775→            });
+   776→            setIsCreating(true);
+   777→          }}
+   778→          className="bg-[#1DB954] text-white px-4 py-2.5 rounded-xl text-xs font-bold tracking-wider uppercase cursor-pointer hover:bg-[#1DB954]/90 flex items-center gap-2 transition-all"
+   779→        >
+   780→          <Plus className="w-4 h-4" /> ADD PRODUCT
+   781→        </motion.button>
+   782→      </div>
+   783→
+   784→      {/* Product list */}
+   785→      {products.length === 0 ? (
+   786→        <div className="text-center py-16 bg-white/4 border border-white/8 rounded-xl">
+   787→          <Package className="w-12 h-12 text-[#FEF3DF]/15 mx-auto mb-3" />
+   788→          <p className="text-[#FEF3DF]/40 text-sm">No products yet</p>
+   789→          <p className="text-[#FEF3DF]/25 text-xs mt-1">Click ADD PRODUCT to create your first one</p>
+   790→        </div>
+   791→      ) : (
+   792→        <div className="space-y-2">
+   793→          {products.map((product) => (
+   794→            <div
+   795→              key={product.id}
+   796→              className={`bg-white/4 border rounded-xl p-4 flex items-center gap-4 ${
+   797→                product.is_active ? "border-white/8" : "border-[#B23A1A]/30 opacity-60"
+   798→              }`}
+   799→            >
+   800→              {/* Image */}
+   801→              <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 bg-white/5 flex items-center justify-center">
+   802→                {product.img ? (
+   803→                  <img src={product.img} alt={product.name} className="w-full h-full object-cover brightness-[0.85]" />
+   804→                ) : (
+   805→                  <ImageIcon className="w-5 h-5 text-[#FEF3DF]/30" />
+   806→                )}
+   807→              </div>
+   808→
+   809→              {/* Info */}
+   810→              <div className="flex-1 min-w-0">
+   811→                <div className="flex items-center gap-2 flex-wrap">
+   812→                  <p className="font-['Cormorant_Garamond'] text-base font-bold text-[#FEF3DF] truncate">
+   813→                    {product.name}
+   814→                  </p>
+   815→                  {product.badge && (
+   816→                    <span className="bg-[#E5B83C]/15 text-[#E5B83C] text-[0.55rem] px-2 py-0.5 rounded-full font-bold tracking-wider uppercase flex items-center gap-1">
+   817→                      <Star className="w-2.5 h-2.5" /> {product.badge}
+   818→                    </span>
+   819→                  )}
+   820→                  {!product.is_active && (
+   821→                    <span className="bg-[#B23A1A]/15 text-[#B23A1A] text-[0.55rem] px-2 py-0.5 rounded-full font-bold tracking-wider uppercase">
+   822→                      HIDDEN
+   823→                    </span>
+   824→                  )}
+   825→                </div>
+   826→                <p className="text-[0.65rem] text-[#FEF3DF]/40 mt-0.5">
+   827→                  {product.weight} · {product.grams}g · R{(product.grams > 0 ? product.price / product.grams : 0).toFixed(2)}/g
+   828→                </p>
+   829→                {product.description && (
+   830→                  <p className="text-[0.65rem] text-[#FEF3DF]/30 mt-0.5 truncate">{product.description}</p>
+   831→                )}
+   832→              </div>
+   833→
+   834→              {/* Price */}
+   835→              <div className="flex-shrink-0 text-right">
+   836→                <p className="font-['Bebas_Neue'] text-2xl text-[#E5B83C]">R{product.price}</p>
+   837→              </div>
+   838→
+   839→              {/* Actions */}
+   840→              <div className="flex items-center gap-1 flex-shrink-0">
+   841→                <button
+   842→                  onClick={() => handleToggleActive(product)}
+   843→                  title={product.is_active ? "Hide from storefront" : "Show on storefront"}
+   844→                  className="w-9 h-9 rounded-lg bg-white/5 hover:bg-white/10 text-[#FEF3DF]/60 hover:text-[#E5B83C] flex items-center justify-center cursor-pointer transition-all"
+   845→                >
+   846→                  {product.is_active ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+   847→                </button>
+   848→                <button
+   849→                  onClick={() => {
+   850→                    setEditingProduct(product);
+   851→                    setIsCreating(false);
+   852→                  }}
+   853→                  title="Edit"
+   854→                  className="w-9 h-9 rounded-lg bg-white/5 hover:bg-white/10 text-[#FEF3DF]/60 hover:text-[#E5B83C] flex items-center justify-center cursor-pointer transition-all"
+   855→                >
+   856→                  <Pencil className="w-4 h-4" />
+   857→                </button>
+   858→                <button
+   859→                  onClick={() => handleDeleteProduct(product.id)}
+   860→                  title="Delete"
+   861→                  className="w-9 h-9 rounded-lg bg-white/5 hover:bg-[#B23A1A]/20 text-[#FEF3DF]/60 hover:text-[#B23A1A] flex items-center justify-center cursor-pointer transition-all"
+   862→                >
+   863→                  <Trash2 className="w-4 h-4" />
+   864→                </button>
+   865→              </div>
+   866→            </div>
+   867→          ))}
+   868→        </div>
+   869→      )}
+   870→
+   871→      {/* Editor Modal */}
+   872→      <AnimatePresence>
+   873→        {editingProduct && (
+   874→          <ProductEditor
+   875→            product={editingProduct}
+   876→            isCreating={isCreating}
+   877→            onSave={handleSaveProduct}
+   878→            onCancel={() => {
+   879→              setEditingProduct(null);
+   880→              setIsCreating(false);
+   881→            }}
+   882→          />
+   883→        )}
+   884→      </AnimatePresence>
+   885→    </div>
+   886→  );
+   887→}
+   888→
+   889→// ============================================
+   890→// PRODUCT EDITOR MODAL
+   891→// ============================================
+   892→function ProductEditor({
+   893→  product,
+   894→  isCreating,
+   895→  onSave,
+   896→  onCancel,
+   897→}: {
+   898→  product: AdminProduct;
+   899→  isCreating: boolean;
+   900→  onSave: (p: AdminProduct) => void;
+   901→  onCancel: () => void;
+   902→}) {
+   903→  const [form, setForm] = useState<AdminProduct>(product);
+   904→  const [saving, setSaving] = useState(false);
+   905→
+   906→  const update = (field: keyof AdminProduct, value: string | number | boolean | null) => {
+   907→    setForm((prev) => ({ ...prev, [field]: value }));
+   908→  };
+   909→
+   910→  const handleSubmit = async () => {
+   911→    if (!form.name.trim()) { toast.error("Name is required"); return; }
+   912→    if (!form.weight.trim()) { toast.error("Weight is required (e.g. '150g')"); return; }
+   913→    if (form.price < 0) { toast.error("Price cannot be negative"); return; }
+   914→    setSaving(true);
+   915→    await onSave(form);
+   916→    setSaving(false);
+   917→  };
+   918→
+   919→  return (
+   920→    <motion.div
+   921→      initial={{ opacity: 0 }}
+   922→      animate={{ opacity: 1 }}
+   923→      exit={{ opacity: 0 }}
+   924→      className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+   925→      onClick={onCancel}
+   926→    >
+   927→      <motion.div
+   928→        initial={{ scale: 0.95, opacity: 0, y: 20 }}
+   929→        animate={{ scale: 1, opacity: 1, y: 0 }}
+   930→        exit={{ scale: 0.95, opacity: 0, y: 20 }}
+   931→        transition={{ duration: 0.2 }}
+   932→        onClick={(e) => e.stopPropagation()}
+   933→        className="bg-[#0C0502] border border-[#E5B83C]/30 rounded-2xl p-6 w-full max-w-lg my-8 max-h-[90vh] overflow-y-auto"
+   934→      >
+   935→        <div className="flex items-center justify-between mb-5">
+   936→          <h3 className="font-['Cormorant_Garamond'] text-2xl text-[#E5B83C] font-bold">
+   937→            {isCreating ? "Add Product" : "Edit Product"}
+   938→          </h3>
+   939→          <button onClick={onCancel} className="text-[#FEF3DF]/60 hover:text-white cursor-pointer">
+   940→            <X className="w-5 h-5" />
+   941→          </button>
+   942→        </div>
+   943→
+   944→        <div className="space-y-4">
+   945→          {/* Name */}
+   946→          <div>
+   947→            <label className="block text-[0.6rem] text-[#FEF3DF]/40 tracking-wider uppercase mb-1.5">Name *</label>
+   948→            <input
+   949→              type="text"
+   950→              value={form.name}
+   951→              onChange={(e) => update("name", e.target.value)}
+   952→              placeholder="e.g. Snack Pack"
+   953→              className="w-full bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-2.5 text-[#FEF3DF] text-sm focus:outline-none focus:border-[#E5B83C] transition-all"
+   954→            />
+   955→          </div>
+   956→
+   957→          {/* Weight + Grams */}
+   958→          <div className="grid grid-cols-2 gap-3">
+   959→            <div>
+   960→              <label className="block text-[0.6rem] text-[#FEF3DF]/40 tracking-wider uppercase mb-1.5">Weight (display) *</label>
+   961→              <input
+   962→                type="text"
+   963→                value={form.weight}
+   964→                onChange={(e) => update("weight", e.target.value)}
+   965→                placeholder="e.g. 150g"
+   966→                className="w-full bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-2.5 text-[#FEF3DF] text-sm focus:outline-none focus:border-[#E5B83C] transition-all"
+   967→              />
+   968→            </div>
+   969→            <div>
+   970→              <label className="block text-[0.6rem] text-[#FEF3DF]/40 tracking-wider uppercase mb-1.5">Grams (for price/g)</label>
+   971→              <input
+   972→                type="number"
+   973→                inputMode="numeric"
+   974→                value={form.grams}
+   975→                onChange={(e) => update("grams", parseInt(e.target.value, 10) || 0)}
+   976→                placeholder="150"
+   977→                className="w-full bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-2.5 text-[#FEF3DF] text-sm focus:outline-none focus:border-[#E5B83C] transition-all"
+   978→              />
+   979→            </div>
+   980→          </div>
+   981→
+   982→          {/* Price + Sort order */}
+   983→          <div className="grid grid-cols-2 gap-3">
+   984→            <div>
+   985→              <label className="block text-[0.6rem] text-[#FEF3DF]/40 tracking-wider uppercase mb-1.5">Price (R) *</label>
+   986→              <div className="flex items-center gap-2 bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-2.5 focus-within:border-[#E5B83C] transition-all">
+   987→                <span className="text-[#FEF3DF]/60 text-sm font-bold">R</span>
+   988→                <input
+   989→                  type="number"
+   990→                  inputMode="numeric"
+   991→                  value={form.price}
+   992→                  onChange={(e) => update("price", parseInt(e.target.value, 10) || 0)}
+   993→                  placeholder="100"
+   994→                  className="flex-1 bg-transparent text-[#FEF3DF] text-sm focus:outline-none"
+   995→                />
+   996→              </div>
+   997→            </div>
+   998→            <div>
+   999→              <label className="block text-[0.6rem] text-[#FEF3DF]/40 tracking-wider uppercase mb-1.5">Sort Order</label>
+  1000→              <input
+  1001→                type="number"
+  1002→                inputMode="numeric"
+  1003→                value={form.sort_order}
+  1004→                onChange={(e) => update("sort_order", parseInt(e.target.value, 10) || 0)}
+  1005→                placeholder="0"
+  1006→                className="w-full bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-2.5 text-[#FEF3DF] text-sm focus:outline-none focus:border-[#E5B83C] transition-all"
+  1007→              />
+  1008→              <p className="text-[0.55rem] text-[#FEF3DF]/30 mt-1">Lower = shows first</p>
+  1009→            </div>
+  1010→          </div>
+  1011→
+  1012→          {/* Description */}
+  1013→          <div>
+  1014→            <label className="block text-[0.6rem] text-[#FEF3DF]/40 tracking-wider uppercase mb-1.5">Description</label>
+  1015→            <textarea
+  1016→              value={form.description}
+  1017→              onChange={(e) => update("description", e.target.value)}
+  1018→              placeholder="Short, appetizing description"
+  1019→              rows={2}
+  1020→              className="w-full bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-2.5 text-[#FEF3DF] text-sm focus:outline-none focus:border-[#E5B83C] transition-all resize-none"
+  1021→            />
+  1022→          </div>
+  1023→
+  1024→          {/* Image URL */}
+  1025→          <div>
+  1026→            <label className="block text-[0.6rem] text-[#FEF3DF]/40 tracking-wider uppercase mb-1.5">Image URL</label>
+  1027→            <div className="flex items-center gap-3">
+  1028→              <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-white/5 flex items-center justify-center border border-white/10">
+  1029→                {form.img ? (
+  1030→                  <img src={form.img} alt="preview" className="w-full h-full object-cover" />
+  1031→                ) : (
+  1032→                  <ImageIcon className="w-5 h-5 text-[#FEF3DF]/30" />
+  1033→                )}
+  1034→              </div>
+  1035→              <input
+  1036→                type="text"
+  1037→                value={form.img}
+  1038→                onChange={(e) => update("img", e.target.value)}
+  1039→                placeholder="/images/your-pic.jpg or https://..."
+  1040→                className="flex-1 bg-white/8 border border-[#E5B83C]/30 rounded-xl px-4 py-2.5 text-[#FEF3DF] text-sm focus:outline-none focus:border-[#E5B83C] transition-all"
+  1041→              />
+  1042→            </div>
+  1043→            <p className="text-[0.55rem] text-[#FEF3DF]/30 mt-1">
+  1044→              Use a local path (e.g. /images/foo.jpg) or any image URL. Leave blank for placeholder.
+  1045→            </p>
+  1046→          </div>
+  1047→
+  1048→          {/* Badge */}
+  1049→          <div>
+  1050→            <label className="block text-[0.6rem] text-[#FEF3DF]/40 tracking-wider uppercase mb-1.5">Badge</label>
+  1051→            <div className="flex gap-2 flex-wrap">
+  1052→              {[null, "Popular", "Best Value"].map((b) => (
+  1053→                <button
+  1054→                  key={b ?? "none"}
+  1055→                  type="button"
+  1056→                  onClick={() => update("badge", b)}
+  1057→                  className={`px-3 py-1.5 rounded-lg text-xs font-bold tracking-wider uppercase cursor-pointer transition-all ${
+  1058→                    form.badge === b
+  1059→                      ? "bg-[#E5B83C] text-[#0A0301]"
+  1060→                      : "bg-white/5 text-[#FEF3DF]/60 hover:bg-white/10"
+  1061→                  }`}
+  1062→                >
+  1063→                  {b ?? "None"}
+  1064→                </button>
+  1065→              ))}
+  1066→            </div>
+  1067→          </div>
+  1068→
+  1069→          {/* Active toggle */}
+  1070→          <div className="flex items-center justify-between bg-white/4 border border-white/8 rounded-xl px-4 py-3">
+  1071→            <div>
+  1072→              <p className="text-sm text-[#FEF3DF] font-bold">Visible on storefront</p>
+  1073→              <p className="text-[0.6rem] text-[#FEF3DF]/40">Hide out-of-stock items without deleting</p>
+  1074→            </div>
+  1075→            <button
+  1076→              type="button"
+  1077→              onClick={() => update("is_active", !form.is_active)}
+  1078→              className={`w-12 h-6 rounded-full p-0.5 cursor-pointer transition-all ${
+  1079→                form.is_active ? "bg-[#2E7D32]" : "bg-white/10"
+  1080→              }`}
+  1081→            >
+  1082→              <div
+  1083→                className={`w-5 h-5 rounded-full bg-white transition-transform ${
+  1084→                  form.is_active ? "translate-x-6" : "translate-x-0"
+  1085→                }`}
+  1086→              />
+  1087→            </button>
+  1088→          </div>
+  1089→        </div>
+  1090→
+  1091→        {/* Actions */}
+  1092→        <div className="flex gap-3 mt-6">
+  1093→          <button
+  1094→            onClick={onCancel}
+  1095→            className="flex-1 py-3 rounded-xl text-xs font-bold tracking-wider uppercase bg-white/5 text-[#FEF3DF]/60 hover:bg-white/10 cursor-pointer transition-all"
+  1096→          >
+  1097→            CANCEL
+  1098→          </button>
+  1099→          <motion.button
+  1100→            whileTap={{ scale: 0.97 }}
+  1101→            onClick={handleSubmit}
+  1102→            disabled={saving}
+  1103→            className={`flex-1 py-3 rounded-xl text-xs font-bold tracking-wider uppercase flex items-center justify-center gap-2 transition-all ${
+  1104→              saving
+  1105→                ? "bg-[#E5B83C]/50 text-[#0A0301]/70 cursor-not-allowed"
+  1106→                : "bg-[#E5B83C] text-[#0A0301] hover:bg-[#E5B83C]/90 cursor-pointer"
+  1107→            }`}
+  1108→          >
+  1109→            {saving ? (
+  1110→              <><Loader2 className="w-4 h-4 animate-spin" /> SAVING...</>
+  1111→            ) : (
+  1112→              <><Save className="w-4 h-4" /> {isCreating ? "CREATE" : "SAVE CHANGES"}</>
+  1113→            )}
+  1114→          </motion.button>
+  1115→        </div>
+  1116→      </motion.div>
+  1117→    </motion.div>
+  1118→  );
+  1119→}
+  1120→
+  1121→// ============================================
+  1122→// DASHBOARD
+  1123→// ============================================
+  1124→type DashboardTab = "orders" | "products" | "settings";
+  1125→
+  1126→function Dashboard({ onLogout }: { onLogout: () => void }) {
+  1127→  const [orders, setOrders] = useState<Order[]>([]);
+  1128→  const [loading, setLoading] = useState(true);
+  1129→  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  1130→  const [searchQuery, setSearchQuery] = useState("");
+  1131→  const [refreshing, setRefreshing] = useState(false);
+  1132→  const [activeTab, setActiveTab] = useState<DashboardTab>("orders");
+  1133→
+  1134→  const fetchOrders = useCallback(async (showRefresh = false) => {
+  1135→    if (showRefresh) setRefreshing(true);
+  1136→    try {
+  1137→      const params = new URLSearchParams();
+  1138→      if (statusFilter !== "all") params.set("status", statusFilter);
+  1139→      if (searchQuery.trim()) params.set("search", searchQuery.trim());
+  1140→
+  1141→      const res = await fetch(`/api/admin/orders?${params.toString()}`, {
+  1142→        credentials: "include",
+  1143→      });
+  1144→
+  1145→      if (res.status === 401) {
+  1146→        onLogout();
+  1147→        return;
+  1148→      }
+  1149→
+  1150→      const data = await res.json();
+  1151→      if (data.orders) {
+  1152→        setOrders(data.orders);
+  1153→      }
+  1154→    } catch (err) {
+  1155→      console.error("Failed to fetch orders:", err);
+  1156→      toast.error("Failed to load orders");
+  1157→    } finally {
+  1158→      setLoading(false);
+  1159→      setRefreshing(false);
+  1160→    }
+  1161→  }, [statusFilter, searchQuery, onLogout]);
+  1162→
+  1163→  useEffect(() => {
+  1164→    fetchOrders();
+  1165→    // Auto-refresh every 30 seconds
+  1166→    const interval = setInterval(() => fetchOrders(), 30000);
+  1167→    return () => clearInterval(interval);
+  1168→  }, [fetchOrders]);
+  1169→
+  1170→  const handleUpdateStatus = async (orderId: string, orderStatus: string, paymentStatus?: string) => {
+  1171→    try {
+  1172→      const res = await fetch("/api/admin/orders", {
+  1173→        method: "PATCH",
+  1174→        headers: { "Content-Type": "application/json" },
+  1175→        credentials: "include",
+  1176→        body: JSON.stringify({ orderId, orderStatus, paymentStatus }),
+  1177→      });
+  1178→
+  1179→      if (res.ok) {
+  1180→        toast.success(`Order ${orderId} updated!`, { icon: "✅" });
+  1181→        fetchOrders();
+  1182→      } else {
+  1183→        toast.error("Failed to update order");
+  1184→      }
+  1185→    } catch {
+  1186→      toast.error("Failed to update order");
+  1187→    }
+  1188→  };
+  1189→
+  1190→  const handleDelete = async (orderId: string) => {
+  1191→    try {
+  1192→      const res = await fetch(`/api/admin/orders?orderId=${orderId}`, {
+  1193→        method: "DELETE",
+  1194→        credentials: "include",
+  1195→      });
+  1196→
+  1197→      if (res.ok) {
+  1198→        toast.success(`Order ${orderId} deleted`, { icon: "🗑️" });
+  1199→        fetchOrders();
+  1200→      } else {
+  1201→        toast.error("Failed to delete order");
+  1202→      }
+  1203→    } catch {
+  1204→      toast.error("Failed to delete order");
+  1205→    }
+  1206→  };
+  1207→
+  1208→  const filterCounts = {
+  1209→    all: orders.length,
+  1210→    new: orders.filter((o) => o.order_status === "new").length,
+  1211→    payment_initiated: orders.filter((o) => o.order_status === "payment_initiated").length,
+  1212→    confirmed: orders.filter((o) => o.order_status === "confirmed").length,
+  1213→    fulfilled: orders.filter((o) => o.order_status === "fulfilled").length,
+  1214→    payment_failed: orders.filter((o) => o.order_status === "payment_failed").length,
+  1215→  };
+  1216→
+  1217→  const handleLogout = async () => {
+  1218→    await logout();
+  1219→    onLogout();
+  1220→  };
+  1221→
+  1222→  return (
+  1223→    <div className="min-h-screen bg-gradient-to-br from-[#0A0301] via-[#1A0A04] to-[#0A0301]">
+  1224→      {/* Header */}
+  1225→      <header className="sticky top-0 z-50 bg-[#0A0301]/90 backdrop-blur-xl border-b border-[#E5B83C]/20 px-4 py-3">
+  1226→        <div className="max-w-4xl mx-auto flex items-center justify-between">
+  1227→          <div>
+  1228→            <h1 className="font-['Cormorant_Garamond'] text-xl text-[#E5B83C]">Biltong & Bytes</h1>
+  1229→            <p className="text-[0.55rem] text-[#FEF3DF]/40 tracking-wider uppercase">Admin Dashboard</p>
+  1230→          </div>
+  1231→          <div className="flex items-center gap-3">
+  1232→            <button
+  1233→              onClick={() => fetchOrders(true)}
+  1234→              className="p-2 bg-white/5 rounded-lg text-[#FEF3DF]/60 hover:text-[#E5B83C] cursor-pointer transition-colors"
+  1235→            >
+  1236→              <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+  1237→            </button>
+  1238→            <button
+  1239→              onClick={handleLogout}
+  1240→              className="flex items-center gap-1.5 px-3 py-2 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg text-xs cursor-pointer hover:bg-red-500/20 transition-colors"
+  1241→            >
+  1242→              <LogOut className="w-3.5 h-3.5" /> Logout
+  1243→            </button>
+  1244→          </div>
+  1245→        </div>
+  1246→      </header>
+  1247→
+  1248→      {/* Tab Navigation */}
+  1249→      <div className="max-w-4xl mx-auto px-4 pt-4">
+  1250→        <div className="flex gap-1 bg-white/5 rounded-xl p-1">
+  1251→          <button
+  1252→            onClick={() => setActiveTab("orders")}
+  1253→            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-xs font-semibold tracking-wider uppercase cursor-pointer transition-all ${
+  1254→              activeTab === "orders"
+  1255→                ? "bg-[#E5B83C] text-[#0A0301]"
+  1256→                : "text-[#FEF3DF]/60 hover:text-[#FEF3DF] hover:bg-white/5"
+  1257→            }`}
+  1258→          >
+  1259→            <ClipboardList className="w-4 h-4" /> Orders
+  1260→          </button>
+  1261→          <button
+  1262→            onClick={() => setActiveTab("products")}
+  1263→            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-xs font-semibold tracking-wider uppercase cursor-pointer transition-all ${
+  1264→              activeTab === "products"
+  1265→                ? "bg-[#E5B83C] text-[#0A0301]"
+  1266→                : "text-[#FEF3DF]/60 hover:text-[#FEF3DF] hover:bg-white/5"
+  1267→            }`}
+  1268→          >
+  1269→            <Package className="w-4 h-4" /> Products
+  1270→          </button>
+  1271→          <button
+  1272→            onClick={() => setActiveTab("settings")}
+  1273→            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-xs font-semibold tracking-wider uppercase cursor-pointer transition-all ${
+  1274→              activeTab === "settings"
+  1275→                ? "bg-[#E5B83C] text-[#0A0301]"
+  1276→                : "text-[#FEF3DF]/60 hover:text-[#FEF3DF] hover:bg-white/5"
+  1277→            }`}
+  1278→          >
+  1279→            <Settings className="w-4 h-4" /> Settings
+  1280→          </button>
+  1281→        </div>
+  1282→      </div>
+  1283→
+  1284→      <main className="max-w-4xl mx-auto px-4 py-5 space-y-5">
+  1285→        <AnimatePresence mode="wait">
+  1286→          {activeTab === "settings" ? (
+  1287→            <motion.div
+  1288→              key="settings"
+  1289→              initial={{ opacity: 0, y: 10 }}
+  1290→              animate={{ opacity: 1, y: 0 }}
+  1291→              exit={{ opacity: 0, y: -10 }}
+  1292→              transition={{ duration: 0.2 }}
+  1293→            >
+  1294→              <SettingsPanel />
+  1295→            </motion.div>
+  1296→          ) : activeTab === "products" ? (
+  1297→            <motion.div
+  1298→              key="products"
+  1299→              initial={{ opacity: 0, y: 10 }}
+  1300→              animate={{ opacity: 1, y: 0 }}
+  1301→              exit={{ opacity: 0, y: -10 }}
+  1302→              transition={{ duration: 0.2 }}
+  1303→            >
+  1304→              <ProductsPanel />
+  1305→            </motion.div>
+  1306→          ) : (
+  1307→            <motion.div
+  1308→              key="orders"
+  1309→              initial={{ opacity: 0, y: 10 }}
+  1310→              animate={{ opacity: 1, y: 0 }}
+  1311→              exit={{ opacity: 0, y: -10 }}
+  1312→              transition={{ duration: 0.2 }}
+  1313→              className="space-y-5"
+  1314→            >
+  1315→              {/* Stats */}
+  1316→              <StatsCards orders={orders} />
+  1317→
+  1318→              {/* Filters */}
+  1319→              <div className="space-y-3">
+  1320→                {/* Search */}
+  1321→                <div className="relative">
+  1322→                  <Search className="w-4 h-4 text-[#FEF3DF]/30 absolute left-3 top-1/2 -translate-y-1/2" />
+  1323→                  <input
+  1324→                    type="text"
+  1325→                    value={searchQuery}
+  1326→                    onChange={(e) => setSearchQuery(e.target.value)}
+  1327→                    placeholder="Search orders by ID, name, or phone..."
+  1328→                    className="w-full bg-white/6 border border-[#E5B83C]/20 rounded-xl pl-10 pr-4 py-2.5 text-[#FEF3DF] text-sm placeholder:text-[#FEF3DF]/25 focus:outline-none focus:border-[#E5B83C] transition-all"
+  1329→                  />
+  1330→                </div>
+  1331→
+  1332→                {/* Status Tabs */}
+  1333→                <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+  1334→                  {(["all", "new", "payment_initiated", "confirmed", "fulfilled", "payment_failed"] as StatusFilter[]).map(
+  1335→                    (status) => {
+  1336→                      const conf = STATUS_CONFIG[status];
+  1337→                      const count = filterCounts[status] || 0;
+  1338→                      const isActive = statusFilter === status;
+  1339→                      return (
+  1340→                        <button
+  1341→                          key={status}
+  1342→                          onClick={() => setStatusFilter(status)}
+  1343→                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all whitespace-nowrap ${
+  1344→                            isActive
+  1345→                              ? status === "all"
+  1346→                                ? "bg-[#E5B83C] text-[#0A0301]"
+  1347→                                : `${conf.bg} ${conf.color} border`
+  1348→                              : "bg-white/5 text-[#FEF3DF]/50 hover:bg-white/10"
+  1349→                          }`}
+  1350→                        >
+  1351→                          {conf && <conf.icon className="w-3 h-3" />}
+  1352→                          {status === "all" ? "All" : conf?.label}
+  1353→                          <span className={`text-[0.6rem] ${isActive ? "opacity-80" : "opacity-50"}`}>({count})</span>
+  1354→                        </button>
+  1355→                      );
+  1356→                    }
+  1357→                  )}
+  1358→                </div>
+  1359→              </div>
+  1360→
+  1361→              {/* Orders List */}
+  1362→              {loading ? (
+  1363→                <div className="text-center py-20">
+  1364→                  <Loader2 className="w-8 h-8 text-[#E5B83C] animate-spin mx-auto mb-3" />
+  1365→                  <p className="text-sm text-[#FEF3DF]/50">Loading orders...</p>
+  1366→                </div>
+  1367→              ) : orders.length === 0 ? (
+  1368→                <div className="text-center py-20">
+  1369→                  <Package className="w-12 h-12 text-[#FEF3DF]/15 mx-auto mb-3" />
+  1370→                  <p className="text-[#FEF3DF]/40 text-sm">No orders found</p>
+  1371→                  <p className="text-[#FEF3DF]/25 text-xs mt-1">
+  1372→                    {statusFilter !== "all" || searchQuery
+  1373→                      ? "Try changing your filters"
+  1374→                      : "Orders will appear here when customers place them"}
+  1375→                  </p>
+  1376→                </div>
+  1377→              ) : (
+  1378→                <div className="space-y-2">
+  1379→                  <p className="text-[0.6rem] text-[#FEF3DF]/30 tracking-wider uppercase">
+  1380→                    {orders.length} order{orders.length !== 1 ? "s" : ""} · Auto-refreshes every 30s
+  1381→                  </p>
+  1382→                  <AnimatePresence mode="popLayout">
+  1383→                    {orders.map((order) => (
+  1384→                      <OrderRow
+  1385→                        key={order.order_id}
+  1386→                        order={order}
+  1387→                        onUpdateStatus={handleUpdateStatus}
+  1388→                        onDelete={handleDelete}
+  1389→                      />
+  1390→                    ))}
+  1391→                  </AnimatePresence>
+  1392→                </div>
+  1393→              )}
+  1394→            </motion.div>
+  1395→          )}
+  1396→        </AnimatePresence>
+  1397→      </main>
+  1398→    </div>
+  1399→  );
+  1400→}
+  1401→
+  1402→// ============================================
+  1403→// MAIN PAGE
+  1404→// ============================================
+  1405→export default function AdminPage() {
+  1406→  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  1407→  const [checking, setChecking] = useState(true);
+  1408→  const [mounted, setMounted] = useState(false);
+  1409→
+  1410→  useEffect(() => {
+  1411→    setMounted(true);
+  1412→  }, []);
+  1413→
+  1414→  // On mount, check if we have a valid session cookie
+  1415→  useEffect(() => {
+  1416→    if (!mounted) return;
+  1417→    checkAuth().then((valid) => {
+  1418→      setIsAuthenticated(valid);
+  1419→      setChecking(false);
+  1420→    });
+  1421→  }, [mounted]);
+  1422→
+  1423→  if (!mounted || checking) {
+  1424→    return (
+  1425→      <div className="min-h-screen bg-[#0A0301] flex items-center justify-center">
+  1426→        <Loader2 className="w-8 h-8 text-[#E5B83C] animate-spin" />
+  1427→      </div>
+  1428→    );
+  1429→  }
+  1430→
+  1431→  if (!isAuthenticated) {
+  1432→    return <LoginScreen onLogin={() => setIsAuthenticated(true)} />;
+  1433→  }
+  1434→
+  1435→  return <Dashboard onLogout={() => setIsAuthenticated(false)} />;
+  1436→}
+  1437→
