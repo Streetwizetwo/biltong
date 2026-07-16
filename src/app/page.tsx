@@ -769,30 +769,55 @@ function ProductsSection({ onItemAdd, productRefs }: { onItemAdd?: () => void; p
 // DEAL CARD — Bundle / combo offers
 // ============================================
 function DealCard({ deal, index, onAdd }: { deal: Deal; index: number; onAdd?: () => void }) {
-  const [qty, setQty] = useState(1);
-  const [selectedFlavor, setSelectedFlavor] = useState(FLAVORS[0]);
+  // Per-flavor quantity picker. Customer can split the bundle across
+  // multiple flavors — e.g. 2 × Traditional + 1 × Chilli of the Triple
+  // Taster Saver. Each flavor with qty > 0 becomes its own cart line item
+  // (the cart store dedupes by `${name}-${flavor}`, so the same deal+flavor
+  // merges quantities correctly).
+  // Default: 1 × Traditional (so the button is enabled on first render).
+  const initialQtys = () =>
+    Object.fromEntries(FLAVORS.map((f, i) => [f, i === 0 ? 1 : 0])) as Record<string, number>;
+  const [flavorQtys, setFlavorQtys] = useState<Record<string, number>>(initialQtys);
   const [justAdded, setJustAdded] = useState(false);
   const addItem = useCartStore((s) => s.addItem);
 
+  const totalQty = FLAVORS.reduce((sum, f) => sum + (flavorQtys[f] || 0), 0);
+  const totalPrice = deal.price * totalQty;
+
+  const updateFlavorQty = (flavor: string, delta: number) => {
+    setFlavorQtys((prev) => ({
+      ...prev,
+      [flavor]: Math.max(0, (prev[flavor] || 0) + delta),
+    }));
+  };
+
   const handleAdd = () => {
-    // Deals are added as a single cart line item. The chosen flavor is
-    // applied to the whole bundle (same flavor for every product inside).
+    if (totalQty === 0) return;
+    // Add a separate cart line item per flavor with qty > 0.
     // The orders API detects deals by EXACT NAME match against the deals
     // table — not by a flavor flag — so a deal with flavor="Chilli" still
     // verifies against the deals table (not the products table).
-    addItem({
-      name: deal.name,
-      weight: "",
-      flavor: selectedFlavor,
-      price: deal.price,
-      qty,
-      img: deal.img,
-    });
+    const added: string[] = [];
+    for (const flavor of FLAVORS) {
+      const q = flavorQtys[flavor] || 0;
+      if (q > 0) {
+        addItem({
+          name: deal.name,
+          weight: "",
+          flavor,
+          price: deal.price,
+          qty: q,
+          img: deal.img,
+        });
+        added.push(`${q}× ${flavor}`);
+      }
+    }
     setJustAdded(true);
-    toast.success(`${qty}x ${deal.name} (${selectedFlavor}) added!`, { icon: "🎁", duration: 2000 });
+    toast.success(`${deal.name} added: ${added.join(", ")}`, { icon: "🎁", duration: 2500 });
     onAdd?.();
     setTimeout(() => setJustAdded(false), 1200);
-    setQty(1);
+    // Reset to default (1 × Traditional)
+    setFlavorQtys(initialQtys());
   };
 
   // Build a compact items summary, e.g. "3 × Taster + 2 × Snack Pack"
@@ -846,23 +871,45 @@ function DealCard({ deal, index, onAdd }: { deal: Deal; index: number; onAdd?: (
         ))}
       </div>
 
-      {/* Flavor selector — applies to the whole bundle */}
-      <div className="mt-2.5 flex items-center gap-1 flex-wrap">
-        <span className="text-[0.55rem] tracking-[0.15em] uppercase text-[#FEF3DF]/40 mr-1">Flavor:</span>
-        {FLAVORS.map((f) => (
-          <motion.button
-            key={f}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => setSelectedFlavor(f)}
-            className={`flex items-center gap-1 px-2 py-1 text-[0.6rem] rounded-full cursor-pointer transition-all ${
-              selectedFlavor === f
-                ? "bg-[#E07A2C] text-white border border-[#E07A2C] font-bold"
-                : "bg-white/5 border border-white/10 text-[#FEF3DF]/70 hover:border-[#E07A2C]/40"
-            }`}
-          >
-            <FlavorIcon flavor={f} /> {f}
-          </motion.button>
-        ))}
+      {/* Flavor mix picker — customer picks a qty per flavor */}
+      <div className="mt-2.5 bg-white/4 border border-white/8 rounded-xl p-2.5">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[0.55rem] tracking-[0.15em] uppercase text-[#FEF3DF]/40 flex items-center gap-1">
+            <FlavorIcon flavor="Traditional" /> Flavor mix
+          </span>
+          <span className="text-[0.55rem] text-[#E07A2C] font-bold tracking-wider uppercase">
+            {totalQty} bundle{totalQty !== 1 ? "s" : ""}
+          </span>
+        </div>
+        <div className="space-y-1.5">
+          {FLAVORS.map((f) => {
+            const q = flavorQtys[f] || 0;
+            return (
+              <div key={f} className="flex items-center justify-between gap-2">
+                <span className={`flex items-center gap-1.5 text-[0.65rem] ${q > 0 ? "text-[#FEF3DF]" : "text-[#FEF3DF]/50"}`}>
+                  <FlavorIcon flavor={f} /> {f}
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <motion.button whileTap={{ scale: 0.85 }}
+                    onClick={() => updateFlavorQty(f, -1)}
+                    disabled={q === 0}
+                    className="w-6 h-6 rounded-full bg-white/8 flex items-center justify-center text-[#FEF3DF] hover:bg-[#E07A2C] hover:text-white transition-colors disabled:opacity-25 disabled:cursor-not-allowed cursor-pointer">
+                    <Minus className="w-3 h-3" />
+                  </motion.button>
+                  <motion.span key={q} initial={{ scale: 1.3 }} animate={{ scale: 1 }}
+                    className={`font-['Bebas_Neue'] text-base min-w-[24px] text-center ${q > 0 ? "text-[#F8E5B0]" : "text-[#FEF3DF]/30"}`}>
+                    {q}
+                  </motion.span>
+                  <motion.button whileTap={{ scale: 0.85 }}
+                    onClick={() => updateFlavorQty(f, 1)}
+                    className="w-6 h-6 rounded-full bg-white/8 flex items-center justify-center text-[#FEF3DF] hover:bg-[#E07A2C] hover:text-white transition-colors cursor-pointer">
+                    <Plus className="w-3 h-3" />
+                  </motion.button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Price row */}
@@ -872,41 +919,35 @@ function DealCard({ deal, index, onAdd }: { deal: Deal; index: number; onAdd?: (
             <p className="text-[0.65rem] text-[#FEF3DF]/40 line-through font-medium">R{deal.original_price}</p>
           )}
           <div className="font-['Bebas_Neue'] text-3xl md:text-4xl text-[#F8E5B0] leading-none">R{deal.price}</div>
+          <p className="text-[0.55rem] text-[#FEF3DF]/40 mt-0.5 tracking-wider uppercase">per bundle</p>
         </div>
-
-        {/* Quantity + add */}
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2">
-            <motion.button whileTap={{ scale: 0.8 }}
-              onClick={() => setQty(Math.max(1, qty - 1))}
-              className="bg-white/8 w-8 h-8 rounded-full flex items-center justify-center text-[#FEF3DF] cursor-pointer hover:bg-[#E07A2C] hover:text-white transition-colors">
-              <Minus className="w-3.5 h-3.5" />
-            </motion.button>
-            <motion.span key={qty} initial={{ scale: 1.3 }} animate={{ scale: 1 }}
-              className="font-['Bebas_Neue'] text-xl min-w-[32px] text-center">{qty}</motion.span>
-            <motion.button whileTap={{ scale: 0.8 }}
-              onClick={() => setQty(qty + 1)}
-              className="bg-white/8 w-8 h-8 rounded-full flex items-center justify-center text-[#FEF3DF] cursor-pointer hover:bg-[#E07A2C] hover:text-white transition-colors">
-              <Plus className="w-3.5 h-3.5" />
-            </motion.button>
+        {totalQty > 0 && (
+          <div className="text-right">
+            <p className="text-[0.55rem] text-[#FEF3DF]/40 tracking-wider uppercase">Total</p>
+            <p className="font-['Bebas_Neue'] text-xl text-[#E07A2C] leading-none">R{totalPrice}</p>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Add to cart button */}
       <motion.button
         whileTap={{ scale: 0.96 }}
         onClick={handleAdd}
+        disabled={totalQty === 0 || justAdded}
         className={`w-full mt-3 py-2.5 rounded-xl text-xs font-bold tracking-[0.15em] uppercase cursor-pointer transition-all flex items-center justify-center gap-2 ${
-          justAdded
-            ? "bg-[#2E7D32] text-white"
-            : "bg-[#E07A2C] text-white hover:bg-[#E07A2C]/90 hover:shadow-[0_4px_20px_rgba(224,122,44,0.3)]"
+          totalQty === 0
+            ? "bg-white/5 text-[#FEF3DF]/30 cursor-not-allowed"
+            : justAdded
+              ? "bg-[#2E7D32] text-white"
+              : "bg-[#E07A2C] text-white hover:bg-[#E07A2C]/90 hover:shadow-[0_4px_20px_rgba(224,122,44,0.3)]"
         }`}
       >
         {justAdded ? (
           <><CheckCircle2 className="w-4 h-4" /> ADDED!</>
+        ) : totalQty === 0 ? (
+          <><ShoppingCart className="w-4 h-4" /> PICK A FLAVOR</>
         ) : (
-          <><ShoppingCart className="w-4 h-4" /> ADD BUNDLE</>
+          <><ShoppingCart className="w-4 h-4" /> ADD {totalQty} BUNDLE{totalQty !== 1 ? "S" : ""}</>
         )}
       </motion.button>
     </motion.div>
