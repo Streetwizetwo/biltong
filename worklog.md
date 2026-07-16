@@ -310,3 +310,39 @@ Stage Summary:
   * Customers CAN order deals (orders API uses DEFAULT_DEAL_PRICES fallback)
 - Test order BB-DEAL-TEST-001 is in the admin panel — user can delete it
 - Files: 9 changed, +1658 lines, -30 lines
+
+---
+Task ID: 8
+Agent: Main Agent
+Task: Add flavor options to deals (Traditional/Chilli/Hot Honey Glazed) on storefront
+
+Work Log:
+- Read full context from worklog Task ID 7 (deals feature built in prior session)
+- Examined current DealCard implementation in src/app/page.tsx — confirmed deals were added to cart with hard-coded `flavor: "Bundle"`, no customer-facing flavor picker
+- Examined orders API price verification — confirmed it used `item.flavor === "Bundle"` as the deal-detection signal, which would break once deals supported customer-chosen flavors
+- Examined cart store (src/lib/store.ts) — confirmed CartItem.flavor is a free string, no schema change needed
+- Examined email + WhatsApp builders — confirmed both already use item.flavor generically (no special-casing for "Bundle"), so no changes needed there
+- Decision: add ONE flavor picker per deal (single flavor applies to the whole bundle). This matches the product card UX, keeps the cart model clean (one flavor per line item), and avoids the complexity of per-item flavor selection inside a bundle.
+- Updated src/app/page.tsx DealCard:
+  * Added `selectedFlavor` state (defaults to FLAVORS[0] = "Traditional")
+  * Added compact flavor picker row between the items chips and the price row — uses the same FlavorIcon component as product cards, styled with the deal's orange (#E07A2C) accent color
+  * Updated handleAdd to pass `flavor: selectedFlavor` instead of `flavor: "Bundle"`
+  * Toast confirmation now includes the flavor: "2x Triple Taster Saver (Chilli) added!"
+  * Added explanatory comment about name-based deal detection in the orders API
+- Updated src/app/api/orders/route.ts:
+  * Switched deal detection from `item.flavor === "Bundle"` to `dealPrices[item.name] !== undefined` (exact name match against the deals price map)
+  * Removed now-unused `knownDealNames` variable
+  * Updated docstring on getLivePrices() to reflect name-based detection
+  * Removed the "Unknown deal" error branch (deal detection now silently falls through to product matching, which will produce an "Unknown product" error if the name truly doesn't exist — clearer for debugging)
+- Build verified clean (npx next build, 15 routes still registered correctly)
+- Committed (c4be032) + pushed to GitHub — Vercel auto-deploy triggered
+
+Stage Summary:
+- Storefront deal cards now show a 3-button flavor picker (Traditional/Chilli/Hot Honey Glazed)
+- Selected flavor is applied to the whole bundle and flows through to: cart display, order summary, WhatsApp message, order confirmation email, and admin order details
+- Same deal with different flavors creates separate cart line items (e.g. "Triple Taster Saver [Traditional]" and "Triple Taster Saver [Chilli]") — correct behavior
+- Server-side price verification still works: deals detected by exact name match against deals table (or DEFAULT_DEAL_PRICES fallback), so flavored deals verify at the correct bundle price
+- Backward compatible: old carts with flavor="Bundle" still verify correctly (their name still matches a deal in the deals map)
+- No DB migration needed — deals table schema unchanged, flavor is purely a customer-side cart attribute
+- No admin panel changes needed — admin doesn't need to set a default or restricted flavor per deal (all 3 flavors available for all deals). Can add per-deal flavor restrictions later if requested.
+- Files changed: 2, +38 lines, -19 lines
