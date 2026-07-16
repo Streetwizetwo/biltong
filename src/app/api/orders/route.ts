@@ -39,8 +39,9 @@ const DEFAULT_NATIONWIDE_FEE = 150;
  * caller matches by name prefix.
  *
  * Deal prices are keyed by deal NAME (exact match). Deal cart items are
- * identified by item.flavor === "Bundle" (set by the storefront when a
- * deal is added to the cart).
+ * detected by exact name match against this map — deals can have any flavor
+ * the customer picked (Traditional/Chilli/Hot Honey Glazed), so detection
+ * is name-based, not flavor-based.
  */
 async function getLivePrices(): Promise<{
   productPrices: Record<string, number>;
@@ -192,27 +193,23 @@ export async function POST(request: NextRequest) {
 
     // Recalculate subtotal from items using server-side prices.
     // Two kinds of items can be in the cart:
-    //   1) DEAL items — identified by item.flavor === "Bundle". These are
-    //      matched by EXACT name against the deals table.
+    //   1) DEAL items — detected by EXACT name match against the deals
+    //      table (dealPrices map). Deals can have any flavor the customer
+    //      picked (Traditional/Chilli/Hot Honey Glazed), so we can no longer
+    //      use the legacy `flavor === "Bundle"` flag for detection.
     //   2) PRODUCT items — matched by name (exact, then prefix) against the
     //      products table. Cart stores item.name as "ProductName Weight"
     //      (e.g. "Snack Pack 150g"), so prefix matching handles the weight.
     let verifiedSubtotal = 0;
     const knownProductNames = Object.keys(productPrices);
-    const knownDealNames = Object.keys(dealPrices);
     for (const item of orderData.items) {
       let serverPrice: number | undefined;
 
-      if (item.flavor === "Bundle") {
-        // Deal item — exact name match against deals table
+      // Deal detection: exact name match against the deals map.
+      // (Deal names like "Triple Taster Saver" are distinct from product
+      // names like "The Taster", so there's no collision risk.)
+      if (dealPrices[item.name] !== undefined) {
         serverPrice = dealPrices[item.name];
-        if (serverPrice == null) {
-          console.error(`[Orders] Unknown deal: "${item.name}". Known deals: ${knownDealNames.join(", ") || "(none)"}`);
-          return NextResponse.json(
-            { error: `Unknown deal: ${item.name}` },
-            { status: 400 }
-          );
-        }
       } else {
         // Product item — try exact match first, then prefix match
         let matchedName: string | undefined = knownProductNames.find(

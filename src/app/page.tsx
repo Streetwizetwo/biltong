@@ -770,23 +770,26 @@ function ProductsSection({ onItemAdd, productRefs }: { onItemAdd?: () => void; p
 // ============================================
 function DealCard({ deal, index, onAdd }: { deal: Deal; index: number; onAdd?: () => void }) {
   const [qty, setQty] = useState(1);
+  const [selectedFlavor, setSelectedFlavor] = useState(FLAVORS[0]);
   const [justAdded, setJustAdded] = useState(false);
   const addItem = useCartStore((s) => s.addItem);
 
   const handleAdd = () => {
-    // Deals are added as a single cart line item with flavor = "Bundle".
-    // The orders API recognizes this and verifies the price against the
-    // deals table (not the products table).
+    // Deals are added as a single cart line item. The chosen flavor is
+    // applied to the whole bundle (same flavor for every product inside).
+    // The orders API detects deals by EXACT NAME match against the deals
+    // table — not by a flavor flag — so a deal with flavor="Chilli" still
+    // verifies against the deals table (not the products table).
     addItem({
       name: deal.name,
       weight: "",
-      flavor: "Bundle",
+      flavor: selectedFlavor,
       price: deal.price,
       qty,
       img: deal.img,
     });
     setJustAdded(true);
-    toast.success(`${qty}x ${deal.name} added!`, { icon: "🎁", duration: 2000 });
+    toast.success(`${qty}x ${deal.name} (${selectedFlavor}) added!`, { icon: "🎁", duration: 2000 });
     onAdd?.();
     setTimeout(() => setJustAdded(false), 1200);
     setQty(1);
@@ -840,6 +843,25 @@ function DealCard({ deal, index, onAdd }: { deal: Deal; index: number; onAdd?: (
           <span key={i} className="bg-white/5 border border-white/10 text-[#FEF3DF]/70 px-2 py-0.5 rounded-full text-[0.6rem] font-medium flex items-center gap-1">
             <Package className="w-2.5 h-2.5" /> {it.quantity} × {it.product_name}{it.weight ? ` (${it.weight})` : ""}
           </span>
+        ))}
+      </div>
+
+      {/* Flavor selector — applies to the whole bundle */}
+      <div className="mt-2.5 flex items-center gap-1 flex-wrap">
+        <span className="text-[0.55rem] tracking-[0.15em] uppercase text-[#FEF3DF]/40 mr-1">Flavor:</span>
+        {FLAVORS.map((f) => (
+          <motion.button
+            key={f}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setSelectedFlavor(f)}
+            className={`flex items-center gap-1 px-2 py-1 text-[0.6rem] rounded-full cursor-pointer transition-all ${
+              selectedFlavor === f
+                ? "bg-[#E07A2C] text-white border border-[#E07A2C] font-bold"
+                : "bg-white/5 border border-white/10 text-[#FEF3DF]/70 hover:border-[#E07A2C]/40"
+            }`}
+          >
+            <FlavorIcon flavor={f} /> {f}
+          </motion.button>
         ))}
       </div>
 
